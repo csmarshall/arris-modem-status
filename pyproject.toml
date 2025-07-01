@@ -7,13 +7,16 @@ name = "arris-modem-status"
 version = "0.1.0"
 description = "A Python client for querying Arris modem status information."
 authors = [
-  { name="Charles Marshall", email="charles@example.com" }
+    { name = "Charles Marshall", email = "charles@wozi.com" }
 ]
-license = {text = "MIT"}
+license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-  "requests>=2.25.1",
+    "requests>=2.25.1",
+    "selenium>=4.0.0",
+    "selenium-wire>=5.0.0",
+    "beautifulsoup4>=4.9.0"
 ]
 
 [project.scripts]
