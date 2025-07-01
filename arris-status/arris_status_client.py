@@ -30,11 +30,12 @@ class ArrisStatusClient:
 
     Attributes:
         host (str): Hostname or IP of the modem.
+        port (int): Port to connect to.
         username (str): Username for modem login.
         password (str): Password for modem login.
     """
 
-    def __init__(self, password: str, username: str = "admin", host: str = "192.168.100.1"):
+    def __init__(self, password: str, username: str = "admin", host: str = "192.168.100.1", port: int = 443):
         """
         Initialize the client with modem access credentials.
 
@@ -42,8 +43,10 @@ class ArrisStatusClient:
             password (str): Password for the modem.
             username (str, optional): Username for login. Defaults to "admin".
             host (str, optional): Modem hostname or IP address. Defaults to "192.168.100.1".
+            port (int, optional): Port number to use for HTTPS connection. Defaults to 443.
         """
         self.host = host
+        self.port = port
         self.username = username
         self.password = password
         self.session = requests.Session()
@@ -62,7 +65,7 @@ class ArrisStatusClient:
         Returns:
             str: Response text from the modem.
         """
-        url = f"https://{self.host}/HNAP1/"
+        url = f"https://{self.host}:{self.port}/HNAP1/"
         headers = {
             "SOAPAction": f'"http://purenetworks.com/HNAP1/{action}"',
             "Content-Type": "text/xml; charset=utf-8",
@@ -80,7 +83,7 @@ class ArrisStatusClient:
                 "Cookie": "uid=admin",
                 "Date": timestamp,
             })
-        response = self.session.post(url, headers=headers, data=body, verify=False)
+        response = self.session.post(url, headers=headers, data=body.strip(), verify=False)
         response.raise_for_status()
         return response.text
 
@@ -94,20 +97,19 @@ class ArrisStatusClient:
         Raises:
             ValueError: If response format is unexpected.
         """
-        body1 = f"""
-            <?xml version="1.0" encoding="utf-8"?>
-            <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                           xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-                           xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-              <soap:Body>
-                <Login xmlns="http://purenetworks.com/HNAP1/">
-                  <Action>request</Action>
-                  <Username>{self.username}</Username>
-                  <LoginPassword></LoginPassword>
-                  <Captcha></Captcha>
-                </Login>
-              </soap:Body>
-            </soap:Envelope>"""
+        body1 = f'''<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <Login xmlns="http://purenetworks.com/HNAP1/">
+      <Action>request</Action>
+      <Username>{self.username}</Username>
+      <LoginPassword></LoginPassword>
+      <Captcha></Captcha>
+    </Login>
+  </soap:Body>
+</soap:Envelope>'''
 
         response1 = self._hnap_request("Login", body1)
 
@@ -131,20 +133,19 @@ class ArrisStatusClient:
             hashlib.sha256,
         ).hexdigest().upper()
 
-        body2 = f"""
-            <?xml version="1.0" encoding="utf-8"?>
-            <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                           xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-                           xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-              <soap:Body>
-                <Login xmlns="http://purenetworks.com/HNAP1/">
-                  <Action>login</Action>
-                  <Username>{self.username}</Username>
-                  <LoginPassword>{login_password}</LoginPassword>
-                  <Captcha></Captcha>
-                </Login>
-              </soap:Body>
-            </soap:Envelope>"""
+        body2 = f'''<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <Login xmlns="http://purenetworks.com/HNAP1/">
+      <Action>login</Action>
+      <Username>{self.username}</Username>
+      <LoginPassword>{login_password}</LoginPassword>
+      <Captcha></Captcha>
+    </Login>
+  </soap:Body>
+</soap:Envelope>'''
 
         response2 = self._hnap_request("Login", body2, auth=True)
         result = self._parse_xml_value(response2, "LoginResult")
@@ -163,20 +164,19 @@ class ArrisStatusClient:
         if not self.login():
             raise RuntimeError("Login failed")
 
-        body = f"""
-            <?xml version="1.0" encoding="utf-8"?>
-            <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                           xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-                           xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-              <soap:Body>
-                <GetMultipleHNAPs xmlns="http://purenetworks.com/HNAP1/">
-                  <GetHNAPs>
-                    <string>GetSystemStatus</string>
-                    <string>GetStatus</string>
-                  </GetHNAPs>
-                </GetMultipleHNAPs>
-              </soap:Body>
-            </soap:Envelope>"""
+        body = f'''<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <GetMultipleHNAPs xmlns="http://purenetworks.com/HNAP1/">
+      <GetHNAPs>
+        <string>GetSystemStatus</string>
+        <string>GetStatus</string>
+      </GetHNAPs>
+    </GetMultipleHNAPs>
+  </soap:Body>
+</soap:Envelope>'''
 
         response = self._hnap_request("GetMultipleHNAPs", body, auth=True)
         return self._parse_status_xml(response)
