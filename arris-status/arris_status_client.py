@@ -1,151 +1,213 @@
-import requests
-import logging
+"""
+ArrisStatusClient: A Python client to interact with and query Arris cable modem status.
+
+This module provides a class for logging into an Arris modem's web interface and retrieving
+status information such as modem uptime, channel data, and other diagnostic metrics.
+
+Typical usage example:
+    client = ArrisStatusClient(password="your_password")
+    status = client.get_status()
+    print(status)
+"""
+
 import hashlib
 import hmac
-import base64
+import logging
+import time
 import xml.etree.ElementTree as ET
+from base64 import encodebytes
 from datetime import datetime
+from typing import Dict, Optional
+
+import requests
 
 logger = logging.getLogger("arris-client")
 
+
 class ArrisStatusClient:
-    def __init__(self, host="192.168.100.1", username="admin", password=""):
+    """
+    A client to query status information from an Arris modem.
+
+    Attributes:
+        host (str): Hostname or IP of the modem.
+        username (str): Username for modem login.
+        password (str): Password for modem login.
+    """
+
+    def __init__(self, password: str, username: str = "admin", host: str = "192.168.100.1"):
+        """
+        Initialize the client with modem access credentials.
+
+        Args:
+            password (str): Password for the modem.
+            username (str, optional): Username for login. Defaults to "admin".
+            host (str, optional): Modem hostname or IP address. Defaults to "192.168.100.1".
+        """
         self.host = host
         self.username = username
         self.password = password
         self.session = requests.Session()
-        self.url = f"https://{host}/HNAP1/"
-        self.soap_action_base = "http://purenetworks.com/HNAP1/"
-        self.headers = {
-            "Content-Type": "text/xml; charset=utf-8"
-        }
-        self.private_key = None
-        self.cookie = None
+        self.hnap_auth = ""
+        self.private_key = ""
 
-    def _parse_xml_value(self, xml, tag):
+    def _hnap_request(self, action: str, body: str, auth: bool = False) -> str:
+        """
+        Send an HNAP SOAP request to the modem.
+
+        Args:
+            action (str): SOAPAction to perform.
+            body (str): XML body content.
+            auth (bool): Whether authentication headers are required.
+
+        Returns:
+            str: Response text from the modem.
+        """
+        url = f"https://{self.host}/HNAP1/"
+        headers = {
+            "SOAPAction": f'"http://purenetworks.com/HNAP1/{action}"',
+            "Content-Type": "text/xml; charset=utf-8",
+        }
+        if auth:
+            timestamp = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
+            auth_code = hmac.new(
+                self.private_key.encode(),
+                f'{timestamp}"http://purenetworks.com/HNAP1/{action}"'.encode(),
+                hashlib.sha256,
+            ).hexdigest().upper()
+            self.hnap_auth = f"{auth_code} {self.private_key}"
+            headers.update({
+                "HNAP_AUTH": self.hnap_auth,
+                "Cookie": "uid=admin",
+                "Date": timestamp,
+            })
+        response = self.session.post(url, headers=headers, data=body, verify=False)
+        response.raise_for_status()
+        return response.text
+
+    def login(self) -> bool:
+        """
+        Perform login handshake and authentication.
+
+        Returns:
+            bool: True if login is successful.
+
+        Raises:
+            ValueError: If response format is unexpected.
+        """
+        body1 = f"""
+            <?xml version="1.0" encoding="utf-8"?>
+            <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                           xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                           xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+              <soap:Body>
+                <Login xmlns="http://purenetworks.com/HNAP1/">
+                  <Action>request</Action>
+                  <Username>{self.username}</Username>
+                  <LoginPassword></LoginPassword>
+                  <Captcha></Captcha>
+                </Login>
+              </soap:Body>
+            </soap:Envelope>"""
+
+        response1 = self._hnap_request("Login", body1)
+
         try:
-            root = ET.fromstring(xml)
-            return root.find(f".//{{*}}{tag}").text
+            challenge = self._parse_xml_value(response1, "Challenge")
+            public_key = self._parse_xml_value(response1, "PublicKey")
+            cookie = self._parse_xml_value(response1, "Cookie")
         except Exception as e:
-            logger.error(f"Failed to parse tag {tag}: {e}")
+            logger.error(f"Failed to parse tag Challenge: {e}")
             raise
 
-    def _get_hnap_auth(self, action, timestamp):
-        if not self.private_key:
-            return ""
-        hmac_digest = hmac.new(
-            self.private_key.encode(),
-            f"{timestamp}".encode() + action.encode(),
-            hashlib.sha256
-        ).hexdigest().upper()
-        return f"{hmac_digest} {timestamp}"
-
-    def login(self):
-        action = f"{self.soap_action_base}Login"
-        login_payload = f"""
-        <?xml version="1.0" encoding="utf-8"?>
-        <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                       xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-                       xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-          <soap:Body>
-            <Login xmlns="{self.soap_action_base}">
-              <Action>request</Action>
-              <Username>{self.username}</Username>
-              <LoginPassword></LoginPassword>
-              <Captcha></Captcha>
-            </Login>
-          </soap:Body>
-        </soap:Envelope>
-        """
-        res1 = self.session.post(self.url, headers={**self.headers, "SOAPAction": f'"{action}"'}, data=login_payload, verify=False)
-        if "text/html" in res1.headers.get("Content-Type", ""):
-            raise RuntimeError("Modem returned unexpected HTML response to XML request.")
-
-        challenge = self._parse_xml_value(res1.text, "Challenge")
-        public_key = self._parse_xml_value(res1.text, "PublicKey")
-        cookie = res1.cookies.get("UID")
-
-        private_key = hmac.new(
+        self.private_key = hmac.new(
             public_key.encode(),
             challenge.encode(),
-            hashlib.sha256
+            hashlib.sha256,
         ).hexdigest().upper()
 
-        login_pwd = hmac.new(
-            private_key.encode(),
+        login_password = hmac.new(
+            self.private_key.encode(),
             self.password.encode(),
-            hashlib.sha256
+            hashlib.sha256,
         ).hexdigest().upper()
 
-        self.private_key = private_key
-        self.cookie = cookie
+        body2 = f"""
+            <?xml version="1.0" encoding="utf-8"?>
+            <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                           xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                           xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+              <soap:Body>
+                <Login xmlns="http://purenetworks.com/HNAP1/">
+                  <Action>login</Action>
+                  <Username>{self.username}</Username>
+                  <LoginPassword>{login_password}</LoginPassword>
+                  <Captcha></Captcha>
+                </Login>
+              </soap:Body>
+            </soap:Envelope>"""
 
-        login_payload2 = f"""
-        <?xml version="1.0" encoding="utf-8"?>
-        <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                       xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-                       xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-          <soap:Body>
-            <Login xmlns="{self.soap_action_base}">
-              <Action>login</Action>
-              <Username>{self.username}</Username>
-              <LoginPassword>{login_pwd}</LoginPassword>
-              <Captcha></Captcha>
-            </Login>
-          </soap:Body>
-        </soap:Envelope>
+        response2 = self._hnap_request("Login", body2, auth=True)
+        result = self._parse_xml_value(response2, "LoginResult")
+        return result == "success"
+
+    def get_status(self) -> Dict:
         """
-        timestamp = str(int(datetime.utcnow().timestamp()))
-        headers = {
-            **self.headers,
-            "SOAPAction": f'"{action}"',
-            "HNAP_AUTH": self._get_hnap_auth(action, timestamp),
-            "Cookie": f"UID={cookie}"
-        }
-        res2 = self.session.post(self.url, headers=headers, data=login_payload2, verify=False)
-        result = self._parse_xml_value(res2.text, "LoginResult")
-        if result != "success":
-            raise RuntimeError(f"Login failed: {result}")
-        return True
+        Retrieve modem status data.
 
-    def get_status(self):
+        Returns:
+            dict: Dictionary of modem status fields.
+
+        Raises:
+            RuntimeError: If login fails.
+        """
         if not self.login():
             raise RuntimeError("Login failed")
 
-        action = f"{self.soap_action_base}GetMultipleHNAPs"
-        timestamp = str(int(datetime.utcnow().timestamp()))
-        headers = {
-            **self.headers,
-            "SOAPAction": f'"{action}"',
-            "HNAP_AUTH": self._get_hnap_auth(action, timestamp),
-            "Cookie": f"UID={self.cookie}"
-        }
+        body = f"""
+            <?xml version="1.0" encoding="utf-8"?>
+            <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                           xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                           xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+              <soap:Body>
+                <GetMultipleHNAPs xmlns="http://purenetworks.com/HNAP1/">
+                  <GetHNAPs>
+                    <string>GetSystemStatus</string>
+                    <string>GetStatus</string>
+                  </GetHNAPs>
+                </GetMultipleHNAPs>
+              </soap:Body>
+            </soap:Envelope>"""
 
-        payload = f"""
-        <?xml version="1.0" encoding="utf-8"?>
-        <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                       xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-                       xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-          <soap:Body>
-            <GetMultipleHNAPs xmlns="{self.soap_action_base}">
-              <GetHNAPs>
-                <string>GetStatus</string>
-                <string>GetCommonLinkProperties</string>
-                <string>GetCMStatus</string>
-              </GetHNAPs>
-            </GetMultipleHNAPs>
-          </soap:Body>
-        </soap:Envelope>
+        response = self._hnap_request("GetMultipleHNAPs", body, auth=True)
+        return self._parse_status_xml(response)
+
+    def _parse_xml_value(self, xml: str, tag: str) -> str:
         """
+        Extract a value from a given XML string.
 
-        res = self.session.post(self.url, headers=headers, data=payload, verify=False)
-        root = ET.fromstring(res.text)
+        Args:
+            xml (str): XML content.
+            tag (str): Tag name to search.
 
-        data = {}
-        for tag in ["GetStatusResponse", "GetCommonLinkPropertiesResponse", "GetCMStatusResponse"]:
-            node = root.find(f".//{{*}}{tag}")
-            if node is not None:
-                for child in node:
-                    data[child.tag.split("}")[-1]] = child.text
+        Returns:
+            str: Value of the tag.
+        """
+        root = ET.fromstring(xml)
+        return root.find(".//" + tag).text
 
-        return data
+    def _parse_status_xml(self, xml: str) -> Dict:
+        """
+        Parse the modem status XML into a Python dictionary.
+
+        Args:
+            xml (str): XML status response.
+
+        Returns:
+            dict: Parsed status values.
+        """
+        root = ET.fromstring(xml)
+        status = {}
+        for elem in root.iter():
+            if elem.tag.endswith("Status") or elem.tag.endswith("Uptime") or elem.tag.endswith("Temperature"):
+                status[elem.tag] = elem.text
+        return status
