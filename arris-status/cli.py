@@ -1,3 +1,21 @@
+"""
+CLI for Arris Modem Status Client
+
+This module provides a command-line interface for querying status information
+from an Arris modem using the ArrisStatusClient class.
+
+Usage:
+    python -m arris_status.cli --password <password>
+
+Options:
+    --host      Hostname or IP address of the modem (default: 192.168.100.1)
+    --username  Username for login (default: admin)
+    --password  Password for login (required)
+    --debug     Enable debug logging
+
+The output is printed in JSON format.
+"""
+
 import argparse
 import json
 import logging
@@ -5,11 +23,28 @@ import logging
 from arris_status import ArrisStatusClient
 
 def main():
+    """Entry point for the Arris Modem Status CLI."""
     parser = argparse.ArgumentParser(description="Query Arris modem status and output JSON.")
-    parser.add_argument("--host", default="192.168.100.1", help="Modem hostname or IP address (default: 192.168.100.1)")
-    parser.add_argument("--username", default="admin", help="Modem username (default: admin)")
-    parser.add_argument("--password", required=True, help="Modem password")
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument(
+        "--host",
+        default="192.168.100.1",
+        help="Modem hostname or IP address (default: 192.168.100.1)"
+    )
+    parser.add_argument(
+        "--username",
+        default="admin",
+        help="Modem username (default: admin)"
+    )
+    parser.add_argument(
+        "--password",
+        required=True,
+        help="Modem password"
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug logging"
+    )
 
     args = parser.parse_args()
 
