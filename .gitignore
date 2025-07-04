@@ -1,0 +1,38 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+arris_modem_venv
+venv
+.env/
+.envrc
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Python packaging tools
+pip-log.txt
+pip-delete-this-directory.txt
+
+# VS Code settings
+.vscode/
+
+# IDEs
+.idea/
+*.swp
+
+# Logs
+*.log
+
+# Captured data
+selenium_hnap_capture.json
+
+# macOS
+.DS_Store

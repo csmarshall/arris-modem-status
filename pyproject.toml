@@ -13,14 +13,22 @@ license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-    "requests>=2.25.1",
-    "selenium>=4.0.0",
-    "selenium-wire>=5.0.0",
-    "beautifulsoup4>=4.9.0"
+    "requests>=2.25.1"
 ]
 
 [project.scripts]
-arris-modem-status = "arris_status.cli:main"
+arris-modem-status = "arris_modem_status.cli:main"
 
 [tool.setuptools]
-packages = ["arris_status"]
+packages = ["arris_modem_status"]
+
+[project.optional-dependencies]
+dev = [
+    "selenium>=4.0.0",
+    "selenium-wire>=5.0.0",
+    "beautifulsoup4>=4.9.0",
+    "packaging>=21.0",
+    "setuptools>=65.0",
+    "blinker==1.5",
+    "webdriver-manager"
+]

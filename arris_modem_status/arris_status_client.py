@@ -1,3 +1,5 @@
+# arris_modem_status/arris_status_client.py
+
 """
 ArrisStatusClient: A Python client to interact with and query Arris cable modem status.
 
@@ -8,18 +10,27 @@ Typical usage example:
     client = ArrisStatusClient(password="your_password")
     status = client.get_status()
     print(status)
+
+The client can also be used from the command line with the CLI script.
+
+Usage (command line):
+    python -m arris_modem_status.cli --password YOUR_PASSWORD [--host 192.168.100.1] [--port 443]
+
 """
 
 import hashlib
 import hmac
 import logging
 import time
+import urllib3
 import xml.etree.ElementTree as ET
 from base64 import encodebytes
 from datetime import datetime
 from typing import Dict, Optional
 
 import requests
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger("arris-client")
 
@@ -97,19 +108,19 @@ class ArrisStatusClient:
         Raises:
             ValueError: If response format is unexpected.
         """
-        body1 = f'''<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+        body1 = f"""<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
+               xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"
+               xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">
   <soap:Body>
-    <Login xmlns="http://purenetworks.com/HNAP1/">
+    <Login xmlns=\"http://purenetworks.com/HNAP1/\">
       <Action>request</Action>
       <Username>{self.username}</Username>
       <LoginPassword></LoginPassword>
       <Captcha></Captcha>
     </Login>
   </soap:Body>
-</soap:Envelope>'''
+</soap:Envelope>"""
 
         response1 = self._hnap_request("Login", body1)
 
@@ -133,19 +144,19 @@ class ArrisStatusClient:
             hashlib.sha256,
         ).hexdigest().upper()
 
-        body2 = f'''<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+        body2 = f"""<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
+               xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"
+               xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">
   <soap:Body>
-    <Login xmlns="http://purenetworks.com/HNAP1/">
+    <Login xmlns=\"http://purenetworks.com/HNAP1/\">
       <Action>login</Action>
       <Username>{self.username}</Username>
       <LoginPassword>{login_password}</LoginPassword>
       <Captcha></Captcha>
     </Login>
   </soap:Body>
-</soap:Envelope>'''
+</soap:Envelope>"""
 
         response2 = self._hnap_request("Login", body2, auth=True)
         result = self._parse_xml_value(response2, "LoginResult")
@@ -164,19 +175,19 @@ class ArrisStatusClient:
         if not self.login():
             raise RuntimeError("Login failed")
 
-        body = f'''<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+        body = f"""<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
+               xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"
+               xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">
   <soap:Body>
-    <GetMultipleHNAPs xmlns="http://purenetworks.com/HNAP1/">
+    <GetMultipleHNAPs xmlns=\"http://purenetworks.com/HNAP1/\">
       <GetHNAPs>
         <string>GetSystemStatus</string>
         <string>GetStatus</string>
       </GetHNAPs>
     </GetMultipleHNAPs>
   </soap:Body>
-</soap:Envelope>'''
+</soap:Envelope>"""
 
         response = self._hnap_request("GetMultipleHNAPs", body, auth=True)
         return self._parse_status_xml(response)
