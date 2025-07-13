@@ -155,13 +155,14 @@ class ArrisStatusClient:
             logger.error(f"HNAP token generation failed: {e}")
             return f"{'0' * 64} {timestamp}"
 
-    async def _make_hnap_request(self, soap_action: str, request_body: Dict[str, Any]) -> Optional[str]:
+    async def _make_hnap_request(self, soap_action: str, request_body: Dict[str, Any], extra_headers: Optional[Dict[str, str]] = None) -> Optional[str]:
         """
         Make authenticated HNAP request.
 
         Args:
             soap_action (str): SOAP action name
             request_body (dict): JSON request body
+            extra_headers (dict, optional): Additional headers to include
 
         Returns:
             Optional[str]: Response content or None if failed
@@ -187,10 +188,27 @@ class ArrisStatusClient:
                     "SOAPACTION": f'"http://purenetworks.com/HNAP1/{soap_action}"',
                     "Referer": f"{self.base_url}/Cmconnectionstatus.html"
                 }
+            
+            # CRITICAL: Manually build cookie header from jar
+            if soap_action != "Login" or extra_headers:  # Don't add cookies for initial login challenge
+                cookies = []
+                for cookie in self.session.cookie_jar:
+                    cookies.append(f"{cookie.key}={cookie.value}")
+                
+                if cookies:
+                    headers["Cookie"] = "; ".join(cookies)
+                    logger.debug(f"Sending cookies: {headers['Cookie']}")
+            
+            # Add any extra headers
+            if extra_headers:
+                headers.update(extra_headers)
 
+            # Convert request body to JSON string
+            request_json = json.dumps(request_body)
+            
             async with self.session.post(
                 f"{self.base_url}/HNAP1/",
-                json=request_body,
+                data=request_json,  # Use data instead of json parameter
                 headers=headers
             ) as response:
 
@@ -230,34 +248,18 @@ class ArrisStatusClient:
             # Parse challenge response
             challenge = None
             public_key = None
+            uid_cookie = None
             
             try:
                 challenge_data = json.loads(challenge_response)
-                
-                # Navigate JSON structure to find Challenge and PublicKey
-                def find_auth_values(obj):
-                    nonlocal challenge, public_key
-                    if isinstance(obj, dict):
-                        for key, value in obj.items():
-                            if key.lower() == 'challenge' and isinstance(value, str):
-                                challenge = value
-                            elif key.lower() == 'publickey' and isinstance(value, str):
-                                public_key = value
-                            elif isinstance(value, dict):
-                                find_auth_values(value)
-                
-                find_auth_values(challenge_data)
+                login_response = challenge_data.get("LoginResponse", {})
+                challenge = login_response.get("Challenge")
+                public_key = login_response.get("PublicKey")
+                uid_cookie = login_response.get("Cookie")
                 
             except json.JSONDecodeError:
-                # Fallback to regex parsing
-                import re
-                challenge_match = re.search(r'Challenge["\s:=]*([A-Za-z0-9+/=]+)', challenge_response)
-                public_key_match = re.search(r'PublicKey["\s:=]*([A-Za-z0-9+/=]+)', challenge_response)
-                
-                if challenge_match:
-                    challenge = challenge_match.group(1)
-                if public_key_match:
-                    public_key = public_key_match.group(1)
+                logger.error("Failed to parse challenge response")
+                return False
             
             if not challenge or not public_key:
                 logger.error("Missing Challenge or PublicKey in response")
@@ -295,13 +297,40 @@ class ArrisStatusClient:
                 }
             }
             
-            login_response = await self._make_hnap_request("Login", login_request)
+            # Add uid cookie for login request
+            login_headers = {
+                "Cookie": f"uid={uid_cookie}" if uid_cookie else ""
+            }
+            
+            login_response = await self._make_hnap_request("Login", login_request, extra_headers=login_headers)
             if not login_response:
                 return False
             
             # Check for success (various possible response formats)
             if any(term in login_response.lower() for term in ["success", "ok", "true"]):
                 self.authenticated = True
+                
+                # CRITICAL: Set both cookies in the session
+                from http.cookies import SimpleCookie
+                from yarl import URL
+                url = URL(self.base_url)
+                
+                # Add uid cookie
+                if uid_cookie:
+                    uid_simple = SimpleCookie()
+                    uid_simple['uid'] = uid_cookie
+                    uid_simple['uid']['path'] = '/'
+                    uid_simple['uid']['secure'] = True
+                    self.session.cookie_jar.update_cookies(uid_simple, url)
+                
+                # Add PrivateKey cookie (same as computed private_key!)
+                pk_simple = SimpleCookie()
+                pk_simple['PrivateKey'] = private_key
+                pk_simple['PrivateKey']['path'] = '/'
+                pk_simple['PrivateKey']['secure'] = True
+                self.session.cookie_jar.update_cookies(pk_simple, url)
+                
+                logger.info("Authentication successful with both cookies set")
                 return True
             else:
                 return False
@@ -321,6 +350,27 @@ class ArrisStatusClient:
             if not await self._authenticate():
                 raise RuntimeError("Authentication failed")
         
+        # CRITICAL: Load the connection status page first (required by modem!)
+        logger.info("Loading connection status page...")
+        try:
+            page_headers = {
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+                "Referer": f"{self.base_url}/Login.html",
+                "Upgrade-Insecure-Requests": "1"
+            }
+            
+            async with self.session.get(f"{self.base_url}/Cmconnectionstatus.html", headers=page_headers) as response:
+                if response.status != 200:
+                    logger.warning(f"Connection status page returned {response.status}")
+                else:
+                    logger.info("✅ Connection status page loaded successfully")
+            
+            # Wait for page to initialize (as observed in browser)
+            await asyncio.sleep(2.0)
+            
+        except Exception as e:
+            logger.warning(f"Failed to load connection status page: {e}")
+        
         # Make the three key HNAP calls discovered from browser capture
         responses = {}
         
@@ -334,6 +384,7 @@ class ArrisStatusClient:
         startup_response = await self._make_hnap_request("GetMultipleHNAPs", startup_request)
         if startup_response:
             responses["startup_and_connection"] = startup_response
+            logger.info("✅ Got startup and connection info")
         
         # Call 2: Internet and Register Status
         internet_request = {
@@ -346,6 +397,7 @@ class ArrisStatusClient:
         internet_response = await self._make_hnap_request("GetMultipleHNAPs", internet_request)
         if internet_response:
             responses["internet_and_register"] = internet_response
+            logger.info("✅ Got internet and register status")
         
         # Call 3: Channel Information (most important)
         channel_request = {
@@ -354,9 +406,17 @@ class ArrisStatusClient:
                 "GetCustomerStatusUpstreamChannelInfo": ""
             }
         }
-        channel_response = await self._make_hnap_request("GetMultipleHNAPs", channel_request)
-        if channel_response:
-            responses["channel_info"] = channel_response
+        
+        try:
+            channel_response = await self._make_hnap_request("GetMultipleHNAPs", channel_request)
+            if channel_response:
+                responses["channel_info"] = channel_response
+                logger.info("✅ Got channel information")
+        except aiohttp.ClientResponseError as e:
+            logger.warning(f"Channel data request got malformed response: {e}")
+            logger.info("Note: Some modems return invalid HTTP headers for channel data")
+        except Exception as e:
+            logger.warning(f"Channel data request failed: {e}")
         
         return self._parse_responses(responses)
 
