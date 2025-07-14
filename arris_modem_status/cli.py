@@ -1,77 +1,261 @@
 """
-CLI for Arris Modem Status Client
+Command Line Interface for Arris Modem Status Client
 
 This module provides a command-line interface for querying status information
-from an Arris modem using the ArrisStatusClient class.
+from Arris cable modems. It outputs comprehensive modem data in JSON format
+suitable for monitoring systems, scripts, or manual inspection.
 
 Usage:
     python -m arris_modem_status.cli --password <password>
+    arris-modem-status --password <password>
 
-Options:
-    --host      Hostname or IP address of the modem (default: 192.168.100.1)
-    --port      HTTPS port to connect to (default: 443)
-    --username  Username for login (default: admin)
-    --password  Password for login (required)
-    --debug     Enable debug logging
+Example:
+    # Basic usage with default IP
+    arris-modem-status --password "your_modem_password"
 
-The output is printed in JSON format.
+    # Custom modem IP address
+    arris-modem-status --password "password" --host 192.168.1.1
+
+    # Enable debug logging
+    arris-modem-status --password "password" --debug
+
+Output:
+    JSON object containing modem status, channel data, and diagnostics
 """
 
 import argparse
 import json
 import logging
+import sys
+from datetime import datetime
 from arris_modem_status import ArrisStatusClient
 
+def setup_logging(debug: bool = False) -> None:
+    """
+    Configure logging for the CLI application.
+
+    Args:
+        debug: If True, enable debug-level logging
+    """
+    level = logging.DEBUG if debug else logging.INFO
+
+    # Configure the root logger
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
+
+    # Configure the requests library to be less verbose unless debug is enabled
+    if not debug:
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
+        logging.getLogger("requests").setLevel(logging.WARNING)
+
+def format_channel_data_for_display(status: dict) -> dict:
+    """
+    Convert ChannelInfo objects to dictionaries for JSON serialization.
+
+    The ArrisStatusClient returns ChannelInfo dataclass objects which need
+    to be converted to dictionaries for JSON output.
+
+    Args:
+        status: Status dictionary from ArrisStatusClient.get_status()
+
+    Returns:
+        Status dictionary with channels converted to JSON-serializable format
+    """
+    output = status.copy()
+
+    # Convert downstream channels
+    if "downstream_channels" in output:
+        output["downstream_channels"] = [
+            {
+                "channel_id": ch.channel_id,
+                "frequency": ch.frequency,
+                "power": ch.power,
+                "snr": ch.snr,
+                "modulation": ch.modulation,
+                "lock_status": ch.lock_status,
+                "corrected_errors": ch.corrected_errors,
+                "uncorrected_errors": ch.uncorrected_errors,
+                "channel_type": ch.channel_type
+            }
+            for ch in output["downstream_channels"]
+        ]
+
+    # Convert upstream channels
+    if "upstream_channels" in output:
+        output["upstream_channels"] = [
+            {
+                "channel_id": ch.channel_id,
+                "frequency": ch.frequency,
+                "power": ch.power,
+                "snr": ch.snr,
+                "modulation": ch.modulation,
+                "lock_status": ch.lock_status,
+                "channel_type": ch.channel_type
+            }
+            for ch in output["upstream_channels"]
+        ]
+
+    return output
+
+def print_summary_to_stderr(status: dict) -> None:
+    """
+    Print a human-readable summary to stderr (so JSON output to stdout is clean).
+
+    Args:
+        status: Parsed status dictionary from the modem
+    """
+    print("=" * 60, file=sys.stderr)
+    print("ARRIS MODEM STATUS SUMMARY", file=sys.stderr)
+    print("=" * 60, file=sys.stderr)
+    print(f"Model: {status.get('model_name', 'Unknown')}", file=sys.stderr)
+    print(f"Internet Status: {status.get('internet_status', 'Unknown')}", file=sys.stderr)
+    print(f"Connection Status: {status.get('connection_status', 'Unknown')}", file=sys.stderr)
+
+    if status.get('mac_address', 'Unknown') != 'Unknown':
+        print(f"MAC Address: {status.get('mac_address')}", file=sys.stderr)
+
+    downstream_count = len(status.get('downstream_channels', []))
+    upstream_count = len(status.get('upstream_channels', []))
+
+    print(f"Downstream Channels: {downstream_count}", file=sys.stderr)
+    print(f"Upstream Channels: {upstream_count}", file=sys.stderr)
+    print(f"Channel Data Available: {status.get('channel_data_available', False)}", file=sys.stderr)
+
+    # Show sample channel if available
+    if downstream_count > 0:
+        sample = status['downstream_channels'][0]
+        print(f"Sample Channel: ID {sample.channel_id}, {sample.frequency}, {sample.power}, SNR {sample.snr}", file=sys.stderr)
+
+    print("=" * 60, file=sys.stderr)
+
 def main():
-    """Entry point for the Arris Modem Status CLI."""
-    parser = argparse.ArgumentParser(description="Query Arris modem status and output JSON.")
+    """Main entry point for the CLI application."""
+    parser = argparse.ArgumentParser(
+        description="Query Arris cable modem status and output JSON data",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s --password "your_password"
+  %(prog)s --password "password" --host 192.168.1.1 
+  %(prog)s --password "password" --debug
+
+Output:
+  JSON object with modem status, channel information, and diagnostics.
+  Summary information is printed to stderr, JSON data to stdout.
+        """
+    )
+
     parser.add_argument(
         "--host",
         default="192.168.100.1",
-        help="Modem hostname or IP address (default: 192.168.100.1)"
+        help="Modem hostname or IP address (default: %(default)s)"
     )
     parser.add_argument(
         "--port",
         default=443,
         type=int,
-        help="Port for HTTPS connection to the modem (default: 443)"
+        help="HTTPS port for modem connection (default: %(default)s)"
     )
     parser.add_argument(
         "--username",
         default="admin",
-        help="Modem username (default: admin)"
+        help="Modem login username (default: %(default)s)"
     )
     parser.add_argument(
         "--password",
         required=True,
-        help="Modem password"
+        help="Modem login password (required)"
     )
     parser.add_argument(
         "--debug",
         action="store_true",
-        help="Enable debug logging"
+        help="Enable debug logging output to stderr"
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress summary output to stderr (JSON only to stdout)"
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=30,
+        help="Request timeout in seconds (default: %(default)s)"
     )
 
     args = parser.parse_args()
 
-    logging.basicConfig(
-        level=logging.DEBUG if args.debug else logging.INFO,
-        format="%(levelname)s:%(name)s:%(message)s"
-    )
-
-    client = ArrisStatusClient(
-        host=args.host,
-        port=args.port,
-        username=args.username,
-        password=args.password
-    )
+    # Configure logging
+    setup_logging(debug=args.debug)
+    logger = logging.getLogger(__name__)
 
     try:
+        # Log startup information (to stderr)
+        if not args.quiet:
+            print(f"Arris Modem Status Client - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", file=sys.stderr)
+            print(f"Connecting to {args.host}:{args.port} as {args.username}", file=sys.stderr)
+
+        # Initialize the client
+        client = ArrisStatusClient(
+            host=args.host,
+            port=args.port,
+            username=args.username,
+            password=args.password
+        )
+
+        # Set timeout on the session if specified
+        if hasattr(client, 'session') and args.timeout != 30:
+            client.session.timeout = args.timeout
+
+        logger.info(f"Querying modem at {args.host}:{args.port}")
+
+        # Get the modem status
         status = client.get_status()
-        print(json.dumps(status, indent=2))
+
+        # Print summary to stderr (unless quiet mode)
+        if not args.quiet:
+            print_summary_to_stderr(status)
+
+        # Convert channel objects to JSON-serializable format
+        json_output = format_channel_data_for_display(status)
+
+        # Add metadata
+        json_output["query_timestamp"] = datetime.now().isoformat()
+        json_output["query_host"] = args.host
+        json_output["client_version"] = "1.0.0"
+
+        # Output JSON to stdout (this is the primary output)
+        print(json.dumps(json_output, indent=2))
+
+        logger.info("Modem status retrieved successfully")
+
+    except KeyboardInterrupt:
+        logger.error("Operation cancelled by user")
+        print("Operation cancelled by user", file=sys.stderr)
+        sys.exit(1)
+
     except Exception as e:
-        logging.error(f"Failed to get modem status: {e}")
-        exit(1)
+        logger.error(f"Failed to get modem status: {e}")
+
+        # Print error to stderr
+        print(f"Error: {e}", file=sys.stderr)
+
+        if args.debug:
+            # Print full traceback in debug mode
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+        else:
+            # Provide helpful suggestions for common issues
+            print("\nTroubleshooting suggestions:", file=sys.stderr)
+            print("1. Verify the modem password is correct", file=sys.stderr)
+            print("2. Check that the modem IP address is reachable", file=sys.stderr)
+            print("3. Ensure the modem web interface is enabled", file=sys.stderr)
+            print("4. Try with --debug for more detailed error information", file=sys.stderr)
+
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
