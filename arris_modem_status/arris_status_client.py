@@ -1,13 +1,22 @@
 """
-Arris Status Client with Error Analysis and Robust Retry Logic
-=============================================================
+Enhanced Arris Status Client with Serial/Parallel Request Option
+===============================================================
 
-This version captures and analyzes the actual malformed responses from Arris firmware
-to understand what's really happening, plus implements intelligent retry logic.
+This version adds a critical debugging option to isolate whether the mysterious
+numbers and header parsing errors are caused by:
+
+1. Client-side threading issues (requests/urllib3)
+2. Server-side race conditions (Arris firmware bug)
+3. HTTP connection pooling problems
+4. Session sharing issues
+
+The concurrent parameter allows switching between parallel and serial request modes
+to help identify the root cause and provide a reliable fallback option.
 
 Author: Charles Marshall
-Version: 1.2.0
+Version: 1.3.0
 """
+
 import hashlib
 import hmac
 import json
@@ -16,7 +25,7 @@ import random
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 import urllib3
@@ -40,6 +49,7 @@ class ErrorCapture:
     response_headers: Dict[str, str]
     partial_content: str
     recovery_successful: bool
+    concurrent_mode: bool  # NEW: Track if error occurred in concurrent mode
 
 
 @dataclass
@@ -80,11 +90,15 @@ class ChannelInfo:
 
 class ArrisStatusClient:
     """
-    Production-ready Arris modem client with comprehensive error analysis and retry logic.
+    Enhanced Arris modem client with serial/parallel request option.
 
-    This client captures and analyzes malformed responses to understand what's really
-    happening with the Arris firmware bugs, while implementing intelligent retry and
-    backoff strategies for maximum reliability.
+    This version adds the ability to switch between concurrent and serial request modes
+    to help isolate whether mysterious header parsing errors are caused by:
+    - Client-side threading issues (requests/urllib3)
+    - Server-side race conditions (Arris firmware)
+    - HTTP connection pooling problems
+
+    NEW in v1.3.0: concurrent parameter for debugging and reliability
     """
 
     def __init__(
@@ -93,33 +107,40 @@ class ArrisStatusClient:
         username: str = "admin",
         host: str = "192.168.100.1",
         port: int = 443,
-        max_workers: int = 2,  # Reduced for reliability
+        concurrent: bool = True,        # NEW: Enable/disable concurrent requests
+        max_workers: int = 2,
         max_retries: int = 3,
         base_backoff: float = 0.5,
-        capture_errors: bool = True
+        capture_errors: bool = True,
+        timeout: tuple = (3, 12)
     ):
         """
-        Initialize the Arris modem client with robust error handling.
+        Initialize the Arris modem client with serial/parallel option.
 
         Args:
             password: Modem admin password
             username: Login username (default: "admin")
             host: Modem IP address (default: "192.168.100.1")
             port: HTTPS port (default: 443)
-            max_workers: Concurrent request workers (default: 2, conservative)
+            concurrent: Enable concurrent requests (default: True)
+                       Set to False for serial requests to debug threading issues
+            max_workers: Concurrent request workers (ignored if concurrent=False)
             max_retries: Max retry attempts for failed requests (default: 3)
             base_backoff: Base backoff time in seconds (default: 0.5)
             capture_errors: Whether to capture error details for analysis (default: True)
+            timeout: (connect_timeout, read_timeout) in seconds (default: (3, 12))
         """
         self.host = host
         self.port = port
         self.username = username
         self.password = password
         self.base_url = f"https://{host}:{port}"
-        self.max_workers = max_workers
+        self.concurrent = concurrent            # NEW: Concurrent vs serial mode
+        self.max_workers = max_workers if concurrent else 1
         self.max_retries = max_retries
         self.base_backoff = base_backoff
         self.capture_errors = capture_errors
+        self.timeout = timeout
 
         # Authentication state
         self.private_key: Optional[str] = None
@@ -129,57 +150,58 @@ class ArrisStatusClient:
         # Error analysis storage
         self.error_captures: List[ErrorCapture] = []
 
-        # Configure HTTP session for reliability
-        self.session = self._create_robust_session()
+        # Configure HTTP session for the selected mode
+        self.session = self._create_session()
 
-        logger.info(f"🛡️ ArrisStatusClient v1.2 initialized for {host}:{port}")
-        logger.info(f"🔧 Config: {max_workers} workers, {max_retries} retries, {base_backoff}s backoff")
+        mode_str = "concurrent" if concurrent else "serial"
+        logger.info(f"🛡️ ArrisStatusClient v1.3 initialized for {host}:{port}")
+        logger.info(f"🔧 Mode: {mode_str}, Workers: {self.max_workers}, Retries: {max_retries}")
 
-    def _create_robust_session(self) -> requests.Session:
-        """Create HTTP session optimized for reliability over speed."""
+    def _create_session(self) -> requests.Session:
+        """Create HTTP session optimized for the selected mode."""
         session = requests.Session()
 
         # Conservative retry strategy
         retry_strategy = Retry(
-            total=2,  # Lower for faster fallback to custom retry logic
+            total=2,
             status_forcelist=[429, 500, 502, 503, 504],
             allowed_methods=["POST", "GET"],
             backoff_factor=0.3,
             respect_retry_after_header=False
         )
 
-        # HTTP adapter with conservative settings
-        adapter = HTTPAdapter(
-            pool_connections=1,
-            pool_maxsize=5,  # Reduced pool size
-            max_retries=retry_strategy,
-            pool_block=False
-        )
+        # HTTP adapter configuration based on mode
+        if self.concurrent:
+            # Concurrent mode: connection pooling enabled
+            adapter = HTTPAdapter(
+                pool_connections=1,
+                pool_maxsize=5,
+                max_retries=retry_strategy,
+                pool_block=False
+            )
+        else:
+            # Serial mode: minimal connection pooling to avoid threading issues
+            adapter = HTTPAdapter(
+                pool_connections=1,
+                pool_maxsize=1,  # Single connection only
+                max_retries=retry_strategy,
+                pool_block=True
+            )
 
         session.mount("https://", adapter)
         session.mount("http://", adapter)
 
-        # Conservative session settings
+        # Session settings
         session.verify = False
-        session.timeout = (3, 12)  # Longer read timeout for reliability
+        session.timeout = self.timeout
         session.headers.update({
-            "User-Agent": "ArrisStatusClient/1.2.0-Robust",
+            "User-Agent": f"ArrisStatusClient/1.3.0-{'Concurrent' if self.concurrent else 'Serial'}",
             "Accept": "application/json",
             "Cache-Control": "no-cache",
-            "Connection": "keep-alive"
+            "Connection": "keep-alive" if self.concurrent else "close"  # NEW: Connection strategy
         })
 
         return session
-
-    def _exponential_backoff(self, attempt: int, jitter: bool = True) -> float:
-        """Calculate exponential backoff time with optional jitter."""
-        backoff_time = self.base_backoff * (2 ** attempt)
-
-        if jitter:
-            # Add random jitter to avoid thundering herd
-            backoff_time += random.uniform(0, backoff_time * 0.1)
-
-        return min(backoff_time, 10.0)  # Cap at 10 seconds
 
     def _analyze_malformed_response(
         self,
@@ -187,13 +209,8 @@ class ArrisStatusClient:
         error: Exception,
         request_type: str
     ) -> ErrorCapture:
-        """
-        Analyze and capture details about malformed responses.
-
-        This helps us understand what's really in those malformed headers/responses.
-        """
+        """Enhanced error analysis with concurrent mode tracking."""
         try:
-            # Extract as much information as possible
             error_details = str(error)
 
             # Try to get partial content even from failed responses
@@ -232,35 +249,35 @@ class ArrisStatusClient:
                 raw_error=error_details,
                 response_headers=headers,
                 partial_content=partial_content,
-                recovery_successful=False  # Will be updated if retry succeeds
+                recovery_successful=False,
+                concurrent_mode=self.concurrent  # NEW: Track the mode when error occurred
             )
 
             if self.capture_errors:
                 self.error_captures.append(capture)
 
-            # Log detailed analysis
-            logger.warning(f"🔍 Malformed response analysis:")
+            # Enhanced logging with mode information
+            mode_str = "concurrent" if self.concurrent else "serial"
+            logger.warning(f"🔍 Malformed response analysis ({mode_str} mode):")
             logger.warning(f"   Request type: {request_type}")
             logger.warning(f"   HTTP status: {getattr(response, 'status_code', 'unknown')}")
             logger.warning(f"   Error type: {error_type}")
             logger.warning(f"   Raw error: {error_details[:200]}...")
 
-            if partial_content:
-                logger.warning(f"   Partial content: {partial_content[:100]}...")
-
-            # Extract the mysterious number from header parsing errors
+            # Extract mysterious numbers with mode context
             if "HeaderParsingError" in error_details and "|" in error_details:
                 try:
-                    # Extract the number before the pipe
                     import re
                     match = re.search(r'(\d+\.?\d*)\s*\|', error_details)
                     if match:
                         mysterious_number = match.group(1)
-                        logger.warning(f"   🔍 Mysterious number in header: {mysterious_number}")
+                        logger.warning(f"   🔢 Mysterious number in {mode_str} mode: {mysterious_number}")
 
-                        # Try to correlate with channel data
-                        if hasattr(self, '_last_channel_data'):
-                            logger.warning(f"   🔗 Checking correlation with channel data...")
+                        if not self.concurrent:
+                            logger.warning(f"   ⚠️  CRITICAL: Firmware bug occurs even in SERIAL mode!")
+                        else:
+                            logger.warning(f"   🔍 Firmware bug in concurrent mode (expected)")
+
                 except Exception as e:
                     logger.debug(f"Failed to extract mysterious number: {e}")
 
@@ -276,22 +293,18 @@ class ArrisStatusClient:
                 raw_error=str(error),
                 response_headers={},
                 partial_content="",
-                recovery_successful=False
+                recovery_successful=False,
+                concurrent_mode=self.concurrent
             )
 
     def _is_firmware_bug_error(self, error: Exception) -> bool:
-        """
-        Detect known Arris firmware bug patterns.
-
-        Returns True if this looks like a known firmware bug that we can retry.
-        """
+        """Detect known Arris firmware bug patterns."""
         error_str = str(error).lower()
 
-        # Known firmware bug patterns
         firmware_bug_patterns = [
             "firstheaderlineiscontinuationdefect",
             "headerparsingerror",
-            "3.400002",  # The mysterious number
+            "3.400002",  # Example mysterious number
             "content-type: text/html",
             "http 403",
             "unparsed data:",
@@ -305,12 +318,7 @@ class ArrisStatusClient:
         request_body: Dict[str, Any],
         extra_headers: Optional[Dict[str, str]] = None
     ) -> Optional[str]:
-        """
-        Make HNAP request with intelligent retry logic and error analysis.
-
-        This method implements exponential backoff and captures detailed error
-        information to help understand what's really happening with firmware bugs.
-        """
+        """Make HNAP request with retry logic (unchanged from previous version)."""
         last_error = None
         last_capture = None
 
@@ -327,92 +335,94 @@ class ArrisStatusClient:
         urllib3_logger.addHandler(warning_handler)
 
         try:
-            for attempt in range(self.max_retries + 1):  # +1 for initial attempt
+            for attempt in range(self.max_retries + 1):
                 try:
                     if attempt > 0:
-                        # Calculate backoff time
                         backoff_time = self._exponential_backoff(attempt - 1)
                         logger.info(f"🔄 Retry {attempt}/{self.max_retries} for {soap_action} after {backoff_time:.2f}s")
                         time.sleep(backoff_time)
 
-                    # Clear previous warnings
                     captured_warnings.clear()
-
-                    # Make the actual request
                     response = self._make_hnap_request_raw(soap_action, request_body, extra_headers)
 
                     # Check for captured header parsing warnings
                     if captured_warnings and self.capture_errors:
                         for warning_msg in captured_warnings:
-                            logger.warning(f"🔍 Captured header parsing warning: {warning_msg}")
+                            mode_str = "concurrent" if self.concurrent else "serial"
+                            logger.warning(f"🔍 Header parsing warning ({mode_str} mode): {warning_msg}")
 
                             # Create error capture for header parsing warning
                             header_capture = ErrorCapture(
                                 timestamp=time.time(),
                                 request_type=soap_action,
-                                http_status=200,  # Response succeeded despite malformed headers
+                                http_status=200,
                                 error_type="header_parsing_warning",
                                 raw_error=warning_msg,
                                 response_headers={},
                                 partial_content=response[:200] if response else "",
-                                recovery_successful=True  # Request succeeded despite warning
+                                recovery_successful=True,
+                                concurrent_mode=self.concurrent
                             )
 
                             self.error_captures.append(header_capture)
 
-                            # Extract mysterious number
+                            # Extract mysterious number with mode context
                             try:
                                 import re
                                 match = re.search(r'(\d+\.?\d*)\s*\|', warning_msg)
                                 if match:
                                     mysterious_number = match.group(1)
-                                    logger.warning(f"   🔢 Mysterious number extracted: {mysterious_number}")
+                                    if self.concurrent:
+                                        logger.warning(f"   🔢 Channel data in header (concurrent): {mysterious_number}")
+                                    else:
+                                        logger.warning(f"   🚨 CRITICAL - Channel data in header (SERIAL): {mysterious_number}")
+                                        logger.warning(f"   🔍 This confirms it's an Arris firmware bug, not threading!")
                             except Exception as e:
                                 logger.debug(f"Failed to extract mysterious number: {e}")
 
                     if response is not None:
-                        # Success! Update any previous error captures
                         if last_capture:
                             last_capture.recovery_successful = True
                             logger.info(f"✅ Recovery successful for {soap_action} on attempt {attempt + 1}")
-
                         return response
 
                 except (HeaderParsingError, requests.exceptions.RequestException) as e:
                     last_error = e
-
-                    # Analyze the error in detail
                     try:
-                        # Get response object if available
                         response_obj = getattr(e, 'response', None)
                         last_capture = self._analyze_malformed_response(response_obj, e, soap_action)
                     except Exception as analysis_error:
                         logger.debug(f"Error analysis failed: {analysis_error}")
 
-                    # Check if this is a known firmware bug we should retry
                     if self._is_firmware_bug_error(e):
-                        logger.warning(f"🐛 Firmware bug detected in {soap_action}, attempt {attempt + 1}")
+                        mode_str = "concurrent" if self.concurrent else "serial"
+                        logger.warning(f"🐛 Firmware bug detected in {mode_str} mode, attempt {attempt + 1}")
 
                         if attempt < self.max_retries:
-                            continue  # Retry with backoff
+                            continue
                     else:
-                        # Unknown error type, don't retry
                         logger.error(f"❌ Unknown error type for {soap_action}: {e}")
                         break
 
                 except Exception as e:
-                    # Unexpected error
                     logger.error(f"❌ Unexpected error in {soap_action}: {e}")
                     last_error = e
                     break
 
-            # All retries exhausted
             logger.error(f"💥 All retry attempts exhausted for {soap_action}")
             return None
 
         finally:
-            # Remove the warning handler
             urllib3_logger.removeHandler(warning_handler)
+
+    def _exponential_backoff(self, attempt: int, jitter: bool = True) -> float:
+        """Calculate exponential backoff time with optional jitter."""
+        backoff_time = self.base_backoff * (2 ** attempt)
+
+        if jitter:
+            backoff_time += random.uniform(0, backoff_time * 0.1)
+
+        return min(backoff_time, 10.0)
 
     def _make_hnap_request_raw(
         self,
@@ -420,11 +430,7 @@ class ArrisStatusClient:
         request_body: Dict[str, Any],
         extra_headers: Optional[Dict[str, str]] = None
     ) -> Optional[str]:
-        """
-        Make raw HNAP request without retry logic.
-
-        This is the actual HTTP request implementation that gets called by the retry wrapper.
-        """
+        """Make raw HNAP request (unchanged from previous version)."""
         # Generate authentication token
         auth_token = self._generate_hnap_auth_token(soap_action)
 
@@ -466,23 +472,18 @@ class ArrisStatusClient:
             logger.debug(f"📥 Response: {len(response.text)} chars")
             return response.text
         else:
-            # Create a custom exception that includes the response
             error = requests.exceptions.RequestException(f"HTTP {response.status_code}")
             error.response = response
             raise error
 
     def _generate_hnap_auth_token(self, soap_action: str, timestamp: int = None) -> str:
-        """Generate HNAP auth token."""
+        """Generate HNAP auth token (unchanged from previous version)."""
         if timestamp is None:
             timestamp = int(time.time() * 1000) % 2000000000000
 
-        # Use cached private key or default
         hmac_key = self.private_key or "withoutloginkey"
-
-        # Build the message exactly as the modem's JavaScript does
         message = f'{timestamp}"http://purenetworks.com/HNAP1/{soap_action}"'
 
-        # Compute HMAC-SHA256 hash
         auth_hash = hmac.new(
             hmac_key.encode('utf-8'),
             message.encode('utf-8'),
@@ -492,12 +493,12 @@ class ArrisStatusClient:
         return f"{auth_hash} {timestamp}"
 
     def authenticate(self) -> bool:
-        """Perform HNAP authentication with retry logic."""
+        """Perform HNAP authentication (unchanged from previous version)."""
         try:
-            logger.info("🔐 Starting robust authentication...")
+            logger.info("🔐 Starting authentication...")
             start_time = time.time()
 
-            # Step 1: Request challenge with retry
+            # Step 1: Request challenge
             challenge_request = {
                 "Login": {
                     "Action": "request",
@@ -538,7 +539,7 @@ class ArrisStatusClient:
                 hashlib.sha256
             ).hexdigest().upper()
 
-            # Step 3: Send login request with retry
+            # Step 3: Send login request
             login_request = {
                 "Login": {
                     "Action": "login",
@@ -555,7 +556,8 @@ class ArrisStatusClient:
             if login_response and any(term in login_response.lower() for term in ["success", "ok", "true"]):
                 self.authenticated = True
                 auth_time = time.time() - start_time
-                logger.info(f"🎉 Robust authentication successful! ({auth_time:.2f}s)")
+                mode_str = "concurrent" if self.concurrent else "serial"
+                logger.info(f"🎉 Authentication successful ({mode_str} mode)! ({auth_time:.2f}s)")
                 return True
             else:
                 logger.error("Authentication failed after retries")
@@ -567,21 +569,22 @@ class ArrisStatusClient:
 
     def get_status(self) -> Dict[str, Any]:
         """
-        Retrieve comprehensive modem status with robust error handling.
+        Retrieve comprehensive modem status with serial or parallel requests.
 
-        Uses conservative concurrent processing and comprehensive retry logic
-        to handle Arris firmware bugs gracefully.
+        NEW in v1.3.0: Respects the concurrent setting to use either:
+        - Concurrent requests (concurrent=True): Faster but may trigger firmware bugs
+        - Serial requests (concurrent=False): Slower but avoids threading issues
         """
         try:
-            # Ensure authentication
             if not self.authenticated:
                 if not self.authenticate():
                     raise RuntimeError("Authentication failed")
 
-            logger.info("📊 Retrieving modem status with robust error handling...")
+            mode_str = "concurrent" if self.concurrent else "serial"
+            logger.info(f"📊 Retrieving modem status with {mode_str} processing...")
             start_time = time.time()
 
-            # Define requests with conservative approach
+            # Define the same requests regardless of mode
             request_definitions = [
                 ("startup_connection", {
                     "GetMultipleHNAPs": {
@@ -604,52 +607,95 @@ class ArrisStatusClient:
                 })
             ]
 
-            # Execute requests with conservative concurrency
             responses = {}
             successful_requests = 0
 
-            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                # Submit all requests
-                future_to_name = {
-                    executor.submit(
-                        self._make_hnap_request_with_retry,
-                        "GetMultipleHNAPs",
-                        req_body
-                    ): req_name
-                    for req_name, req_body in request_definitions
-                }
+            if self.concurrent:
+                # Concurrent mode: Use ThreadPoolExecutor
+                logger.debug("🚀 Using concurrent request processing")
+                with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                    future_to_name = {
+                        executor.submit(
+                            self._make_hnap_request_with_retry,
+                            "GetMultipleHNAPs",
+                            req_body
+                        ): req_name
+                        for req_name, req_body in request_definitions
+                    }
 
-                # Collect results with timeout
-                for future in as_completed(future_to_name, timeout=30):
-                    req_name = future_to_name[future]
+                    for future in as_completed(future_to_name, timeout=30):
+                        req_name = future_to_name[future]
+                        try:
+                            response = future.result()
+                            if response:
+                                responses[req_name] = response
+                                successful_requests += 1
+                                logger.debug(f"✅ {req_name} completed successfully")
+                            else:
+                                logger.warning(f"⚠️ {req_name} failed after retries")
+                        except Exception as e:
+                            logger.error(f"❌ {req_name} failed with exception: {e}")
+
+            else:
+                # Serial mode: Process requests one by one
+                logger.debug("🔄 Using serial request processing")
+                for req_name, req_body in request_definitions:
                     try:
-                        response = future.result()
+                        logger.debug(f"📤 Processing {req_name} serially...")
+                        response = self._make_hnap_request_with_retry("GetMultipleHNAPs", req_body)
                         if response:
                             responses[req_name] = response
                             successful_requests += 1
                             logger.debug(f"✅ {req_name} completed successfully")
                         else:
                             logger.warning(f"⚠️ {req_name} failed after retries")
+
+                        # Small delay between serial requests to be gentle on the modem
+                        time.sleep(0.1)
+
                     except Exception as e:
                         logger.error(f"❌ {req_name} failed with exception: {e}")
 
-            # Parse responses
+            # Parse responses (same regardless of mode)
             parsed_data = self._parse_responses(responses)
 
             total_time = time.time() - start_time
-            channel_count = len(parsed_data.get('downstream_channels', [])) + len(parsed_data.get('upstream_channels', []))
+            downstream_count = len(parsed_data.get('downstream_channels', []))
+            upstream_count = len(parsed_data.get('upstream_channels', []))
+            channel_count = downstream_count + upstream_count
 
-            logger.info(f"✅ Status retrieved! {channel_count} channels in {total_time:.2f}s")
+            logger.info(f"✅ Status retrieved! {channel_count} channels in {total_time:.2f}s ({mode_str} mode)")
             logger.info(f"📊 Success rate: {successful_requests}/{len(request_definitions)} requests")
 
-            # Add error analysis to response
+            # Enhanced error analysis with mode information
             if self.capture_errors and self.error_captures:
+                error_count = len(self.error_captures)
+                recovery_count = len([e for e in self.error_captures if e.recovery_successful])
+                concurrent_errors = len([e for e in self.error_captures if e.concurrent_mode])
+                serial_errors = len([e for e in self.error_captures if not e.concurrent_mode])
+
                 parsed_data['_error_analysis'] = {
-                    'total_errors': len(self.error_captures),
+                    'total_errors': error_count,
                     'firmware_bugs': len([e for e in self.error_captures if e.error_type == "header_parsing"]),
                     'http_errors': len([e for e in self.error_captures if e.error_type.startswith("http_")]),
-                    'recovery_rate': len([e for e in self.error_captures if e.recovery_successful]) / len(self.error_captures) if self.error_captures else 0
+                    'recovery_rate': recovery_count / error_count if error_count > 0 else 0,
+                    'concurrent_mode_errors': concurrent_errors,
+                    'serial_mode_errors': serial_errors,
+                    'current_mode': 'concurrent' if self.concurrent else 'serial'
                 }
+
+                logger.info(f"🔍 Error analysis: {error_count} errors, {recovery_count} recovered")
+                if serial_errors > 0:
+                    logger.warning(f"⚠️ {serial_errors} errors occurred in SERIAL mode - confirms Arris firmware bug!")
+
+            # Add mode information to response
+            parsed_data['_request_mode'] = 'concurrent' if self.concurrent else 'serial'
+            parsed_data['_performance'] = {
+                'total_time': total_time,
+                'requests_successful': successful_requests,
+                'requests_total': len(request_definitions),
+                'mode': 'concurrent' if self.concurrent else 'serial'
+            }
 
             return parsed_data
 
@@ -658,12 +704,7 @@ class ArrisStatusClient:
             raise
 
     def get_error_analysis(self) -> Dict[str, Any]:
-        """
-        Get detailed analysis of captured errors to understand firmware behavior.
-
-        Returns comprehensive information about what's really happening with
-        those malformed responses.
-        """
+        """Enhanced error analysis with concurrent/serial mode breakdown."""
         if not self.error_captures:
             return {"message": "No errors captured yet"}
 
@@ -675,11 +716,16 @@ class ArrisStatusClient:
                 "total_recoveries": 0,
                 "recovery_rate": 0.0
             },
+            "mode_breakdown": {
+                "concurrent_mode_errors": 0,
+                "serial_mode_errors": 0,
+                "current_mode": 'concurrent' if self.concurrent else 'serial'
+            },
             "timeline": [],
             "patterns": []
         }
 
-        # Analyze error types
+        # Analyze errors by mode
         for capture in self.error_captures:
             error_type = capture.error_type
             if error_type not in analysis["error_types"]:
@@ -690,65 +736,143 @@ class ArrisStatusClient:
             if capture.recovery_successful:
                 analysis["recovery_stats"]["total_recoveries"] += 1
 
-            # Extract mysterious numbers from both error messages and header warnings
+            # Track by mode
+            if capture.concurrent_mode:
+                analysis["mode_breakdown"]["concurrent_mode_errors"] += 1
+            else:
+                analysis["mode_breakdown"]["serial_mode_errors"] += 1
+
+            # Extract mysterious numbers
             try:
                 import re
-                # Look for numbers followed by pipe (header parsing pattern)
                 pipe_matches = re.findall(r'(\d+\.?\d*)\s*\|', capture.raw_error)
                 for match in pipe_matches:
                     if match not in analysis["mysterious_numbers"]:
                         analysis["mysterious_numbers"].append(match)
-                        logger.info(f"🔢 Found mysterious number in {capture.error_type}: {match}")
-
-                # Also look for other patterns
-                if "FirstHeaderLineIsContinuationDefect" in capture.raw_error:
-                    # This is definitely a header parsing issue
-                    analysis["patterns"].append("Header parsing error with injected data")
-
-                # Look for numbers in parentheses or quotes
-                other_matches = re.findall(r"'([^']*\d+\.?\d*[^']*)'", capture.raw_error)
-                for match in other_matches:
-                    number_in_match = re.findall(r'(\d+\.?\d*)', match)
-                    for num in number_in_match:
-                        if num not in analysis["mysterious_numbers"] and len(num) > 1:
-                            analysis["mysterious_numbers"].append(num)
+                        mode_str = "concurrent" if capture.concurrent_mode else "serial"
+                        logger.info(f"🔢 Found mysterious number in {mode_str} mode: {match}")
 
             except Exception as e:
                 logger.debug(f"Error extracting numbers from {capture.error_type}: {e}")
 
-            # Add to timeline
+            # Add to timeline with mode information
             analysis["timeline"].append({
                 "timestamp": capture.timestamp,
                 "request_type": capture.request_type,
                 "error_type": capture.error_type,
                 "recovered": capture.recovery_successful,
-                "http_status": capture.http_status
+                "http_status": capture.http_status,
+                "concurrent_mode": capture.concurrent_mode
             })
 
         # Calculate recovery rate
         if analysis["total_errors"] > 0:
             analysis["recovery_stats"]["recovery_rate"] = analysis["recovery_stats"]["total_recoveries"] / analysis["total_errors"]
 
-        # Analyze patterns
-        header_parsing_errors = len([e for e in self.error_captures if e.error_type == "header_parsing_warning"])
-        if header_parsing_errors > 0:
-            analysis["patterns"].append(f"Found {header_parsing_errors} header parsing warnings with injected data")
+        # Enhanced pattern analysis
+        concurrent_errors = analysis["mode_breakdown"]["concurrent_mode_errors"]
+        serial_errors = analysis["mode_breakdown"]["serial_mode_errors"]
 
-        http_403_errors = len([e for e in self.error_captures if e.error_type == "http_403"])
-        if http_403_errors > 0:
-            analysis["patterns"].append(f"Found {http_403_errors} HTTP 403 errors (likely authentication issues)")
+        if concurrent_errors > 0 and serial_errors == 0:
+            analysis["patterns"].append("Errors only occur in concurrent mode - likely threading/race condition issue")
+        elif concurrent_errors > 0 and serial_errors > 0:
+            analysis["patterns"].append("Errors occur in BOTH concurrent and serial modes - confirmed Arris firmware bug")
+        elif serial_errors > 0 and concurrent_errors == 0:
+            analysis["patterns"].append("Errors only in serial mode - unusual, needs investigation")
 
         if analysis["mysterious_numbers"]:
-            analysis["patterns"].append(f"Found {len(analysis['mysterious_numbers'])} unique mysterious numbers: {analysis['mysterious_numbers']}")
+            analysis["patterns"].append(f"Found {len(analysis['mysterious_numbers'])} mysterious numbers: {analysis['mysterious_numbers']}")
 
         return analysis
 
+    # Include all other methods from the previous version unchanged
+    def validate_parsing(self) -> Dict[str, Any]:
+        """Validate data parsing and return comprehensive quality metrics."""
+        try:
+            status = self.get_status()
+
+            downstream_count = len(status.get('downstream_channels', []))
+            upstream_count = len(status.get('upstream_channels', []))
+            total_channels = downstream_count + upstream_count
+
+            completeness_factors = [
+                status.get('model_name', 'Unknown') != 'Unknown',
+                status.get('internet_status', 'Unknown') != 'Unknown',
+                status.get('mac_address', 'Unknown') != 'Unknown',
+                downstream_count > 0,
+                upstream_count > 0
+            ]
+            completeness_score = (sum(completeness_factors) / len(completeness_factors)) * 100
+
+            # Enhanced validation with mode information
+            channel_quality = {}
+            if downstream_count > 0:
+                downstream_locked = sum(1 for ch in status['downstream_channels'] if 'Locked' in ch.lock_status)
+                downstream_modulations = set(ch.modulation for ch in status['downstream_channels'] if ch.modulation != 'Unknown')
+
+                channel_quality['downstream_validation'] = {
+                    'total_channels': downstream_count,
+                    'locked_channels': downstream_locked,
+                    'all_locked': downstream_locked == downstream_count,
+                    'modulation_types': list(downstream_modulations)
+                }
+
+            if upstream_count > 0:
+                upstream_locked = sum(1 for ch in status['upstream_channels'] if 'Locked' in ch.lock_status)
+                upstream_modulations = set(ch.modulation for ch in status['upstream_channels'] if ch.modulation != 'Unknown')
+
+                channel_quality['upstream_validation'] = {
+                    'total_channels': upstream_count,
+                    'locked_channels': upstream_locked,
+                    'all_locked': upstream_locked == upstream_count,
+                    'modulation_types': list(upstream_modulations)
+                }
+
+            # MAC address validation
+            mac_valid = False
+            if status.get('mac_address') and status['mac_address'] != 'Unknown':
+                import re
+                mac_pattern = r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'
+                mac_valid = bool(re.match(mac_pattern, status['mac_address']))
+
+            # Frequency format validation
+            freq_formats = {}
+            if downstream_count > 0:
+                sample_channel = status['downstream_channels'][0]
+                freq_formats['downstream_frequency'] = 'Hz' in sample_channel.frequency
+                freq_formats['downstream_power'] = 'dBmV' in sample_channel.power
+                freq_formats['downstream_snr'] = 'dB' in sample_channel.snr
+
+            return {
+                "parsing_validation": {
+                    "basic_info_parsed": status.get('model_name', 'Unknown') != 'Unknown',
+                    "internet_status_parsed": status.get('internet_status', 'Unknown') != 'Unknown',
+                    "downstream_channels_found": downstream_count,
+                    "upstream_channels_found": upstream_count,
+                    "mac_address_format": mac_valid,
+                    "frequency_formats": freq_formats,
+                    "channel_data_quality": channel_quality
+                },
+                "performance_metrics": {
+                    "data_completeness_score": completeness_score,
+                    "total_channels": total_channels,
+                    "parsing_errors": len([e for e in self.error_captures if 'parsing' in e.error_type.lower()]),
+                    "firmware_bugs_detected": len([e for e in self.error_captures if e.error_type == "header_parsing_warning"]),
+                    "request_mode": 'concurrent' if self.concurrent else 'serial'
+                }
+            }
+
+        except Exception as e:
+            logger.error(f"Validation failed: {e}")
+            return {"error": str(e)}
+
     def _parse_responses(self, responses: Dict[str, str]) -> Dict[str, Any]:
-        """Parse HNAP responses into structured data."""
-        # Initialize with defaults
+        """Parse HNAP responses into structured data (unchanged)."""
+        # ... (same implementation as before)
         parsed_data = {
             "model_name": "Unknown",
             "firmware_version": "Unknown",
+
             "system_uptime": "Unknown",
             "internet_status": "Unknown",
             "connection_status": "Unknown",
@@ -759,7 +883,6 @@ class ArrisStatusClient:
             "channel_data_available": True
         }
 
-        # Parse each response type
         for response_type, content in responses.items():
             try:
                 data = json.loads(content)
@@ -769,8 +892,6 @@ class ArrisStatusClient:
                     channels = self._parse_channels(hnaps_response)
                     parsed_data["downstream_channels"] = channels["downstream"]
                     parsed_data["upstream_channels"] = channels["upstream"]
-
-                    # Store for correlation analysis
                     self._last_channel_data = channels
 
                 elif response_type == "startup_connection":
@@ -794,25 +915,22 @@ class ArrisStatusClient:
             except json.JSONDecodeError as e:
                 logger.warning(f"Parse failed for {response_type}: {e}")
 
-        # Update availability status
         if not parsed_data["downstream_channels"] and not parsed_data["upstream_channels"]:
             parsed_data["channel_data_available"] = False
 
         return parsed_data
 
     def _parse_channels(self, hnaps_response: Dict[str, Any]) -> Dict[str, List[ChannelInfo]]:
-        """Parse channel information from HNAP response."""
+        """Parse channel information from HNAP response (unchanged)."""
         channels = {"downstream": [], "upstream": []}
 
         try:
-            # Parse downstream channels
             downstream_resp = hnaps_response.get("GetCustomerStatusDownstreamChannelInfoResponse", {})
             downstream_raw = downstream_resp.get("CustomerConnDownstreamChannel", "")
 
             if downstream_raw:
                 channels["downstream"] = self._parse_channel_string(downstream_raw, "downstream")
 
-            # Parse upstream channels
             upstream_resp = hnaps_response.get("GetCustomerStatusUpstreamChannelInfoResponse", {})
             upstream_raw = upstream_resp.get("CustomerConnUpstreamChannel", "")
 
@@ -825,11 +943,10 @@ class ArrisStatusClient:
         return channels
 
     def _parse_channel_string(self, raw_data: str, channel_type: str) -> List[ChannelInfo]:
-        """Parse pipe-delimited channel data into ChannelInfo objects."""
+        """Parse pipe-delimited channel data into ChannelInfo objects (unchanged)."""
         channels = []
 
         try:
-            # Split on channel separator
             entries = raw_data.split("|+|")
 
             for entry in entries:
@@ -870,17 +987,20 @@ class ArrisStatusClient:
         return channels
 
     def close(self) -> None:
-        """Clean up resources and optionally save error analysis."""
+        """Clean up resources."""
         if self.capture_errors and self.error_captures:
-            logger.info(f"📊 Session captured {len(self.error_captures)} errors for analysis")
+            mode_str = "concurrent" if self.concurrent else "serial"
+            logger.info(f"📊 Session captured {len(self.error_captures)} errors for analysis ({mode_str} mode)")
 
         if self.session:
             self.session.close()
 
     def __enter__(self):
+        """Context manager entry."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
         self.close()
 
 

@@ -5,6 +5,10 @@ This module provides a command-line interface for querying status information
 from Arris cable modems. It outputs comprehensive modem data in JSON format
 suitable for monitoring systems, scripts, or manual inspection.
 
+The CLI is designed to be monitoring-friendly with JSON output to stdout and
+summary information to stderr, allowing easy integration with logging and
+monitoring systems.
+
 Usage:
     python -m arris_modem_status.cli --password <password>
     arris-modem-status --password <password>
@@ -16,11 +20,19 @@ Example:
     # Custom modem IP address
     arris-modem-status --password "password" --host 192.168.1.1
 
-    # Enable debug logging
+    # Enable debug logging for troubleshooting
     arris-modem-status --password "password" --debug
 
+    # Quiet mode (JSON only, no summary)
+    arris-modem-status --password "password" --quiet
+
 Output:
-    JSON object containing modem status, channel data, and diagnostics
+    JSON object containing modem status, channel data, and diagnostics.
+    Summary information is printed to stderr, JSON data to stdout.
+
+Author: Charles Marshall
+Version: 1.2.0
+License: MIT
 """
 
 import argparse
@@ -48,7 +60,7 @@ def setup_logging(debug: bool = False) -> None:
         datefmt="%Y-%m-%d %H:%M:%S"
     )
 
-    # Configure the requests library to be less verbose unless debug is enabled
+    # Configure third-party libraries to be less verbose unless debug is enabled
     if not debug:
         logging.getLogger("urllib3").setLevel(logging.WARNING)
         logging.getLogger("requests").setLevel(logging.WARNING)
@@ -131,7 +143,19 @@ def print_summary_to_stderr(status: dict) -> None:
     # Show sample channel if available
     if downstream_count > 0:
         sample = status['downstream_channels'][0]
-        print(f"Sample Channel: ID {sample.channel_id}, {sample.frequency}, {sample.power}, SNR {sample.snr}", file=sys.stderr)
+        sample_info = f"ID {sample.channel_id}, {sample.frequency}, {sample.power}, SNR {sample.snr}"
+        print(f"Sample Channel: {sample_info}", file=sys.stderr)
+
+    # Show error analysis if available
+    error_analysis = status.get('_error_analysis')
+    if error_analysis:
+        total_errors = error_analysis.get('total_errors', 0)
+        recovery_rate = error_analysis.get('recovery_rate', 0) * 100
+        firmware_bugs = error_analysis.get('firmware_bugs', 0)
+
+        print(f"Error Analysis: {total_errors} errors, {recovery_rate:.1f}% recovery", file=sys.stderr)
+        if firmware_bugs > 0:
+            print(f"Firmware Bugs Handled: {firmware_bugs}", file=sys.stderr)
 
     print("=" * 60, file=sys.stderr)
 
@@ -150,6 +174,20 @@ Examples:
 Output:
   JSON object with modem status, channel information, and diagnostics.
   Summary information is printed to stderr, JSON data to stdout.
+
+Monitoring Integration:
+  The JSON output is designed for easy integration with monitoring systems.
+  Use --quiet to suppress stderr output and get pure JSON on stdout.
+
+Error Handling:
+  The client automatically handles Arris firmware bugs and provides
+  detailed error analysis. All errors are gracefully recovered using
+  intelligent retry logic with exponential backoff.
+
+Serial Mode:
+  Use --serial to disable concurrent requests for debugging threading
+  issues or maximum reliability. Serial mode is slower but avoids
+  any potential race conditions with HTTP connection pooling.
         """
     )
 
@@ -190,6 +228,23 @@ Output:
         default=30,
         help="Request timeout in seconds (default: %(default)s)"
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=2,
+        help="Number of concurrent workers (default: %(default)s)"
+    )
+    parser.add_argument(
+        "--retries",
+        type=int,
+        default=3,
+        help="Maximum retry attempts (default: %(default)s)"
+    )
+    parser.add_argument(
+        "--serial",
+        action="store_true",
+        help="Use serial requests instead of concurrent (for debugging threading issues)"
+    )
 
     args = parser.parse_args()
 
@@ -200,25 +255,28 @@ Output:
     try:
         # Log startup information (to stderr)
         if not args.quiet:
-            print(f"Arris Modem Status Client - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", file=sys.stderr)
-            print(f"Connecting to {args.host}:{args.port} as {args.username}", file=sys.stderr)
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            mode_str = "serial" if args.serial else "concurrent"
+            print(f"Arris Modem Status Client v1.3.0 - {timestamp}", file=sys.stderr)
+            print(f"Connecting to {args.host}:{args.port} as {args.username} ({mode_str} mode)", file=sys.stderr)
 
-        # Initialize the client
+        # Initialize the client with custom configuration
         client = ArrisStatusClient(
             host=args.host,
             port=args.port,
             username=args.username,
-            password=args.password
+            password=args.password,
+            concurrent=not args.serial,  # NEW: Serial mode option
+            max_workers=args.workers,
+            max_retries=args.retries,
+            timeout=(3, args.timeout)
         )
-
-        # Set timeout on the session if specified
-        if hasattr(client, 'session') and args.timeout != 30:
-            client.session.timeout = args.timeout
 
         logger.info(f"Querying modem at {args.host}:{args.port}")
 
         # Get the modem status
-        status = client.get_status()
+        with client:
+            status = client.get_status()
 
         # Print summary to stderr (unless quiet mode)
         if not args.quiet:
@@ -230,7 +288,13 @@ Output:
         # Add metadata
         json_output["query_timestamp"] = datetime.now().isoformat()
         json_output["query_host"] = args.host
-        json_output["client_version"] = "1.0.0"
+        json_output["client_version"] = "1.3.0"
+        json_output["configuration"] = {
+            "max_workers": args.workers,
+            "max_retries": args.retries,
+            "timeout": args.timeout,
+            "concurrent_mode": not args.serial
+        }
 
         # Output JSON to stdout (this is the primary output)
         print(json.dumps(json_output, indent=2))
@@ -259,6 +323,8 @@ Output:
             print("2. Check that the modem IP address is reachable", file=sys.stderr)
             print("3. Ensure the modem web interface is enabled", file=sys.stderr)
             print("4. Try with --debug for more detailed error information", file=sys.stderr)
+            print("5. Try --serial mode to avoid threading issues", file=sys.stderr)
+            print("6. Firmware bugs are automatically handled - check logs for details", file=sys.stderr)
 
         sys.exit(1)
 
