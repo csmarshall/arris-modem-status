@@ -19,7 +19,7 @@ Usage:
     python production_test.py --password "PASSWORD" --benchmark --save-results
 
 Author: Charles Marshall
-Version: 1.1.0
+Version: 1.3.0
 License: MIT
 """
 
@@ -31,10 +31,12 @@ import time
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-# Import the client
+# Import the client with proper fallback handling
 try:
     from arris_modem_status import ArrisStatusClient
     CLIENT_AVAILABLE = True
+    logger = logging.getLogger(__name__)
+    logger.info("✅ Using installed arris_modem_status package")
 except ImportError:
     # Fallback for development testing
     import os
@@ -43,8 +45,12 @@ except ImportError:
     try:
         from arris_modem_status.arris_status_client import ArrisStatusClient
         CLIENT_AVAILABLE = True
+        logger = logging.getLogger(__name__)
+        logger.info("✅ Using local arris_status_client module")
     except ImportError:
         CLIENT_AVAILABLE = False
+        print("❌ ERROR: Cannot import ArrisStatusClient")
+        print("📋 Please ensure arris_modem_status is installed or run from project directory")
 
 # Configure logging with timestamps
 logging.basicConfig(
@@ -89,7 +95,7 @@ class ProductionTestRunner:
         }
 
         if not CLIENT_AVAILABLE:
-            raise ImportError("Arris client not available. Please check installation.")
+            raise ImportError("ArrisStatusClient not available. Please check installation.")
 
     def run_quick_test(self) -> bool:
         """
@@ -516,7 +522,7 @@ Test-both-modes compares concurrent vs serial performance and error patterns.
             concurrent_mode = not args.serial
             mode_str = "concurrent" if concurrent_mode else "serial"
             logger.info(f"🔧 Testing {mode_str} mode...")
-            
+
             # Initialize test runner
             test_runner = ProductionTestRunner(args.password, args.host, concurrent=concurrent_mode)
 

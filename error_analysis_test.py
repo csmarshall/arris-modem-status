@@ -12,7 +12,7 @@ Usage:
     python error_analysis_test.py --password "password" --force-errors
 
 Author: Charles Marshall
-Version: 1.2.0
+Version: 1.3.0
 """
 
 import argparse
@@ -22,19 +22,26 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List
 
-# Import the error analysis client
+# Import the client with proper fallback handling
 try:
     from arris_modem_status import ArrisStatusClient
     CLIENT_AVAILABLE = True
+    logger = logging.getLogger(__name__)
+    logger.info("✅ Using installed arris_modem_status package")
 except ImportError:
+    # Fallback for development testing
     import os
     import sys
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     try:
-        from error_analysis_client import ArrisStatusClient
+        from arris_modem_status.arris_status_client import ArrisStatusClient
         CLIENT_AVAILABLE = True
+        logger = logging.getLogger(__name__)
+        logger.info("✅ Using local arris_status_client module")
     except ImportError:
         CLIENT_AVAILABLE = False
+        print("❌ ERROR: Cannot import ArrisStatusClient")
+        print("📋 Please ensure arris_modem_status is installed or run from project directory")
 
 # Configure detailed logging
 logging.basicConfig(
@@ -55,7 +62,7 @@ class ErrorAnalysisRunner:
         self.host = host
 
         if not CLIENT_AVAILABLE:
-            raise ImportError("Error analysis client not available")
+            raise ImportError("ArrisStatusClient not available - check installation")
 
     def run_error_capture_test(self, force_concurrent: bool = False) -> Dict[str, Any]:
         """

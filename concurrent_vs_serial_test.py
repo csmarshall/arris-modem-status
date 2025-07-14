@@ -28,20 +28,26 @@ import time
 from datetime import datetime
 from typing import Dict, Any, List
 
-# Import the enhanced client with serial/parallel option
+# Import the client with proper fallback handling
 try:
-    from enhanced_arris_client import ArrisStatusClient
+    from arris_modem_status import ArrisStatusClient
     CLIENT_AVAILABLE = True
+    logger = logging.getLogger(__name__)
+    logger.info("✅ Using installed arris_modem_status package")
 except ImportError:
-    # Fallback for testing
+    # Fallback for development testing
     import os
     import sys
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     try:
-        from enhanced_arris_client import ArrisStatusClient
+        from arris_modem_status.arris_status_client import ArrisStatusClient
         CLIENT_AVAILABLE = True
+        logger = logging.getLogger(__name__)
+        logger.info("✅ Using local arris_status_client module")
     except ImportError:
         CLIENT_AVAILABLE = False
+        print("❌ ERROR: Cannot import ArrisStatusClient")
+        print("📋 Please ensure arris_modem_status is installed or run from project directory")
 
 # Configure detailed logging
 logging.basicConfig(
@@ -50,6 +56,7 @@ logging.basicConfig(
     datefmt='%H:%M:%S'
 )
 logger = logging.getLogger(__name__)
+
 
 class ConcurrentSerialTestRunner:
     """
@@ -62,7 +69,7 @@ class ConcurrentSerialTestRunner:
         self.host = host
 
         if not CLIENT_AVAILABLE:
-            raise ImportError("Enhanced Arris client not available")
+            raise ImportError("ArrisStatusClient not available - check installation")
 
     def run_comparison_test(self) -> Dict[str, Any]:
         """
@@ -388,6 +395,7 @@ class ConcurrentSerialTestRunner:
         except Exception as e:
             logger.error(f"Failed to save analysis report: {e}")
             return ""
+
 
 def main():
     """Main entry point for concurrent vs serial testing."""
