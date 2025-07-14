@@ -1,4 +1,4 @@
-# Byte-compiled / cache
+# Python bytecode and cache
 __pycache__/
 *.py[cod]
 *.pyo
@@ -6,12 +6,12 @@ __pycache__/
 *.so
 
 # Virtual environments
-arris_modem_venv
-venv
+arris_modem_venv/
+venv/
 .env/
 .envrc
 
-# Distribution / packaging
+# Distribution and packaging
 build/
 dist/
 *.egg-info/
@@ -21,18 +21,48 @@ dist/
 pip-log.txt
 pip-delete-this-directory.txt
 
-# VS Code settings
+# IDE and editor files
 .vscode/
-
-# IDEs
 .idea/
 *.swp
+*.swo
+*~
 
-# Logs
+# Logs and temporary files
 *.log
+*.tmp
+*.temp
 
-# Captured data
+# Test coverage and results
+.coverage
+.pytest_cache/
+.tox/
+htmlcov/
+coverage.xml
+*.cover
+
+# Captured data and analysis files
 selenium_hnap_capture.json
+deep_capture.har
+deep_capture.json
+error_analysis_report_*.json
+production_test_results_*.json
+comprehensive_test_results_*.json
+enhanced_capture_error.png
 
-# macOS
+# macOS system files
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows system files
+Thumbs.db
+Desktop.ini
+
+# Linux system files
+.directory
+
+# MyPy cache
+.mypy_cache/
+.dmypy.json
+dmypy.json

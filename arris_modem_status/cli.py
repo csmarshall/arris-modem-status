@@ -28,7 +28,9 @@ import json
 import logging
 import sys
 from datetime import datetime
+
 from arris_modem_status import ArrisStatusClient
+
 
 def setup_logging(debug: bool = False) -> None:
     """
@@ -50,6 +52,7 @@ def setup_logging(debug: bool = False) -> None:
     if not debug:
         logging.getLogger("urllib3").setLevel(logging.WARNING)
         logging.getLogger("requests").setLevel(logging.WARNING)
+
 
 def format_channel_data_for_display(status: dict) -> dict:
     """
@@ -100,6 +103,7 @@ def format_channel_data_for_display(status: dict) -> dict:
 
     return output
 
+
 def print_summary_to_stderr(status: dict) -> None:
     """
     Print a human-readable summary to stderr (so JSON output to stdout is clean).
@@ -130,6 +134,7 @@ def print_summary_to_stderr(status: dict) -> None:
         print(f"Sample Channel: ID {sample.channel_id}, {sample.frequency}, {sample.power}, SNR {sample.snr}", file=sys.stderr)
 
     print("=" * 60, file=sys.stderr)
+
 
 def main():
     """Main entry point for the CLI application."""
@@ -256,6 +261,7 @@ Output:
             print("4. Try with --debug for more detailed error information", file=sys.stderr)
 
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
