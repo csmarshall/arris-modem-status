@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arris-modem-status"
-version = "1.1.0"
-description = "High-performance Python client for querying Arris modem status via HNAP."
+dynamic = ["version"]
+description = "High-performance Python client for querying Arris modem status via HNAP with HTTP compatibility."
 authors = [
     { name = "Charles Marshall", email = "charles@wozi.com" }
 ]
@@ -39,7 +39,9 @@ keywords = [
     "DOCSIS",
     "hnap",
     "networking",
-    "monitoring"
+    "monitoring",
+    "http-compatibility",
+    "urllib3"
 ]
 
 [project.urls]
@@ -95,6 +97,11 @@ testing = [
     "coverage>=6.0.0",
     "pytest-cov>=4.0.0"
 ]
+
+# DYNAMIC VERSION CONFIGURATION
+# This tells setuptools to read version from __init__.py
+[tool.setuptools.dynamic]
+version = {attr = "arris_modem_status.__version__"}
 
 [tool.setuptools]
 packages = ["arris_modem_status"]

@@ -1,9 +1,10 @@
 """
-Enhanced Arris Status Client with HTTP Compatibility
-==================================================
+Enhanced Arris Status Client with HTTP Compatibility and Performance Instrumentation
+===================================================================================
 
 High-performance Python client for querying Arris cable modem status via HNAP
-with built-in HTTP compatibility handling for urllib3 parsing strictness.
+with built-in HTTP compatibility handling for urllib3 parsing strictness and
+comprehensive performance instrumentation.
 
 This client includes Arris HTTP compatibility handling to work around urllib3's
 strict HTTP parsing that causes HeaderParsingError with valid but non-standard
@@ -18,6 +19,7 @@ Performance Features:
 - Smart retry logic for HTTP compatibility issues
 - Connection pooling and keep-alive optimization
 - Comprehensive error analysis and recovery
+- Detailed performance instrumentation and timing
 
 Author: Charles Marshall
 Version: 1.3.0
@@ -46,6 +48,25 @@ from urllib3.util.retry import Retry
 # Disable SSL warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 logger = logging.getLogger("arris-modem-status")
+
+
+@dataclass
+class TimingMetrics:
+    """Detailed timing metrics for performance analysis."""
+    operation: str
+    start_time: float
+    end_time: float
+    duration: float
+    success: bool
+    error_type: Optional[str] = None
+    retry_count: int = 0
+    http_status: Optional[int] = None
+    response_size: int = 0
+
+    @property
+    def duration_ms(self) -> float:
+        """Duration in milliseconds."""
+        return self.duration * 1000
 
 
 @dataclass
@@ -98,6 +119,149 @@ class ChannelInfo:
                 pass
 
 
+class PerformanceInstrumentation:
+    """
+    Comprehensive performance instrumentation for the Arris client.
+
+    Tracks detailed timing metrics for all operations:
+    - Individual HNAP request timing
+    - Authentication vs data retrieval breakdown
+    - Network latency vs processing time
+    - HTTP compatibility overhead
+    - Concurrent request coordination
+    """
+
+    def __init__(self):
+        self.timing_metrics: List[TimingMetrics] = []
+        self.session_start_time = time.time()
+        self.auth_metrics: Dict[str, float] = {}
+        self.request_metrics: Dict[str, List[float]] = {}
+
+    def start_timer(self, operation: str) -> float:
+        """Start timing an operation."""
+        return time.time()
+
+    def record_timing(
+        self,
+        operation: str,
+        start_time: float,
+        success: bool = True,
+        error_type: str = None,
+        retry_count: int = 0,
+        http_status: int = None,
+        response_size: int = 0
+    ) -> TimingMetrics:
+        """Record timing metrics for an operation."""
+        end_time = time.time()
+        duration = end_time - start_time
+
+        metric = TimingMetrics(
+            operation=operation,
+            start_time=start_time,
+            end_time=end_time,
+            duration=duration,
+            success=success,
+            error_type=error_type,
+            retry_count=retry_count,
+            http_status=http_status,
+            response_size=response_size
+        )
+
+        self.timing_metrics.append(metric)
+
+        # Update request metrics for statistics
+        if operation not in self.request_metrics:
+            self.request_metrics[operation] = []
+        self.request_metrics[operation].append(duration)
+
+        logger.debug(f"📊 {operation}: {duration*1000:.1f}ms (success: {success})")
+        return metric
+
+    def get_performance_summary(self) -> Dict[str, Any]:
+        """Get comprehensive performance summary."""
+        if not self.timing_metrics:
+            return {"error": "No timing metrics recorded"}
+
+        total_session_time = time.time() - self.session_start_time
+
+        # Aggregate metrics by operation
+        operation_stats = {}
+        for operation, durations in self.request_metrics.items():
+            if durations:
+                operation_stats[operation] = {
+                    "count": len(durations),
+                    "total_time": sum(durations),
+                    "avg_time": sum(durations) / len(durations),
+                    "min_time": min(durations),
+                    "max_time": max(durations),
+                    "success_rate": len([m for m in self.timing_metrics if m.operation == operation and m.success]) / len([m for m in self.timing_metrics if m.operation == operation])
+                }
+
+        # Calculate percentiles for total response time
+        all_durations = [m.duration for m in self.timing_metrics if m.success]
+        if all_durations:
+            all_durations.sort()
+            n = len(all_durations)
+            percentiles = {
+                "p50": all_durations[n / /2] if n > 0 else 0,
+                "p90": all_durations[int(n * 0.9)] if n > 0 else 0,
+                "p95": all_durations[int(n * 0.95)] if n > 0 else 0,
+                "p99": all_durations[int(n * 0.99)] if n > 0 else 0
+            }
+        else:
+            percentiles = {"p50": 0, "p90": 0, "p95": 0, "p99": 0}
+
+        # HTTP compatibility overhead
+        compatibility_metrics = [m for m in self.timing_metrics if "compatibility" in m.operation.lower() or m.retry_count > 0]
+        compatibility_overhead = sum(m.duration for m in compatibility_metrics)
+
+        return {
+            "session_metrics": {
+                "total_session_time": total_session_time,
+                "total_operations": len(self.timing_metrics),
+                "successful_operations": len([m for m in self.timing_metrics if m.success]),
+                "failed_operations": len([m for m in self.timing_metrics if not m.success]),
+                "http_compatibility_overhead": compatibility_overhead
+            },
+            "operation_breakdown": operation_stats,
+            "response_time_percentiles": percentiles,
+            "performance_insights": self._generate_performance_insights(operation_stats, total_session_time)
+        }
+
+    def _generate_performance_insights(self, operation_stats: Dict, total_time: float) -> List[str]:
+        """Generate performance insights based on metrics."""
+        insights = []
+
+        # Authentication performance
+        auth_ops = [op for op in operation_stats.keys() if "auth" in op.lower()]
+        if auth_ops:
+            auth_time = sum(operation_stats[op]["avg_time"] for op in auth_ops)
+            if auth_time > 2.0:
+                insights.append(f"Authentication taking {auth_time:.2f}s - consider network optimization")
+            elif auth_time < 1.0:
+                insights.append(f"Excellent authentication performance: {auth_time:.2f}s")
+
+        # Overall throughput
+        if total_time > 0:
+            ops_per_sec = len(self.timing_metrics) / total_time
+            if ops_per_sec > 2:
+                insights.append(f"High throughput: {ops_per_sec:.1f} operations/sec")
+            elif ops_per_sec < 0.5:
+                insights.append(f"Low throughput: {ops_per_sec:.1f} operations/sec - check for bottlenecks")
+
+        # Error rates
+        total_ops = len(self.timing_metrics)
+        failed_ops = len([m for m in self.timing_metrics if not m.success])
+        if total_ops > 0:
+            error_rate = failed_ops / total_ops
+            if error_rate > 0.1:
+                insights.append(f"High error rate: {error_rate * 100:.1f}% - investigate HTTP compatibility")
+            elif error_rate == 0:
+                insights.append("Perfect reliability: 0% error rate")
+
+        return insights
+
+
 class ArrisCompatibleHTTPAdapter(HTTPAdapter):
     """
     Custom HTTPAdapter that handles Arris modem HTTP parsing compatibility.
@@ -113,9 +277,10 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
     browser tolerance for non-standard but valid HTTP formatting.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, instrumentation: PerformanceInstrumentation = None, *args, **kwargs):
         """Initialize the Arris-compatible HTTP adapter."""
         super().__init__(*args, **kwargs)
+        self.instrumentation = instrumentation
         logger.debug("🔧 Initialized ArrisCompatibleHTTPAdapter for relaxed HTTP parsing")
 
     def send(self, request, stream=False, timeout=None, verify=None, cert=None, proxies=None):
@@ -126,9 +291,24 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
         fails with HeaderParsingError (urllib3 being too strict), it falls back
         to raw socket communication that mirrors browser tolerance.
         """
+        start_time = time.time() if self.instrumentation else None
+
         try:
             # First attempt: Standard requests/urllib3 processing
-            return super().send(request, stream, timeout, verify, cert, proxies)
+            response = super().send(request, stream, timeout, verify, cert, proxies)
+
+            # Record successful timing
+            if self.instrumentation:
+                response_size = len(response.content) if hasattr(response, 'content') else 0
+                self.instrumentation.record_timing(
+                    "http_request_standard",
+                    start_time,
+                    success=True,
+                    http_status=response.status_code,
+                    response_size=response_size
+                )
+
+            return response
 
         except HeaderParsingError as e:
             # HeaderParsingError indicates urllib3 is too strict for this response
@@ -143,9 +323,36 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
 
             # Fallback: Raw socket request with relaxed parsing
             try:
-                return self._raw_socket_fallback(request, timeout, verify)
+                fallback_start = time.time() if self.instrumentation else None
+                response = self._raw_socket_fallback(request, timeout, verify)
+
+                # Record fallback timing
+                if self.instrumentation:
+                    response_size = len(response.content) if hasattr(response, 'content') else 0
+                    self.instrumentation.record_timing(
+                        "http_request_compatibility_fallback",
+                        fallback_start,
+                        success=True,
+                        http_status=response.status_code,
+                        response_size=response_size,
+                        retry_count=1
+                    )
+
+                return response
+
             except Exception as fallback_error:
                 logger.error(f"❌ Browser-compatible parsing fallback failed: {fallback_error}")
+
+                # Record failed fallback timing
+                if self.instrumentation:
+                    self.instrumentation.record_timing(
+                        "http_request_compatibility_fallback",
+                        fallback_start if 'fallback_start' in locals() else start_time,
+                        success=False,
+                        error_type=str(type(fallback_error).__name__),
+                        retry_count=1
+                    )
+
                 # Re-raise original HeaderParsingError if fallback fails
                 raise e
 
@@ -383,7 +590,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
             return response
 
 
-def create_arris_compatible_session() -> requests.Session:
+def create_arris_compatible_session(instrumentation: PerformanceInstrumentation = None) -> requests.Session:
     """
     Create a requests Session with Arris modem HTTP compatibility.
 
@@ -405,8 +612,9 @@ def create_arris_compatible_session() -> requests.Session:
         respect_retry_after_header=False
     )
 
-    # Use the Arris-compatible adapter
+    # Use the Arris-compatible adapter with instrumentation
     adapter = ArrisCompatibleHTTPAdapter(
+        instrumentation=instrumentation,
         pool_connections=1,
         pool_maxsize=5,
         max_retries=retry_strategy,
@@ -431,16 +639,18 @@ def create_arris_compatible_session() -> requests.Session:
 
 class ArrisStatusClient:
     """
-    Enhanced Arris modem client with HTTP compatibility and high performance.
+    Enhanced Arris modem client with HTTP compatibility and performance instrumentation.
 
     This client provides high-performance access to Arris cable modem status
-    with built-in HTTP compatibility handling for urllib3 parsing strictness.
+    with built-in HTTP compatibility handling for urllib3 parsing strictness and
+    comprehensive performance monitoring.
 
     Features:
     - 84% performance improvement through concurrent request processing
     - Browser-compatible HTTP parsing for Arris modem responses
     - Smart retry logic for HTTP compatibility issues
     - Comprehensive error analysis and recovery
+    - Detailed performance instrumentation and timing
     - Connection pooling optimization
     """
 
@@ -455,10 +665,11 @@ class ArrisStatusClient:
         max_retries: int = 3,
         base_backoff: float = 0.5,
         capture_errors: bool = True,
-        timeout: tuple = (3, 12)
+        timeout: tuple = (3, 12),
+        enable_instrumentation: bool = True
     ):
         """
-        Initialize the Arris modem client with HTTP compatibility.
+        Initialize the Arris modem client with HTTP compatibility and instrumentation.
 
         Args:
             password: Modem admin password
@@ -471,6 +682,7 @@ class ArrisStatusClient:
             base_backoff: Base backoff time in seconds (default: 0.5)
             capture_errors: Whether to capture error details for analysis (default: True)
             timeout: (connect_timeout, read_timeout) in seconds (default: (3, 12))
+            enable_instrumentation: Enable detailed performance instrumentation (default: True)
         """
         self.host = host
         self.port = port
@@ -483,6 +695,7 @@ class ArrisStatusClient:
         self.base_backoff = base_backoff
         self.capture_errors = capture_errors
         self.timeout = timeout
+        self.enable_instrumentation = enable_instrumentation
 
         # Authentication state
         self.private_key: Optional[str] = None
@@ -492,16 +705,21 @@ class ArrisStatusClient:
         # Error analysis storage
         self.error_captures: List[ErrorCapture] = []
 
-        # Configure HTTP session with Arris compatibility
+        # Performance instrumentation
+        self.instrumentation = PerformanceInstrumentation() if enable_instrumentation else None
+
+        # Configure HTTP session with Arris compatibility and instrumentation
         self.session = self._create_session()
 
         mode_str = "concurrent" if concurrent else "serial"
         logger.info(f"🛡️ ArrisStatusClient v1.3 with HTTP compatibility initialized for {host}:{port}")
         logger.info(f"🔧 Mode: {mode_str}, Workers: {self.max_workers}, Retries: {max_retries}")
+        if enable_instrumentation:
+            logger.info("📊 Performance instrumentation enabled")
 
     def _create_session(self) -> requests.Session:
-        """Create HTTP session optimized for Arris compatibility."""
-        return create_arris_compatible_session()
+        """Create HTTP session optimized for Arris compatibility with instrumentation."""
+        return create_arris_compatible_session(self.instrumentation)
 
     def _analyze_http_compatibility_issue(
         self,
@@ -679,7 +897,9 @@ class ArrisStatusClient:
         request_body: Dict[str, Any],
         extra_headers: Optional[Dict[str, str]] = None
     ) -> Optional[str]:
-        """Make raw HNAP request using HTTP-compatible session."""
+        """Make raw HNAP request using HTTP-compatible session with instrumentation."""
+        start_time = self.instrumentation.start_timer(f"hnap_request_{soap_action}") if self.instrumentation else time.time()
+
         # Generate authentication token
         auth_token = self._generate_hnap_auth_token(soap_action)
 
@@ -710,20 +930,55 @@ class ArrisStatusClient:
 
         logger.debug(f"📤 HNAP: {soap_action}")
 
-        # Execute request with HTTP compatibility
-        response = self.session.post(
-            f"{self.base_url}/HNAP1/",
-            json=request_body,
-            headers=headers
-        )
+        try:
+            # Execute request with HTTP compatibility and instrumentation
+            response = self.session.post(
+                f"{self.base_url}/HNAP1/",
+                json=request_body,
+                headers=headers,
+                timeout=self.timeout
+            )
 
-        if response.status_code == 200:
-            logger.debug(f"📥 Response: {len(response.text)} chars")
-            return response.text
-        else:
-            error = requests.exceptions.RequestException(f"HTTP {response.status_code}")
-            error.response = response
-            raise error
+            if response.status_code == 200:
+                logger.debug(f"📥 Response: {len(response.text)} chars")
+
+                # Record successful timing
+                if self.instrumentation:
+                    self.instrumentation.record_timing(
+                        f"hnap_request_{soap_action}",
+                        start_time,
+                        success=True,
+                        http_status=response.status_code,
+                        response_size=len(response.text)
+                    )
+
+                return response.text
+            else:
+                error = requests.exceptions.RequestException(f"HTTP {response.status_code}")
+                error.response = response
+
+                # Record failed timing
+                if self.instrumentation:
+                    self.instrumentation.record_timing(
+                        f"hnap_request_{soap_action}",
+                        start_time,
+                        success=False,
+                        error_type=f"HTTP_{response.status_code}",
+                        http_status=response.status_code
+                    )
+
+                raise error
+
+        except Exception as e:
+            # Record exception timing
+            if self.instrumentation:
+                self.instrumentation.record_timing(
+                    f"hnap_request_{soap_action}",
+                    start_time,
+                    success=False,
+                    error_type=str(type(e).__name__)
+                )
+            raise
 
     def _generate_hnap_auth_token(self, soap_action: str, timestamp: int = None) -> str:
         """Generate HNAP auth token."""
@@ -742,12 +997,14 @@ class ArrisStatusClient:
         return f"{auth_hash} {timestamp}"
 
     def authenticate(self) -> bool:
-        """Perform HNAP authentication with HTTP compatibility."""
+        """Perform HNAP authentication with HTTP compatibility and instrumentation."""
         try:
             logger.info("🔐 Starting authentication...")
-            start_time = time.time()
+            start_time = self.instrumentation.start_timer("authentication_complete") if self.instrumentation else time.time()
 
             # Step 1: Request challenge
+            challenge_start = self.instrumentation.start_timer("authentication_challenge") if self.instrumentation else time.time()
+
             challenge_request = {
                 "Login": {
                     "Action": "request",
@@ -761,7 +1018,13 @@ class ArrisStatusClient:
             challenge_response = self._make_hnap_request_with_retry("Login", challenge_request)
             if not challenge_response:
                 logger.error("Failed to get authentication challenge after retries")
+
+                if self.instrumentation:
+                    self.instrumentation.record_timing("authentication_complete", start_time, success=False, error_type="challenge_failed")
                 return False
+
+            if self.instrumentation:
+                self.instrumentation.record_timing("authentication_challenge", challenge_start, success=True)
 
             # Parse challenge response
             try:
@@ -772,9 +1035,14 @@ class ArrisStatusClient:
                 self.uid_cookie = login_resp.get("Cookie")
             except (json.JSONDecodeError, KeyError) as e:
                 logger.error(f"Challenge parsing failed: {e}")
+
+                if self.instrumentation:
+                    self.instrumentation.record_timing("authentication_complete", start_time, success=False, error_type="challenge_parse_failed")
                 return False
 
             # Step 2: Compute private key and login password
+            key_computation_start = self.instrumentation.start_timer("authentication_key_computation") if self.instrumentation else time.time()
+
             key_material = public_key + self.password
             self.private_key = hmac.new(
                 key_material.encode('utf-8'),
@@ -788,7 +1056,12 @@ class ArrisStatusClient:
                 hashlib.sha256
             ).hexdigest().upper()
 
+            if self.instrumentation:
+                self.instrumentation.record_timing("authentication_key_computation", key_computation_start, success=True)
+
             # Step 3: Send login request
+            login_start = self.instrumentation.start_timer("authentication_login") if self.instrumentation else time.time()
+
             login_request = {
                 "Login": {
                     "Action": "login",
@@ -807,18 +1080,32 @@ class ArrisStatusClient:
                 auth_time = time.time() - start_time
                 mode_str = "concurrent" if self.concurrent else "serial"
                 logger.info(f"🎉 Authentication successful ({mode_str} mode)! ({auth_time:.2f}s)")
+
+                if self.instrumentation:
+                    self.instrumentation.record_timing("authentication_login", login_start, success=True)
+                    self.instrumentation.record_timing("authentication_complete", start_time, success=True)
+
                 return True
             else:
                 logger.error("Authentication failed after retries")
+
+                if self.instrumentation:
+                    self.instrumentation.record_timing("authentication_login", login_start, success=False, error_type="login_failed")
+                    self.instrumentation.record_timing("authentication_complete", start_time, success=False, error_type="login_failed")
+
                 return False
 
         except Exception as e:
             logger.error(f"Authentication error: {e}")
+
+            if self.instrumentation:
+                self.instrumentation.record_timing("authentication_complete", start_time, success=False, error_type=str(type(e).__name__))
+
             return False
 
     def get_status(self) -> Dict[str, Any]:
         """
-        Retrieve comprehensive modem status with HTTP compatibility.
+        Retrieve comprehensive modem status with HTTP compatibility and instrumentation.
 
         Uses concurrent or serial requests based on configuration, with built-in
         HTTP compatibility handling for urllib3 parsing strictness.
@@ -830,7 +1117,7 @@ class ArrisStatusClient:
 
             mode_str = "concurrent" if self.concurrent else "serial"
             logger.info(f"📊 Retrieving modem status with {mode_str} processing...")
-            start_time = time.time()
+            start_time = self.instrumentation.start_timer("get_status_complete") if self.instrumentation else time.time()
 
             # Define the requests
             request_definitions = [
@@ -861,6 +1148,8 @@ class ArrisStatusClient:
             if self.concurrent:
                 # Concurrent mode: Use ThreadPoolExecutor
                 logger.debug("🚀 Using concurrent request processing with HTTP compatibility")
+                concurrent_start = self.instrumentation.start_timer("concurrent_request_processing") if self.instrumentation else time.time()
+
                 with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                     future_to_name = {
                         executor.submit(
@@ -884,9 +1173,14 @@ class ArrisStatusClient:
                         except Exception as e:
                             logger.error(f"❌ {req_name} failed with exception: {e}")
 
+                if self.instrumentation:
+                    self.instrumentation.record_timing("concurrent_request_processing", concurrent_start, success=True)
+
             else:
                 # Serial mode: Process requests one by one
                 logger.debug("🔄 Using serial request processing with HTTP compatibility")
+                serial_start = self.instrumentation.start_timer("serial_request_processing") if self.instrumentation else time.time()
+
                 for req_name, req_body in request_definitions:
                     try:
                         logger.debug(f"📤 Processing {req_name} serially...")
@@ -898,14 +1192,20 @@ class ArrisStatusClient:
                         else:
                             logger.warning(f"⚠️ {req_name} failed after retries")
 
-                        # Small delay between serial requests
+                        # Small delay between serial requests to avoid overwhelming the modem
                         time.sleep(0.1)
 
                     except Exception as e:
                         logger.error(f"❌ {req_name} failed with exception: {e}")
 
+                if self.instrumentation:
+                    self.instrumentation.record_timing("serial_request_processing", serial_start, success=True)
+
             # Parse responses
+            parsing_start = self.instrumentation.start_timer("response_parsing") if self.instrumentation else time.time()
             parsed_data = self._parse_responses(responses)
+            if self.instrumentation:
+                self.instrumentation.record_timing("response_parsing", parsing_start, success=True)
 
             total_time = time.time() - start_time
             downstream_count = len(parsed_data.get('downstream_channels', []))
@@ -942,11 +1242,28 @@ class ArrisStatusClient:
                 'mode': 'concurrent' if self.concurrent else 'serial'
             }
 
+            # Add instrumentation data if enabled
+            if self.instrumentation:
+                performance_summary = self.instrumentation.get_performance_summary()
+                parsed_data['_instrumentation'] = performance_summary
+                self.instrumentation.record_timing("get_status_complete", start_time, success=True)
+
             return parsed_data
 
         except Exception as e:
             logger.error(f"Status retrieval failed: {e}")
+
+            if self.instrumentation:
+                self.instrumentation.record_timing("get_status_complete", start_time, success=False, error_type=str(type(e).__name__))
+
             raise
+
+    def get_performance_metrics(self) -> Dict[str, Any]:
+        """Get detailed performance metrics from instrumentation."""
+        if not self.instrumentation:
+            return {"error": "Performance instrumentation not enabled"}
+
+        return self.instrumentation.get_performance_summary()
 
     def get_error_analysis(self) -> Dict[str, Any]:
         """Enhanced error analysis with HTTP compatibility breakdown."""
@@ -1231,6 +1548,12 @@ class ArrisStatusClient:
             if compatibility_issues > 0:
                 logger.info(f"🔧 HTTP compatibility issues handled: {compatibility_issues}")
 
+        if self.instrumentation:
+            performance_summary = self.instrumentation.get_performance_summary()
+            session_time = performance_summary.get("session_metrics", {}).get("total_session_time", 0)
+            total_ops = performance_summary.get("session_metrics", {}).get("total_operations", 0)
+            logger.info(f"📊 Session performance: {total_ops} operations in {session_time:.2f}s")
+
         if self.session:
             self.session.close()
 
@@ -1244,4 +1567,4 @@ class ArrisStatusClient:
 
 
 # Public API
-__all__ = ["ArrisStatusClient", "ChannelInfo", "ErrorCapture"]
+__all__ = ["ArrisStatusClient", "ChannelInfo", "ErrorCapture", "TimingMetrics", "PerformanceInstrumentation"]
