@@ -146,9 +146,9 @@ class PerformanceInstrumentation:
         operation: str,
         start_time: float,
         success: bool = True,
-        error_type: str = None,
+        error_type: Optional[str] = None,
         retry_count: int = 0,
-        http_status: int = None,
+        http_status: Optional[int] = None,
         response_size: int = 0
     ) -> TimingMetrics:
         """Record timing metrics for an operation."""
@@ -174,7 +174,7 @@ class PerformanceInstrumentation:
             self.request_metrics[operation] = []
         self.request_metrics[operation].append(duration)
 
-        logger.debug(f"📊 {operation}: {duration*1000:.1f}ms (success: {success})")
+        logger.debug(f"📊 {operation}: {duration * 1000:.1f}ms (success: {success})")
         return metric
 
     def get_performance_summary(self) -> Dict[str, Any]:
@@ -203,7 +203,7 @@ class PerformanceInstrumentation:
             all_durations.sort()
             n = len(all_durations)
             percentiles = {
-                "p50": all_durations[n / /2] if n > 0 else 0,
+                "p50": all_durations[n // 2] if n > 0 else 0,
                 "p90": all_durations[int(n * 0.9)] if n > 0 else 0,
                 "p95": all_durations[int(n * 0.95)] if n > 0 else 0,
                 "p99": all_durations[int(n * 0.99)] if n > 0 else 0
@@ -228,7 +228,7 @@ class PerformanceInstrumentation:
             "performance_insights": self._generate_performance_insights(operation_stats, total_session_time)
         }
 
-    def _generate_performance_insights(self, operation_stats: Dict, total_time: float) -> List[str]:
+    def _generate_performance_insights(self, operation_stats: Dict[str, Any], total_time: float) -> List[str]:
         """Generate performance insights based on metrics."""
         insights = []
 
@@ -277,7 +277,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
     browser tolerance for non-standard but valid HTTP formatting.
     """
 
-    def __init__(self, instrumentation: PerformanceInstrumentation = None, *args, **kwargs):
+    def __init__(self, instrumentation: Optional[PerformanceInstrumentation] = None, *args, **kwargs):
         """Initialize the Arris-compatible HTTP adapter."""
         super().__init__(*args, **kwargs)
         self.instrumentation = instrumentation
@@ -590,7 +590,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
             return response
 
 
-def create_arris_compatible_session(instrumentation: PerformanceInstrumentation = None) -> requests.Session:
+def create_arris_compatible_session(instrumentation: Optional[PerformanceInstrumentation] = None) -> requests.Session:
     """
     Create a requests Session with Arris modem HTTP compatibility.
 
@@ -980,7 +980,7 @@ class ArrisStatusClient:
                 )
             raise
 
-    def _generate_hnap_auth_token(self, soap_action: str, timestamp: int = None) -> str:
+    def _generate_hnap_auth_token(self, soap_action: str, timestamp: Optional[int] = None) -> str:
         """Generate HNAP auth token."""
         if timestamp is None:
             timestamp = int(time.time() * 1000) % 2000000000000

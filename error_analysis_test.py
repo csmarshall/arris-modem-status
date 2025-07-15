@@ -8,7 +8,7 @@ urllib3 parsing strictness and validate the browser-compatible HTTP parsing solu
 
 The analysis focuses on:
 1. HTTP compatibility issue detection and recovery
-2. Browser-compatible parsing effectiveness  
+2. Browser-compatible parsing effectiveness
 3. urllib3 parsing strictness patterns
 4. Error recovery and correlation analysis
 
@@ -392,7 +392,7 @@ urllib3 parsing strictness to validate the browser-compatible HTTP parsing solut
 
 The analysis focuses on:
 1. HTTP compatibility issue detection and recovery
-2. urllib3 parsing strictness vs browser tolerance  
+2. urllib3 parsing strictness vs browser tolerance
 3. Browser-compatible parsing effectiveness
 4. Error recovery patterns and success rates
 

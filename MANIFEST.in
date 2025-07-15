@@ -1,5 +1,0 @@
-include README.md
-include LICENSE
-include pyproject.toml
-include setup.cfg
-recursive-include arris_modem_status *.py

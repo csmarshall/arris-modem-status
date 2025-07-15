@@ -360,7 +360,7 @@ class ConcurrentSerialCompatibilityRunner:
             if total_compatibility_issues > 0:
                 recovery_rate_serial = serial_results.get("recovery_rate", 0) * 100
                 recovery_rate_concurrent = concurrent_results.get("recovery_rate", 0) * 100
-                
+
                 analysis["recommendations"].extend([
                     f"HTTP compatibility issues detected: {total_compatibility_issues} total",
                     f"Recovery rates: Serial {recovery_rate_serial:.1f}%, Concurrent {recovery_rate_concurrent:.1f}%",
