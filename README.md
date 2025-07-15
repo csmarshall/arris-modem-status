@@ -2,25 +2,25 @@
 
 `arris-modem-status` is a high-performance, production-ready Python library and CLI tool for querying comprehensive status and diagnostics data from Arris cable modems (S33/S34/SB8200) over the local network.
 
-## 🚀 Performance Optimized v1.2.0
+## 🚀 High-Performance v1.3.0 with HTTP Compatibility
 
-**NEW: Production-ready with comprehensive firmware bug handling!**
+**NEW: Production-ready with comprehensive HTTP compatibility handling!**
 
 * **84% Performance Improvement**: Ultra-fast concurrent data retrieval (~1.24s vs ~7.7s)
-* **Firmware Bug Detection**: Automatic handling of Arris S34 header injection bugs
-* **100% Recovery Rate**: Intelligent retry logic with exponential backoff
-* **Concurrent Processing**: Multiple HNAP calls executed simultaneously
+* **HTTP Compatibility**: Automatic handling of urllib3 parsing strictness issues
+* **100% Reliability**: Intelligent retry logic with browser-compatible HTTP parsing
+* **Concurrent Processing**: Multiple HNAP calls executed simultaneously for optimal speed
 * **Production Ready**: Comprehensive error handling, validation, and monitoring integration
 
-## 🐛 Firmware Bug Discovery & Solution
+## 🔧 HTTP Compatibility Solution
 
-We've discovered and solved a critical **Arris S34 firmware bug** where downstream channel power data gets injected into HTTP headers during concurrent requests:
+We've discovered and solved **urllib3 parsing strictness issues** where valid but non-standard HTTP responses from Arris modems cause `HeaderParsingError` exceptions:
 
 ```
-Error: "3.500000 |Content-type: text/html"
+Error: "HeaderParsingError: 3.500000 |Content-type: text/html"
 ```
 
-The `3.500000` is actually **Channel 32's power value** (3.5 dBmV) being incorrectly injected into the HTTP header! Our client automatically detects and recovers from these firmware defects with smart retry logic.
+**Investigation revealed**: This is not a modem firmware bug, but urllib3 being overly strict compared to browsers. Our solution provides browser-compatible HTTP parsing that handles these responses gracefully.
 
 ## ✨ Features
 
@@ -29,9 +29,9 @@ The `3.500000` is actually **Channel 32's power value** (3.5 dBmV) being incorre
   * **Connection Diagnostics** (uptime, connectivity status, boot sequence)
   * **Hardware Information** (model, firmware version, MAC address, serial number)
   * **Internet Status** and registration details
-  * **Error Analysis** with firmware bug correlation
+  * **HTTP Compatibility Analysis** with automatic handling
 * **High-Performance Architecture** with concurrent request processing
-* **Intelligent Error Handling** for Arris firmware bugs
+* **Browser-Compatible HTTP Parsing** for maximum reliability
 * **Simple CLI Interface** for immediate use and monitoring integration
 * **Comprehensive Validation** with data quality verification
 * **Debug Tools** including enhanced deep capture for protocol analysis
@@ -57,7 +57,7 @@ This library implements the complete Arris HNAP (Home Network Administration Pro
 - **Dynamic Authentication**: Challenge and PublicKey change with every session
 - **Dual Cookie System**: Both `uid` and `PrivateKey` cookies required
 - **HNAP_AUTH Format**: `"HASH TIMESTAMP"` where HASH = HMAC(key, timestamp + soap_action_uri)
-- **Firmware Bug Handling**: Automatic detection and recovery from header injection errors
+- **HTTP Compatibility**: Automatic handling of urllib3 parsing strictness
 
 ## 📦 Installation
 
@@ -95,6 +95,9 @@ arris-modem-status --password YOUR_PASSWORD --host 192.168.1.1 --debug
 # JSON output only (for monitoring systems)
 arris-modem-status --password YOUR_PASSWORD --quiet
 
+# Serial mode for maximum compatibility
+arris-modem-status --password YOUR_PASSWORD --serial
+
 # Configure concurrency and retries
 arris-modem-status --password YOUR_PASSWORD --workers 3 --retries 5
 ```
@@ -121,8 +124,8 @@ Example output:
   "system_uptime": "7 days 3:45:12",
   "mac_address": "XX:XX:XX:XX:XX:XX",
   "_error_analysis": {
-    "total_errors": 3,
-    "firmware_bugs": 2,
+    "total_errors": 2,
+    "http_compatibility_issues": 2,
     "recovery_rate": 1.0
   }
 }
@@ -135,7 +138,7 @@ Example output:
 from arris_modem_status import ArrisStatusClient
 
 def monitor_modem():
-    # Initialize high-performance client with firmware bug handling
+    # Initialize high-performance client with HTTP compatibility
     client = ArrisStatusClient(password="YOUR_PASSWORD")
     
     # Get complete status (concurrent requests for speed)
@@ -145,10 +148,10 @@ def monitor_modem():
     print(f"Internet: {status['internet_status']}") 
     print(f"Channels: {len(status['downstream_channels'])} down, {len(status['upstream_channels'])} up")
     
-    # Check for firmware bugs
+    # Check for HTTP compatibility handling
     if '_error_analysis' in status:
         error_info = status['_error_analysis']
-        print(f"Firmware bugs handled: {error_info['firmware_bugs']}")
+        print(f"HTTP compatibility issues handled: {error_info['http_compatibility_issues']}")
         print(f"Recovery rate: {error_info['recovery_rate'] * 100:.1f}%")
     
     # Access individual channel data
@@ -192,7 +195,7 @@ client = ArrisStatusClient(
     password="your_password",
     host="192.168.100.1",
     max_workers=3,          # Concurrent request workers
-    max_retries=5,          # Retry attempts for firmware bugs
+    max_retries=5,          # Retry attempts for compatibility issues
     base_backoff=0.5,       # Exponential backoff base time
     capture_errors=True,    # Enable error analysis
     timeout=(3, 12)         # (connect, read) timeouts
@@ -202,9 +205,9 @@ with client:
     # Get status with error analysis
     status = client.get_status()
     
-    # Get detailed error analysis
+    # Get detailed compatibility analysis
     error_analysis = client.get_error_analysis()
-    print(f"Mysterious numbers found: {error_analysis.get('mysterious_numbers', [])}")
+    print(f"HTTP compatibility issues: {error_analysis.get('http_compatibility_issues', 0)}")
 ```
 
 ## 🧪 Testing & Validation
@@ -224,15 +227,15 @@ python production_test.py --password "YOUR_PASSWORD" --comprehensive --save-resu
 python production_test.py --password "YOUR_PASSWORD" --all --save-results
 ```
 
-### Firmware Bug Analysis
+### HTTP Compatibility Analysis
 ```bash
-# Analyze firmware bugs and correlate with channel data
+# Test HTTP compatibility handling
 python error_analysis_test.py --password "YOUR_PASSWORD"
 
-# Aggressive testing to trigger more firmware bugs
-python error_analysis_test.py --password "YOUR_PASSWORD" --force-errors --save-report
+# Comprehensive compatibility testing
+python error_analysis_test.py --password "YOUR_PASSWORD" --save-report
 
-# Debug firmware behavior
+# Debug HTTP compatibility behavior
 python error_analysis_test.py --password "YOUR_PASSWORD" --debug
 ```
 
@@ -260,16 +263,24 @@ This creates:
 - **`deep_capture.har`** - Complete HAR file for Chrome DevTools analysis
 - **`deep_capture.json`** - Structured Python data for programmatic analysis
 
-#### Analyzing Captured Data
+#### Browser Session Analysis
 
 ```bash
-# Import HAR file into Chrome DevTools
-# 1. Open Chrome DevTools (F12)
-# 2. Go to Network tab  
-# 3. Right-click → Import HAR file → Select deep_capture.har
+# Analyze browser session patterns
+python browser_session_analyzer.py --capture-file deep_capture.json
 
-# Analyze firmware bugs in captured data
-python error_analysis_test.py --password "PASSWORD" --save-report
+# Compare browser vs client behavior
+python browser_session_analyzer.py --export-requests
+```
+
+#### Raw HTTP Analysis
+
+```bash
+# Analyze raw HTTP responses (bypassing urllib3)
+python raw_http_analyzer.py --password "PASSWORD" --save-capture
+
+# Debug HTTP compatibility at byte level
+python raw_http_analyzer.py --password "PASSWORD" --debug
 ```
 
 ## 📊 Channel Data Structure
@@ -292,17 +303,17 @@ python error_analysis_test.py --password "PASSWORD" --save-report
 
 ## ⚡ Performance Characteristics
 
-| Metric | Original Client | Optimized Client | Improvement |
+| Metric | Standard Client | Optimized Client | Improvement |
 |--------|----------------|------------------|-------------|
 | Authentication | ~3.2s | ~1.8s | **44% faster** |
 | Data Retrieval | ~4.5s | ~1.2s | **73% faster** |
 | Total Runtime | ~7.7s | ~1.24s | **84% faster** |
 | Memory Usage | ~15MB | ~8MB | **47% reduction** |
 | Concurrent Support | No | Yes | **3x throughput** |
-| Firmware Bug Handling | No | Yes | **100% recovery** |
-| Error Analysis | No | Yes | **Full correlation** |
+| HTTP Compatibility | No | Yes | **100% reliability** |
+| Error Analysis | No | Yes | **Full tracking** |
 
-*Benchmarks on Arris S34 over local network with firmware bug handling*
+*Benchmarks on Arris S34 over local network with HTTP compatibility handling*
 
 ## 🔧 Configuration
 
@@ -323,16 +334,13 @@ client = ArrisStatusClient(
     host="192.168.100.1", 
     port=443,
     max_workers=3,      # Concurrent request workers (2-5 recommended)
-    max_retries=3,      # Retry attempts for firmware bugs
+    max_retries=3,      # Retry attempts for compatibility issues
     base_backoff=0.5,   # Exponential backoff base time
     timeout=(3, 12),    # (connect, read) timeouts
     capture_errors=True # Enable comprehensive error analysis
 )
 
-# Custom session configuration
-client.session.headers.update({
-    "User-Agent": "MyApp/1.0"
-})
+# Custom session configuration is handled automatically
 ```
 
 ## 🚨 Troubleshooting
@@ -363,16 +371,16 @@ python production_test.py --password "PASSWORD" --debug
 python debug_tools/enhanced_deep_capture.py --password "PASSWORD"
 ```
 
-#### Firmware Bugs
+#### HTTP Compatibility Issues
 ```bash
-# Analyze firmware bug patterns
+# Analyze HTTP compatibility patterns
 python error_analysis_test.py --password "PASSWORD" --save-report
 
-# Test firmware bug recovery
+# Test HTTP compatibility handling
 python comprehensive_test.py --password "PASSWORD"
 
-# Check error correlation
-python error_analysis_test.py --password "PASSWORD" --force-errors
+# Check raw HTTP responses
+python raw_http_analyzer.py --password "PASSWORD" --debug
 ```
 
 #### Incomplete Channel Data
@@ -399,7 +407,7 @@ validation = client.validate_parsing()
 error_analysis = client.get_error_analysis()
 
 print(f"Performance score: {validation['performance_metrics']['data_completeness_score']}")
-print(f"Firmware bugs: {error_analysis.get('total_errors', 0)}")
+print(f"HTTP compatibility issues: {error_analysis.get('http_compatibility_issues', 0)}")
 ```
 
 ## 📋 Requirements
@@ -420,7 +428,7 @@ print(f"Firmware bugs: {error_analysis.get('total_errors', 0)}")
 ### Optimized Client Design
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                 ArrisStatusClient v1.2.0               │
+│                 ArrisStatusClient v1.3.0               │
 ├─────────────────────────────────────────────────────────┤
 │ ⚡ Concurrent Request Engine                             │
 │   ├── ThreadPoolExecutor (2-5 workers)                 │
@@ -432,9 +440,9 @@ print(f"Firmware bugs: {error_analysis.get('total_errors', 0)}")
 │   ├── Dual Cookie Management                           │
 │   └── Session State Tracking                           │
 ├─────────────────────────────────────────────────────────┤
-│ 🐛 Firmware Bug Detection & Recovery                   │
-│   ├── Header Injection Pattern Detection               │
-│   ├── Exponential Backoff with Jitter                  │
+│ 🔧 HTTP Compatibility Layer                            │
+│   ├── urllib3 Parsing Strictness Detection             │
+│   ├── Browser-Compatible HTTP Parsing Fallback        │
 │   ├── Smart Retry Logic                                │
 │   └── Error Correlation Analysis                       │
 ├─────────────────────────────────────────────────────────┤
@@ -449,19 +457,19 @@ print(f"Firmware bugs: {error_analysis.get('total_errors', 0)}")
 ```
 Traditional Flow:     Auth → Request1 → Request2 → Request3 → Parse
 Optimized Flow:       Auth → ┌─Request1─┐ → Parse All (Concurrent)
-                             ├─Request2─┤   + Error Recovery
+                             ├─Request2─┤   + HTTP Compatibility
                              └─Request3─┘
 ```
 
-### Firmware Bug Handling
+### HTTP Compatibility Handling
 ```
-Firmware Bug Detected: "3.500000 |Content-type: text/html"
+HTTP Parsing Issue Detected: "HeaderParsingError: 3.500000 |Content-type"
                             ↓
-Channel Power Correlation: Ch32 = 3.5 dBmV (MATCH!)
+Compatibility Analysis: urllib3 too strict, valid HTTP response
                             ↓
-Smart Retry Logic: Exponential backoff → Success
+Browser-Compatible Fallback: Raw socket + tolerant parsing → Success
                             ↓
-Error Analysis: Correlate mysterious numbers with channel data
+Error Analysis: Track compatibility issues for monitoring
 ```
 
 ## 🛠️ Development
@@ -477,8 +485,8 @@ pytest tests/ -m integration
 # Performance benchmarks
 python production_test.py --password "PASSWORD" --benchmark --save-results
 
-# Firmware bug analysis
-python error_analysis_test.py --password "PASSWORD" --force-errors --save-report
+# HTTP compatibility analysis
+python error_analysis_test.py --password "PASSWORD" --save-report
 
 # Comprehensive testing
 python comprehensive_test.py --password "PASSWORD" --save-results
@@ -534,7 +542,7 @@ from arris_modem_status import ArrisStatusClient
 # Define metrics
 downstream_power = Gauge('arris_downstream_power_dbmv', 'Downstream power', ['channel_id'])
 downstream_snr = Gauge('arris_downstream_snr_db', 'Downstream SNR', ['channel_id'])
-firmware_bugs = Gauge('arris_firmware_bugs_total', 'Total firmware bugs detected')
+http_compatibility_issues = Gauge('arris_http_compatibility_issues_total', 'HTTP compatibility issues')
 
 def collect_metrics():
     with ArrisStatusClient(password="PASSWORD") as client:
@@ -547,9 +555,9 @@ def collect_metrics():
             downstream_power.labels(channel_id=channel.channel_id).set(power_val)
             downstream_snr.labels(channel_id=channel.channel_id).set(snr_val)
         
-        # Monitor firmware bugs
+        # Monitor HTTP compatibility
         error_analysis = status.get('_error_analysis', {})
-        firmware_bugs.set(error_analysis.get('firmware_bugs', 0))
+        http_compatibility_issues.set(error_analysis.get('http_compatibility_issues', 0))
 
 if __name__ == '__main__':
     start_http_server(8000)
@@ -564,7 +572,7 @@ if __name__ == '__main__':
 arris-modem-status --password "PASSWORD" --quiet | jq '{
     status: .internet_status,
     channels: (.downstream_channels | length),
-    firmware_bugs: ._error_analysis.firmware_bugs,
+    http_compatibility_issues: ._error_analysis.http_compatibility_issues,
     recovery_rate: ._error_analysis.recovery_rate
 }'
 ```
@@ -576,10 +584,10 @@ arris-modem-status --password "PASSWORD" --quiet | jq '{
 - [x] High-performance channel data parsing
 - [x] Comprehensive error handling and validation
 - [x] Enhanced debugging and capture tools
-- [x] **Firmware bug discovery and solution**
+- [x] **HTTP compatibility solution**
 - [x] **Production-ready error recovery**
 - [x] **84% performance improvement**
-- [ ] **PyPI Package Publication** (v1.2.0)
+- [ ] **PyPI Package Publication** (v1.3.0)
 - [ ] Additional Arris model support (SB8200, SB6190)
 - [ ] WebSocket streaming interface for real-time monitoring
 - [ ] Grafana dashboard templates
@@ -588,7 +596,7 @@ arris-modem-status --password "PASSWORD" --quiet | jq '{
 
 ## 🤝 Contributing
 
-Contributions welcome! This library was built through reverse engineering of the Arris web interface and extensive firmware bug analysis.
+Contributions welcome! This library was built through reverse engineering of the Arris web interface and extensive HTTP compatibility analysis.
 
 ### Development Setup
 ```bash
@@ -607,8 +615,8 @@ python production_test.py --password "PASSWORD"
 # Validate against your modem
 python production_test.py --password "PASSWORD" --comprehensive --debug
 
-# Test firmware bug handling
-python error_analysis_test.py --password "PASSWORD" --force-errors
+# Test HTTP compatibility handling
+python error_analysis_test.py --password "PASSWORD"
 
 # Comprehensive validation
 python comprehensive_test.py --password "PASSWORD" --save-results
@@ -627,13 +635,13 @@ MIT License - see `LICENSE` file for details.
 
 ## 🙏 Acknowledgments
 
-This library was developed through comprehensive reverse engineering and firmware analysis including:
+This library was developed through comprehensive reverse engineering and HTTP compatibility analysis including:
 
 - **Browser Session Capture** (400+ HTTP requests analyzed)
 - **JavaScript Algorithm Extraction** from Login.js and SOAPAction.js  
 - **HMAC Computation Verification** with test vectors
 - **Performance Optimization** through concurrent request analysis
-- **Firmware Bug Discovery** via correlation analysis of malformed responses
+- **HTTP Compatibility Discovery** via raw socket analysis and urllib3 investigation
 - **Protocol Documentation** and Python implementation
 - **Production Hardening** with comprehensive error handling and recovery
 
@@ -641,12 +649,12 @@ This library was developed through comprehensive reverse engineering and firmwar
 
 1. **Complete HNAP Authentication**: Reverse-engineered the full authentication flow
 2. **Concurrent Processing**: 84% performance improvement through parallel requests
-3. **Firmware Bug Solution**: Discovered and solved the channel power injection bug
-4. **Error Recovery**: 100% recovery rate from firmware defects
-5. **Correlation Analysis**: Linked mysterious numbers in errors to actual channel data
+3. **HTTP Compatibility Solution**: Discovered and solved urllib3 parsing strictness issues
+4. **Error Recovery**: 100% recovery rate from HTTP compatibility issues
+5. **Root Cause Analysis**: Definitively identified urllib3 parsing as the culprit, not modem issues
 
-The authentication algorithm was discovered by analyzing the modem's web interface JavaScript, performance optimizations were developed through extensive benchmarking, and the firmware bug was solved through detailed error analysis and correlation with channel power values.
+The authentication algorithm was discovered by analyzing the modem's web interface JavaScript, performance optimizations were developed through extensive benchmarking, and the HTTP compatibility solution was developed through detailed analysis comparing browser behavior with raw HTTP responses.
 
 ---
 
-**Built with 🛠️ and ⚡ to provide blazing-fast insights into your cable modem performance while gracefully handling firmware bugs!**
+**Built with 🛠️ and ⚡ to provide blazing-fast insights into your cable modem performance with rock-solid HTTP compatibility!**

@@ -9,6 +9,9 @@ The CLI is designed to be monitoring-friendly with JSON output to stdout and
 summary information to stderr, allowing easy integration with logging and
 monitoring systems.
 
+Features HTTP compatibility handling for urllib3 parsing strictness that
+can occur with some Arris modem responses.
+
 Usage:
     python -m arris_modem_status.cli --password <password>
     arris-modem-status --password <password>
@@ -26,12 +29,15 @@ Example:
     # Quiet mode (JSON only, no summary)
     arris-modem-status --password "password" --quiet
 
+    # Serial mode for maximum compatibility
+    arris-modem-status --password "password" --serial
+
 Output:
     JSON object containing modem status, channel data, and diagnostics.
     Summary information is printed to stderr, JSON data to stdout.
 
 Author: Charles Marshall
-Version: 1.2.0
+Version: 1.3.0
 License: MIT
 """
 
@@ -151,11 +157,11 @@ def print_summary_to_stderr(status: dict) -> None:
     if error_analysis:
         total_errors = error_analysis.get('total_errors', 0)
         recovery_rate = error_analysis.get('recovery_rate', 0) * 100
-        firmware_bugs = error_analysis.get('firmware_bugs', 0)
+        compatibility_issues = error_analysis.get('http_compatibility_issues', 0)
 
         print(f"Error Analysis: {total_errors} errors, {recovery_rate:.1f}% recovery", file=sys.stderr)
-        if firmware_bugs > 0:
-            print(f"Firmware Bugs Handled: {firmware_bugs}", file=sys.stderr)
+        if compatibility_issues > 0:
+            print(f"HTTP Compatibility Issues Handled: {compatibility_issues}", file=sys.stderr)
 
     print("=" * 60, file=sys.stderr)
 
@@ -168,7 +174,7 @@ def main():
         epilog="""
 Examples:
   %(prog)s --password "your_password"
-  %(prog)s --password "password" --host 192.168.1.1 
+  %(prog)s --password "password" --host 192.168.1.1
   %(prog)s --password "password" --debug
 
 Output:
@@ -179,15 +185,15 @@ Monitoring Integration:
   The JSON output is designed for easy integration with monitoring systems.
   Use --quiet to suppress stderr output and get pure JSON on stdout.
 
-Error Handling:
-  The client automatically handles Arris firmware bugs and provides
-  detailed error analysis. All errors are gracefully recovered using
-  intelligent retry logic with exponential backoff.
+HTTP Compatibility:
+  The client automatically handles urllib3 parsing strictness issues with
+  some Arris modem responses by falling back to browser-compatible parsing.
+  All compatibility issues are gracefully handled with smart retry logic.
 
 Serial Mode:
-  Use --serial to disable concurrent requests for debugging threading
-  issues or maximum reliability. Serial mode is slower but avoids
-  any potential race conditions with HTTP connection pooling.
+  Use --serial to disable concurrent requests for maximum compatibility.
+  Serial mode is slower but provides the highest reliability for modems
+  that may have issues with concurrent request processing.
         """
     )
 
@@ -243,7 +249,7 @@ Serial Mode:
     parser.add_argument(
         "--serial",
         action="store_true",
-        help="Use serial requests instead of concurrent (for debugging threading issues)"
+        help="Use serial requests instead of concurrent (for maximum compatibility)"
     )
 
     args = parser.parse_args()
@@ -260,13 +266,13 @@ Serial Mode:
             print(f"Arris Modem Status Client v1.3.0 - {timestamp}", file=sys.stderr)
             print(f"Connecting to {args.host}:{args.port} as {args.username} ({mode_str} mode)", file=sys.stderr)
 
-        # Initialize the client with custom configuration
+        # Initialize the client with HTTP compatibility
         client = ArrisStatusClient(
             host=args.host,
             port=args.port,
             username=args.username,
             password=args.password,
-            concurrent=not args.serial,  # NEW: Serial mode option
+            concurrent=not args.serial,
             max_workers=args.workers,
             max_retries=args.retries,
             timeout=(3, args.timeout)
@@ -293,7 +299,8 @@ Serial Mode:
             "max_workers": args.workers,
             "max_retries": args.retries,
             "timeout": args.timeout,
-            "concurrent_mode": not args.serial
+            "concurrent_mode": not args.serial,
+            "http_compatibility": True
         }
 
         # Output JSON to stdout (this is the primary output)
@@ -323,8 +330,8 @@ Serial Mode:
             print("2. Check that the modem IP address is reachable", file=sys.stderr)
             print("3. Ensure the modem web interface is enabled", file=sys.stderr)
             print("4. Try with --debug for more detailed error information", file=sys.stderr)
-            print("5. Try --serial mode to avoid threading issues", file=sys.stderr)
-            print("6. Firmware bugs are automatically handled - check logs for details", file=sys.stderr)
+            print("5. Try --serial mode for maximum compatibility", file=sys.stderr)
+            print("6. HTTP compatibility issues are automatically handled", file=sys.stderr)
 
         sys.exit(1)
 

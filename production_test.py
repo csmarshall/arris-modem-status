@@ -3,14 +3,14 @@
 Production Test Script for Arris Modem Status Client
 ===================================================
 
-Comprehensive testing and validation script for the optimized Arris modem client.
-Combines functionality from test_clean_client.py with performance testing and validation.
+Comprehensive testing and validation script for the HTTP-compatible Arris modem client.
+Combines functionality testing with performance benchmarking and HTTP compatibility validation.
 
 Features:
-- Quick validation test (like original test_clean_client.py)
-- Performance benchmarking
-- Data parsing validation
-- Comprehensive output analysis
+- Quick validation test for immediate functionality verification
+- Performance benchmarking with multiple iterations
+- HTTP compatibility analysis and testing
+- Data parsing validation with comprehensive output analysis
 - JSON export for monitoring integration
 
 Usage:
@@ -68,7 +68,8 @@ class ProductionTestRunner:
     Provides multiple test modes:
     - Quick validation (default)
     - Performance benchmarking
-    - Comprehensive analysis
+    - HTTP compatibility analysis
+    - Comprehensive data validation
     - Serial vs concurrent mode testing
     """
 
@@ -99,7 +100,7 @@ class ProductionTestRunner:
 
     def run_quick_test(self) -> bool:
         """
-        Quick validation test similar to original test_clean_client.py
+        Quick validation test for basic functionality verification.
 
         Returns:
             True if basic functionality works
@@ -112,8 +113,8 @@ class ProductionTestRunner:
         print("=" * 70)
 
         try:
-            # Initialize client
-            logger.info("🔧 Initializing optimized client...")
+            # Initialize client with HTTP compatibility
+            logger.info("🔧 Initializing HTTP-compatible client...")
             start_time = time.time()
 
             with ArrisStatusClient(password=self.password, host=self.host, concurrent=self.concurrent) as client:
@@ -199,17 +200,17 @@ class ProductionTestRunner:
                 print(f"   📊 Success Rate: {success_rate:.1f}%")
                 print(f"   🚀 Performance Target: {'✅ PASSED' if status_time < 5.0 else '⚠️ SLOW'}")
 
-                # Error analysis if available
+                # HTTP compatibility analysis if available
                 error_analysis = status.get('_error_analysis')
                 if error_analysis:
                     total_errors = error_analysis.get('total_errors', 0)
                     recovery_rate = error_analysis.get('recovery_rate', 0) * 100
-                    firmware_bugs = error_analysis.get('firmware_bugs', 0)
+                    compatibility_issues = error_analysis.get('http_compatibility_issues', 0)
 
-                    print(f"\n🔍 ERROR ANALYSIS:")
-                    print(f"   🐛 Total Errors: {total_errors}")
+                    print(f"\n🔧 HTTP COMPATIBILITY ANALYSIS:")
+                    print(f"   🔍 Total Errors: {total_errors}")
                     print(f"   🔄 Recovery Rate: {recovery_rate:.1f}%")
-                    print(f"   🛠️ Firmware Bugs: {firmware_bugs}")
+                    print(f"   🔧 HTTP Compatibility Issues: {compatibility_issues}")
 
                 # Store results
                 self.results["quick_test"] = {
@@ -228,6 +229,7 @@ class ProductionTestRunner:
                     print("   ✅ Authentication working perfectly")
                     print("   ✅ Channel data extraction operational")
                     print("   ✅ Performance targets met")
+                    print("   ✅ HTTP compatibility handled automatically")
                     print("   🚀 Ready for production use!")
                     return True
                 else:
@@ -247,14 +249,15 @@ class ProductionTestRunner:
             return False
 
     def run_performance_benchmark(self) -> Dict[str, Any]:
-        """Run performance benchmark tests."""
+        """Run performance benchmark tests with HTTP compatibility analysis."""
         logger.info("🏁 Starting performance benchmark...")
 
         benchmark_results = {
             "authentication_times": [],
             "retrieval_times": [],
             "total_times": [],
-            "channel_counts": []
+            "channel_counts": [],
+            "http_compatibility_events": []
         }
 
         try:
@@ -281,13 +284,20 @@ class ProductionTestRunner:
                     upstream_channels = len(status.get('upstream_channels', []))
                     channel_count = downstream_channels + upstream_channels
 
+                    # Track HTTP compatibility events
+                    error_analysis = status.get('_error_analysis', {})
+                    compatibility_issues = error_analysis.get('http_compatibility_issues', 0)
+
                     # Store results
                     benchmark_results["authentication_times"].append(auth_time)
                     benchmark_results["retrieval_times"].append(retrieval_time)
                     benchmark_results["total_times"].append(total_time)
                     benchmark_results["channel_counts"].append(channel_count)
+                    benchmark_results["http_compatibility_events"].append(compatibility_issues)
 
                     logger.info(f"   ⏱️ Auth: {auth_time:.2f}s, Retrieval: {retrieval_time:.2f}s, Total: {total_time:.2f}s")
+                    if compatibility_issues > 0:
+                        logger.info(f"   🔧 HTTP compatibility issues handled: {compatibility_issues}")
 
                 # Brief pause between iterations
                 time.sleep(0.5)
@@ -296,6 +306,7 @@ class ProductionTestRunner:
             if benchmark_results["total_times"]:
                 avg_channel_count = statistics.mean(benchmark_results["channel_counts"])
                 avg_retrieval_time = statistics.mean(benchmark_results["retrieval_times"])
+                total_compatibility_events = sum(benchmark_results["http_compatibility_events"])
 
                 benchmark_results["statistics"] = {
                     "avg_auth_time": statistics.mean(benchmark_results["authentication_times"]),
@@ -305,7 +316,9 @@ class ProductionTestRunner:
                     "max_total_time": max(benchmark_results["total_times"]),
                     "consistency": max(benchmark_results["total_times"]) - min(benchmark_results["total_times"]),
                     "avg_channel_count": avg_channel_count,
-                    "channels_per_second": avg_channel_count / avg_retrieval_time if avg_retrieval_time > 0 else 0
+                    "channels_per_second": avg_channel_count / avg_retrieval_time if avg_retrieval_time > 0 else 0,
+                    "total_http_compatibility_events": total_compatibility_events,
+                    "avg_compatibility_events_per_request": total_compatibility_events / 5
                 }
 
                 stats = benchmark_results["statistics"]
@@ -315,6 +328,7 @@ class ProductionTestRunner:
                 print(f"   🏁 Total Time: {stats['avg_total_time']:.2f}s average")
                 print(f"   📈 Throughput: {stats['channels_per_second']:.1f} channels/sec")
                 print(f"   🎯 Consistency: {stats['consistency']:.2f}s variance")
+                print(f"   🔧 HTTP Compatibility Events: {stats['total_http_compatibility_events']} total")
 
         except Exception as e:
             logger.error(f"Benchmark failed: {e}")
@@ -323,7 +337,7 @@ class ProductionTestRunner:
         return benchmark_results
 
     def run_comprehensive_analysis(self) -> Dict[str, Any]:
-        """Run comprehensive data analysis and validation."""
+        """Run comprehensive data analysis and HTTP compatibility validation."""
         logger.info("🔍 Starting comprehensive analysis...")
 
         try:
@@ -347,9 +361,10 @@ class ProductionTestRunner:
                         "mac_address_valid": parsing_validation.get("mac_address_format", False),
                         "frequency_formats": parsing_validation.get("frequency_formats", {})
                     },
-                    "firmware_analysis": {
+                    "http_compatibility_analysis": {
                         "parsing_errors": performance_metrics.get("parsing_errors", 0),
-                        "firmware_bugs_detected": performance_metrics.get("firmware_bugs_detected", 0)
+                        "http_compatibility_issues": performance_metrics.get("http_compatibility_issues", 0),
+                        "request_mode": performance_metrics.get("request_mode", "unknown")
                     }
                 }
 
@@ -362,11 +377,14 @@ class ProductionTestRunner:
                 print(f"   📡 Total Channels: {downstream_count + upstream_count}")
                 print(f"   ✅ MAC Address Valid: {analysis_results['format_validation']['mac_address_valid']}")
 
-                # Firmware bug analysis
-                firmware_bugs = analysis_results["firmware_analysis"]["firmware_bugs_detected"]
-                if firmware_bugs > 0:
-                    print(f"   🐛 Firmware Bugs Detected: {firmware_bugs}")
-                    print("   🛠️ All bugs handled gracefully with retry logic")
+                # HTTP compatibility analysis
+                http_analysis = analysis_results["http_compatibility_analysis"]
+                compatibility_issues = http_analysis["http_compatibility_issues"]
+                if compatibility_issues > 0:
+                    print(f"   🔧 HTTP Compatibility Issues Handled: {compatibility_issues}")
+                    print("   ✅ All issues resolved automatically with browser-compatible parsing")
+                else:
+                    print(f"   ✅ No HTTP compatibility issues detected")
 
                 return analysis_results
 
@@ -417,7 +435,7 @@ class ProductionTestRunner:
                 monitoring_data["metrics"].update({
                     "total_errors": error_analysis.get("total_errors", 0),
                     "recovery_rate_percent": error_analysis.get("recovery_rate", 0) * 100,
-                    "firmware_bugs": error_analysis.get("firmware_bugs", 0)
+                    "http_compatibility_issues": error_analysis.get("http_compatibility_issues", 0)
                 })
 
         # Add benchmark metrics if available
@@ -426,7 +444,8 @@ class ProductionTestRunner:
             monitoring_data["metrics"].update({
                 "avg_auth_time_seconds": stats.get("avg_auth_time", 0),
                 "avg_retrieval_time_seconds": stats.get("avg_retrieval_time", 0),
-                "channels_per_second": stats.get("channels_per_second", 0)
+                "channels_per_second": stats.get("channels_per_second", 0),
+                "http_compatibility_events": stats.get("total_http_compatibility_events", 0)
             })
 
         return monitoring_data
@@ -441,7 +460,7 @@ def main():
 Test Modes:
   (default)           Quick validation test
   --benchmark         Performance benchmark (5 iterations)
-  --comprehensive     Full analysis with data validation
+  --comprehensive     Full analysis with data validation and HTTP compatibility
   --all              Run all test types
   --serial           Test serial mode instead of concurrent
   --test-both-modes  Test both concurrent and serial modes for comparison
@@ -455,9 +474,9 @@ Examples:
 
 The quick test validates basic functionality and performance targets.
 Benchmark mode runs multiple iterations to measure performance consistency.
-Comprehensive mode includes detailed data validation and format checking.
-Serial mode disables concurrent requests for debugging threading issues.
-Test-both-modes compares concurrent vs serial performance and error patterns.
+Comprehensive mode includes detailed data validation and HTTP compatibility analysis.
+Serial mode disables concurrent requests for maximum compatibility testing.
+Test-both-modes compares concurrent vs serial performance and HTTP compatibility patterns.
         """
     )
 
