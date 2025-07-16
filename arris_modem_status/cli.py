@@ -83,26 +83,26 @@ def setup_logging(debug: bool = False) -> None:
 def quick_connectivity_check(host: str, port: int = 443, timeout: float = 2.0) -> Tuple[bool, Optional[str]]:
     """
     Quick TCP connectivity check before attempting HTTPS connection.
-    
+
     This helps fail fast for unreachable devices instead of waiting for long timeouts.
     Since Arris modems are typically on local networks, if they don't respond quickly,
     they're likely offline or unreachable.
-    
+
     Args:
         host: Target hostname or IP address
         port: Target port (default: 443 for HTTPS)
         timeout: Connection timeout in seconds (default: 2.0)
-        
+
     Returns:
         (is_reachable, error_message) - error_message is None if reachable
     """
     try:
         print(f"🔍 Quick connectivity check: {host}:{port}...", file=sys.stderr)
-        
+
         with socket.create_connection((host, port), timeout=timeout):
             print(f"✅ TCP connection successful", file=sys.stderr)
             return True, None
-            
+
     except socket.timeout:
         return False, f"Connection timeout - {host}:{port} not responding within {timeout}s"
     except socket.gaierror as e:
@@ -116,10 +116,10 @@ def quick_connectivity_check(host: str, port: int = 443, timeout: float = 2.0) -
 def get_optimal_timeouts(host: str) -> Tuple[float, float]:
     """
     Get optimal connection timeouts based on whether the host appears to be local.
-    
+
     Args:
         host: Target hostname or IP address
-        
+
     Returns:
         (connect_timeout, read_timeout) in seconds
     """
@@ -130,7 +130,7 @@ def get_optimal_timeouts(host: str) -> Tuple[float, float]:
         host.startswith('172.') or
         host in ['localhost', '127.0.0.1']
     )
-    
+
     if is_local:
         return (2, 8)  # Shorter timeouts for local devices
     else:
@@ -235,33 +235,33 @@ def print_connectivity_troubleshooting(host: str, port: int, error_msg: str) -> 
     """Print specific troubleshooting suggestions based on the connection error."""
     print(f"\n💡 TROUBLESHOOTING for {host}:{port}:", file=sys.stderr)
     print("=" * 50, file=sys.stderr)
-    
+
     if "timeout" in error_msg.lower():
         print("Connection timeout suggests:", file=sys.stderr)
         print(f"  1. Device may be offline - verify {host} is powered on", file=sys.stderr)
         print(f"  2. Wrong IP address - check your modem's current IP", file=sys.stderr)
         print(f"  3. Network issue - try: ping {host}", file=sys.stderr)
         print(f"  4. Firewall blocking connection", file=sys.stderr)
-        
+
     elif "refused" in error_msg.lower():
         print("Connection refused suggests:", file=sys.stderr)
         print(f"  1. Device is on but HTTPS service disabled", file=sys.stderr)
         print(f"  2. Try HTTP instead: --port 80", file=sys.stderr)
         print(f"  3. Web interface may be disabled", file=sys.stderr)
-        
+
     elif "dns" in error_msg.lower() or "resolution" in error_msg.lower():
         print("DNS resolution failed suggests:", file=sys.stderr)
         print(f"  1. Use IP address instead of hostname", file=sys.stderr)
         print(f"  2. Check DNS settings", file=sys.stderr)
         print(f"  3. Verify hostname spelling", file=sys.stderr)
-        
+
     else:
         print("Network connectivity issue:", file=sys.stderr)
         print(f"  1. Verify device IP: {host}", file=sys.stderr)
         print(f"  2. Check network connectivity: ping {host}", file=sys.stderr)
         print(f"  3. Try web interface: https://{host}/", file=sys.stderr)
         print(f"  4. Check if device is on the same network", file=sys.stderr)
-        
+
     print(f"\n🔧 Quick tests:", file=sys.stderr)
     print(f"  ping {host}", file=sys.stderr)
     print(f"  curl -k https://{host}/ --connect-timeout 5", file=sys.stderr)
@@ -384,12 +384,12 @@ Quick Check:
         if args.quick_check:
             is_reachable, error_msg = quick_connectivity_check(args.host, args.port, timeout=2.0)
             connectivity_checked = True
-            
+
             if not is_reachable:
                 elapsed = time.time() - start_time
                 print(f"❌ {error_msg}", file=sys.stderr)
                 print(f"⏱️  Failed connectivity check after {elapsed:.1f}s", file=sys.stderr)
-                
+
                 print_connectivity_troubleshooting(args.host, args.port, error_msg)
                 sys.exit(1)
 

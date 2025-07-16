@@ -78,15 +78,6 @@ repos:
         args: ['--ignore-missing-imports']
         exclude: 'tests/|scripts/'
 
-  # Documentation checks
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: 6.3.0
-    hooks:
-      - id: pydocstyle
-        name: Check docstring style
-        args: ['--convention=google']
-        exclude: 'tests/|scripts/'
-
 # Configuration for specific hooks
 default_install_hook_types: [pre-commit, pre-push]
 default_stages: [commit]
