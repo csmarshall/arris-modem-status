@@ -13,7 +13,7 @@ Usage:
 
 Common Issues Fixed:
 - Missing build package
-- Missing twine package  
+- Missing twine package
 - Missing wheel package
 - Outdated setuptools
 - Build system validation
@@ -37,7 +37,7 @@ class BuildDependencyFixer:
         self.project_root = Path(__file__).parent.parent
         self.required_packages = {
             'build': '>=0.10.0',
-            'twine': '>=4.0.0', 
+            'twine': '>=4.0.0',
             'wheel': '>=0.40.0',
             'setuptools': '>=65.0'
         }
@@ -78,12 +78,12 @@ class BuildDependencyFixer:
 
         for package, min_version in self.required_packages.items():
             is_installed = self.check_package_installed(package)
-            
+
             if is_installed:
                 version = self.get_package_version(package)
                 status['installed_packages'][package] = version
                 print(f"✅ {package}: {version}")
-                
+
                 if self.verbose:
                     print(f"   Required: {min_version}")
             else:
@@ -92,7 +92,7 @@ class BuildDependencyFixer:
                 print(f"❌ {package}: Not installed")
 
         print(f"\n🐍 Python: {status['python_version']}")
-        
+
         return status
 
     def install_missing_packages(self, packages: List[str]) -> bool:
@@ -102,7 +102,7 @@ class BuildDependencyFixer:
             return True
 
         print(f"📦 Installing {len(packages)} missing packages...")
-        
+
         # Build the pip install command
         install_packages = []
         for package in packages:
@@ -118,14 +118,14 @@ class BuildDependencyFixer:
 
         try:
             result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-            
+
             if self.verbose:
                 print("📤 Installation output:")
                 print(result.stdout)
-            
+
             print("✅ Packages installed successfully")
             return True
-            
+
         except subprocess.CalledProcessError as e:
             print(f"❌ Installation failed: {e}")
             if e.stderr:
@@ -135,7 +135,7 @@ class BuildDependencyFixer:
     def test_build_system(self) -> bool:
         """Test that the build system works."""
         print("\n🧪 Testing build system...")
-        
+
         # Test 1: Can we import the package?
         try:
             sys.path.insert(0, str(self.project_root))
@@ -150,13 +150,13 @@ class BuildDependencyFixer:
         try:
             cmd = [sys.executable, '-m', 'build', '--help']
             result = subprocess.run(cmd, capture_output=True, text=True, cwd=self.project_root)
-            
+
             if result.returncode == 0:
                 print("✅ Build command available")
             else:
                 print(f"❌ Build command failed: {result.stderr}")
                 return False
-                
+
         except Exception as e:
             print(f"❌ Build command test failed: {e}")
             return False
@@ -166,7 +166,7 @@ class BuildDependencyFixer:
             pyproject_file = self.project_root / "pyproject.toml"
             if pyproject_file.exists():
                 print("✅ pyproject.toml exists")
-                
+
                 # Try to parse it
                 try:
                     import tomllib
@@ -176,18 +176,18 @@ class BuildDependencyFixer:
                     except ImportError:
                         print("⚠️  Cannot validate pyproject.toml (tomllib/tomli not available)")
                         return True
-                
+
                 content = tomllib.loads(pyproject_file.read_text())
                 if 'build-system' in content:
                     print("✅ Build system configured")
                 else:
                     print("❌ Build system not configured in pyproject.toml")
                     return False
-                    
+
             else:
                 print("❌ pyproject.toml missing")
                 return False
-                
+
         except Exception as e:
             print(f"❌ pyproject.toml validation failed: {e}")
             return False
@@ -198,13 +198,13 @@ class BuildDependencyFixer:
         """Fix all build dependency issues."""
         print("🔧 BUILD DEPENDENCY FIXER")
         print("=" * 40)
-        
+
         # Check current status
         status = self.check_all_dependencies()
-        
+
         if status['all_installed']:
             print("\n✅ All build dependencies are installed!")
-            
+
             # Still test the build system
             if self.test_build_system():
                 print("\n🎉 Build system is working perfectly!")
@@ -212,27 +212,27 @@ class BuildDependencyFixer:
             else:
                 print("\n❌ Build system has issues despite dependencies being installed")
                 return False
-        
+
         if check_only:
             print(f"\n📋 Missing packages: {', '.join(status['missing_packages'])}")
             print("💡 Run without --check-only to install missing packages")
             return False
-        
+
         # Install missing packages
         print(f"\n📦 Installing missing packages...")
         success = self.install_missing_packages(status['missing_packages'])
-        
+
         if not success:
             return False
-        
+
         # Re-check after installation
         print(f"\n🔍 Re-checking dependencies after installation...")
         new_status = self.check_all_dependencies()
-        
+
         if not new_status['all_installed']:
             print("❌ Some packages still missing after installation")
             return False
-        
+
         # Test build system
         if self.test_build_system():
             print("\n🎉 BUILD SYSTEM FIXED!")
@@ -284,25 +284,25 @@ This script will:
 4. Provide manual instructions if automatic fixing fails
         """
     )
-    
+
     parser.add_argument("--check-only", action="store_true", help="Only check dependencies, don't install")
     parser.add_argument("--verbose", action="store_true", help="Show detailed output")
-    
+
     args = parser.parse_args()
-    
+
     try:
         fixer = BuildDependencyFixer(verbose=args.verbose)
         success = fixer.fix_build_dependencies(check_only=args.check_only)
-        
+
         if not success and not args.check_only:
             fixer.print_fix_instructions()
-        
+
         return 0 if success else 1
-        
+
     except KeyboardInterrupt:
         print("\n❌ Cancelled by user")
         return 1
-        
+
     except Exception as e:
         print(f"❌ Unexpected error: {e}")
         if args.verbose:

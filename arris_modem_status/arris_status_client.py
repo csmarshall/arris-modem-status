@@ -20,6 +20,7 @@ Performance Features:
 - Connection pooling and keep-alive optimization
 - Comprehensive error analysis and recovery
 - Detailed performance instrumentation and timing
+- Suppressed urllib3 HeaderParsingError warnings (we handle these intentionally)
 
 Author: Charles Marshall
 Version: 1.3.0
@@ -34,6 +35,7 @@ import random
 import socket
 import ssl
 import time
+import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
@@ -42,12 +44,47 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests.models import Response
 import urllib3
-from urllib3.exceptions import HeaderParsingError
+from urllib3.exceptions import HeaderParsingError, InsecureRequestWarning
 from urllib3.util.retry import Retry
 
-# Disable SSL warnings for self-signed certificates
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# Configure HTTP compatibility warnings suppression
+urllib3.disable_warnings(InsecureRequestWarning)
+urllib3.disable_warnings(HeaderParsingError)  # NEW: Suppress HeaderParsingError warnings
+
+# Suppress specific HTTP compatibility warnings using warnings module
+warnings.filterwarnings(
+    'ignore',
+    message='.*Failed to parse headers.*HeaderParsingError.*',
+    category=UserWarning,
+    module='urllib3'
+)
+
+# Reduce urllib3 logging noise for HTTP compatibility issues we handle
+logging.getLogger('urllib3.connectionpool').setLevel(logging.ERROR)
+
 logger = logging.getLogger("arris-modem-status")
+
+
+class HttpCompatibilityFilter(logging.Filter):
+    """Filter to suppress urllib3 HeaderParsingError warnings that we handle intentionally."""
+
+    def filter(self, record):
+        # Suppress HeaderParsingError warnings since we handle them gracefully
+        if record.name.startswith('urllib3'):
+            message = record.getMessage()
+            if any(phrase in message for phrase in [
+                'Failed to parse headers',
+                'HeaderParsingError',
+                'FirstHeaderLineIsContinuationDefect'
+            ]):
+                return False  # Suppress these warnings
+        return True  # Allow all other log messages
+
+
+# Apply the filter immediately to prevent warnings during import
+for logger_name in ['urllib3.connectionpool', 'urllib3', 'urllib3.util.retry']:
+    logger_obj = logging.getLogger(logger_name)
+    logger_obj.addFilter(HttpCompatibilityFilter())
 
 
 @dataclass
@@ -312,8 +349,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
 
         except HeaderParsingError as e:
             # HeaderParsingError indicates urllib3 is too strict for this response
-            logger.warning(f"🔧 HTTP compatibility issue detected: {str(e)[:100]}...")
-            logger.info("🔄 Falling back to browser-compatible HTTP parsing")
+            logger.debug(f"🔧 HTTP compatibility issue detected, using browser-compatible parsing")
 
             # Extract parsing artifacts for analysis
             parsing_artifacts = self._extract_parsing_artifacts(str(e))
@@ -576,7 +612,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
             # Mark as successful (anything that parses is considered success)
             response.reason = 'OK'
 
-            logger.info(f"✅ Browser-compatible parsing successful: {status_code} ({len(body_part)} bytes)")
+            logger.debug(f"✅ Browser-compatible parsing successful: {status_code} ({len(body_part)} bytes)")
             return response
 
         except Exception as e:
@@ -652,6 +688,7 @@ class ArrisStatusClient:
     - Comprehensive error analysis and recovery
     - Detailed performance instrumentation and timing
     - Connection pooling optimization
+    - Suppressed urllib3 HeaderParsingError warnings (handled intentionally)
     """
 
     def __init__(
@@ -785,7 +822,7 @@ class ArrisStatusClient:
             logger.warning(f"   Error type: {error_type}")
 
             if is_compatibility_issue:
-                logger.warning(f"   🔧 HTTP compatibility issue detected - using browser-compatible parsing")
+                logger.debug(f"   🔧 HTTP compatibility issue detected - using browser-compatible parsing")
 
             logger.warning(f"   Raw error: {error_details[:200]}...")
 
@@ -796,8 +833,8 @@ class ArrisStatusClient:
                     match = re.search(r'(\d+\.?\d*)\s*\|', error_details)
                     if match:
                         artifact = match.group(1)
-                        logger.warning(f"   🔍 Parsing artifact detected: {artifact}")
-                        logger.warning(f"   💡 This is urllib3 parsing strictness, not data corruption")
+                        logger.debug(f"   🔍 Parsing artifact detected: {artifact}")
+                        logger.debug(f"   💡 This is urllib3 parsing strictness, not data corruption")
 
                 except Exception as e:
                     logger.debug(f"Failed to extract parsing artifact: {e}")
@@ -866,7 +903,7 @@ class ArrisStatusClient:
 
                 if self._is_http_compatibility_error(e):
                     mode_str = "concurrent" if self.concurrent else "serial"
-                    logger.warning(f"🔧 HTTP compatibility issue in {mode_str} mode, attempt {attempt + 1}")
+                    logger.debug(f"🔧 HTTP compatibility issue in {mode_str} mode, attempt {attempt + 1}")
 
                     if attempt < self.max_retries:
                         continue
@@ -1231,7 +1268,7 @@ class ArrisStatusClient:
 
                 logger.info(f"🔍 Error analysis: {error_count} errors, {recovery_count} recovered")
                 if compatibility_issues > 0:
-                    logger.info(f"🔧 HTTP compatibility issues handled: {compatibility_issues}")
+                    logger.debug(f"🔧 HTTP compatibility issues handled: {compatibility_issues}")
 
             # Add mode and performance information
             parsed_data['_request_mode'] = 'concurrent' if self.concurrent else 'serial'
@@ -1546,7 +1583,7 @@ class ArrisStatusClient:
 
             logger.info(f"📊 Session captured {total_errors} errors for analysis ({mode_str} mode)")
             if compatibility_issues > 0:
-                logger.info(f"🔧 HTTP compatibility issues handled: {compatibility_issues}")
+                logger.debug(f"🔧 HTTP compatibility issues handled: {compatibility_issues}")
 
         if self.instrumentation:
             performance_summary = self.instrumentation.get_performance_summary()

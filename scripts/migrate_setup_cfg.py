@@ -249,7 +249,7 @@ exclude =
         try:
             import subprocess
             result = subprocess.run([
-                sys.executable, '-c', 
+                sys.executable, '-c',
                 'import arris_modem_status; print(arris_modem_status.__version__)'
             ], capture_output=True, text=True, cwd=self.project_root)
 
