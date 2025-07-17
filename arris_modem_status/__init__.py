@@ -30,7 +30,6 @@ License: MIT
 Version: 1.3.0
 """
 
-import warnings
 from .client import ArrisModemStatusClient
 from .models import ChannelInfo
 
@@ -39,27 +38,9 @@ __version__ = "1.3.0"
 __author__ = "Charles Marshall"
 __license__ = "MIT"
 
-# Backward compatibility with deprecation warning
-class ArrisModemStatusClient(ArrisModemStatusClient):
-    """
-    Deprecated: Use ArrisModemStatusClient instead.
-
-    This class is maintained for backward compatibility and will be removed in v2.0.0.
-    """
-
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "ArrisModemStatusClient is deprecated and will be removed in v2.0.0. "
-            "Use ArrisModemStatusClient instead.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        super().__init__(*args, **kwargs)
-
 # Public API
 __all__ = [
-    "ArrisModemStatusClient",  # New preferred name
-    "ArrisModemStatusClient",       # Deprecated but supported
+    "ArrisModemStatusClient",
     "ChannelInfo",
     "__version__",
     "__author__",
