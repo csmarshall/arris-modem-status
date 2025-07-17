@@ -257,26 +257,26 @@ class TestPerformanceIntegration:
 
     def test_instrumentation_disabled(self):
         """Test behavior when instrumentation is disabled."""
-        from arris_modem_status import ArrisStatusClient
+        from arris_modem_status import ArrisModemStatusClient
 
-        client = ArrisStatusClient(password="test", enable_instrumentation=False)
+        client = ArrisModemStatusClient(password="test", enable_instrumentation=False)
 
         assert client.instrumentation is None
 
     def test_instrumentation_enabled(self):
         """Test behavior when instrumentation is enabled."""
-        from arris_modem_status import ArrisStatusClient
+        from arris_modem_status import ArrisModemStatusClient
 
-        client = ArrisStatusClient(password="test", enable_instrumentation=True)
+        client = ArrisModemStatusClient(password="test", enable_instrumentation=True)
 
         assert client.instrumentation is not None
         assert isinstance(client.instrumentation, PerformanceInstrumentation)
 
     def test_get_performance_metrics(self):
         """Test getting performance metrics from client."""
-        from arris_modem_status import ArrisStatusClient
+        from arris_modem_status import ArrisModemStatusClient
 
-        client = ArrisStatusClient(password="test", enable_instrumentation=True)
+        client = ArrisModemStatusClient(password="test", enable_instrumentation=True)
 
         # Should return metrics even if empty
         metrics = client.get_performance_metrics()
@@ -284,9 +284,9 @@ class TestPerformanceIntegration:
 
     def test_get_performance_metrics_disabled(self):
         """Test getting performance metrics when disabled."""
-        from arris_modem_status import ArrisStatusClient
+        from arris_modem_status import ArrisModemStatusClient
 
-        client = ArrisStatusClient(password="test", enable_instrumentation=False)
+        client = ArrisModemStatusClient(password="test", enable_instrumentation=False)
 
         metrics = client.get_performance_metrics()
         assert metrics["error"] == "Performance instrumentation not enabled"

@@ -6,7 +6,7 @@ from urllib3.exceptions import HeaderParsingError
 import requests
 
 try:
-    from arris_modem_status import ArrisStatusClient
+    from arris_modem_status import ArrisModemStatusClient
     from arris_modem_status.arris_status_client import (
         ArrisCompatibleHTTPAdapter,
         create_arris_compatible_session,
@@ -16,7 +16,7 @@ try:
     CLIENT_AVAILABLE = True
 except ImportError:
     CLIENT_AVAILABLE = False
-    pytest.skip("ArrisStatusClient not available", allow_module_level=True)
+    pytest.skip("ArrisModemStatusClient not available", allow_module_level=True)
 
 
 class TestHTTPCompatibility:
@@ -26,7 +26,7 @@ class TestHTTPCompatibility:
         """Test detection of HeaderParsingError as compatibility issue."""
         error = HeaderParsingError("3.500000 |Content-type: text/html", b"unparsed_data")
 
-        client = ArrisStatusClient(password="test", host="test")
+        client = ArrisModemStatusClient(password="test", host="test")
 
         is_compat_error = client._is_http_compatibility_error(error)
         assert is_compat_error is True
@@ -53,4 +53,4 @@ class TestHTTPCompatibility:
 
         assert isinstance(session, requests.Session)
         assert session.verify is False
-        assert "ArrisStatusClient" in session.headers["User-Agent"]
+        assert "ArrisModemStatusClient" in session.headers["User-Agent"]

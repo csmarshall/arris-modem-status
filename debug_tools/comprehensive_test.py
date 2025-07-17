@@ -33,13 +33,13 @@ from typing import Any, Dict, List, Optional
 
 # Import both clients for comparison
 try:
-    from arris_modem_status import ArrisStatusClient as OptimizedClient
+    from arris_modem_status import ArrisModemStatusClient as OptimizedClient
     OPTIMIZED_CLIENT_AVAILABLE = True
 except ImportError:
     OPTIMIZED_CLIENT_AVAILABLE = False
 
 try:
-    from arris_modem_status.legacy import ArrisStatusClient as OriginalClient
+    from arris_modem_status.legacy import ArrisModemStatusClient as OriginalClient
     ORIGINAL_CLIENT_AVAILABLE = True
 except ImportError:
     ORIGINAL_CLIENT_AVAILABLE = False

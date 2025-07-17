@@ -305,7 +305,7 @@ class TestHttpCompatibilitySession:
 
         assert isinstance(session, requests.Session)
         assert session.verify is False
-        assert "ArrisStatusClient" in session.headers["User-Agent"]
+        assert "ArrisModemStatusClient" in session.headers["User-Agent"]
         assert session.headers["Accept"] == "application/json"
         assert session.headers["Cache-Control"] == "no-cache"
 
@@ -349,10 +349,10 @@ class TestHttpCompatibilityIntegration:
 
     def test_compatibility_issue_detection_and_recovery(self):
         """Test end-to-end compatibility issue detection and recovery."""
-        from arris_modem_status import ArrisStatusClient
+        from arris_modem_status import ArrisModemStatusClient
         import time
 
-        client = ArrisStatusClient(password="test", capture_errors=True, max_retries=2)
+        client = ArrisModemStatusClient(password="test", capture_errors=True, max_retries=2)
 
         # Manually simulate an HTTP compatibility error capture
         mock_capture = ErrorCapture(
@@ -381,9 +381,9 @@ class TestHttpCompatibilityIntegration:
 
     def test_multiple_compatibility_issues(self):
         """Test handling multiple compatibility issues."""
-        from arris_modem_status import ArrisStatusClient
+        from arris_modem_status import ArrisModemStatusClient
 
-        client = ArrisStatusClient(password="test", capture_errors=True)
+        client = ArrisModemStatusClient(password="test", capture_errors=True)
 
         # Manually add multiple error captures
         client.error_captures = [
@@ -420,9 +420,9 @@ class TestHttpCompatibilityIntegration:
 
     def test_compatibility_vs_genuine_errors(self):
         """Test distinction between compatibility issues and genuine errors."""
-        from arris_modem_status import ArrisStatusClient
+        from arris_modem_status import ArrisModemStatusClient
 
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         # Test compatibility error detection
         header_error = HeaderParsingError("3.500000 |Content-type: text/html", b"unparsed_data")

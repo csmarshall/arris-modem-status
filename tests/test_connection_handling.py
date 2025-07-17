@@ -5,11 +5,11 @@ from unittest.mock import patch
 from requests.exceptions import ConnectTimeout, ConnectionError
 
 try:
-    from arris_modem_status import ArrisStatusClient
+    from arris_modem_status import ArrisModemStatusClient
     CLIENT_AVAILABLE = True
 except ImportError:
     CLIENT_AVAILABLE = False
-    pytest.skip("ArrisStatusClient not available", allow_module_level=True)
+    pytest.skip("ArrisModemStatusClient not available", allow_module_level=True)
 
 
 @pytest.mark.unit
@@ -19,13 +19,13 @@ class TestConnectionHandling:
 
     def test_basic_client_creation(self):
         """Test basic client creation."""
-        client = ArrisStatusClient(password="test", host="192.168.100.1")
+        client = ArrisModemStatusClient(password="test", host="192.168.100.1")
         assert client.host == "192.168.100.1"
         assert client.password == "test"
 
     def test_client_with_custom_host(self):
         """Test client creation with custom host."""
-        client = ArrisStatusClient(password="test", host="192.168.1.1")
+        client = ArrisModemStatusClient(password="test", host="192.168.1.1")
         assert client.host == "192.168.1.1"
 
     def test_connection_timeout_handling(self):
@@ -33,7 +33,7 @@ class TestConnectionHandling:
         with patch('requests.Session.post') as mock_post:
             mock_post.side_effect = ConnectTimeout("Connection timeout")
 
-            client = ArrisStatusClient(password="test")
+            client = ArrisModemStatusClient(password="test")
             result = client.authenticate()
             assert result is False
 
@@ -42,6 +42,6 @@ class TestConnectionHandling:
         with patch('requests.Session.post') as mock_post:
             mock_post.side_effect = ConnectionError("Network unreachable")
 
-            client = ArrisStatusClient(password="test")
+            client = ArrisModemStatusClient(password="test")
             result = client.authenticate()
             assert result is False

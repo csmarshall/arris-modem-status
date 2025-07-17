@@ -6,12 +6,12 @@ from io import StringIO
 from contextlib import redirect_stderr
 
 try:
-    from arris_modem_status import ArrisStatusClient
+    from arris_modem_status import ArrisModemStatusClient
     from arris_modem_status.cli import main
     CLIENT_AVAILABLE = True
 except ImportError:
     CLIENT_AVAILABLE = False
-    pytest.skip("ArrisStatusClient not available", allow_module_level=True)
+    pytest.skip("ArrisModemStatusClient not available", allow_module_level=True)
 
 
 @pytest.mark.unit
@@ -23,7 +23,7 @@ class TestVariableScoping:
         with patch('requests.Session.post') as mock_post:
             mock_post.side_effect = ConnectionError("Connection failed")
 
-            client = ArrisStatusClient(password="test", host="test")
+            client = ArrisModemStatusClient(password="test", host="test")
             result = client.authenticate()
             assert result is False
 
@@ -32,7 +32,7 @@ class TestVariableScoping:
         test_argv = ['arris-modem-status', '--password', 'test']
 
         with patch('sys.argv', test_argv):
-            with patch('arris_modem_status.cli.ArrisStatusClient') as mock_client:
+            with patch('arris_modem_status.cli.ArrisModemStatusClient') as mock_client:
                 mock_client.side_effect = Exception("Generic error")
 
                 stderr_capture = StringIO()

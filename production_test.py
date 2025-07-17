@@ -33,7 +33,7 @@ from typing import Any, Dict, Optional
 
 # Import the client with proper fallback handling
 try:
-    from arris_modem_status import ArrisStatusClient
+    from arris_modem_status import ArrisModemStatusClient
     CLIENT_AVAILABLE = True
     logger = logging.getLogger(__name__)
     logger.info("✅ Using installed arris_modem_status package")
@@ -43,13 +43,13 @@ except ImportError:
     import sys
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     try:
-        from arris_modem_status.arris_status_client import ArrisStatusClient
+        from arris_modem_status.arris_status_client import ArrisModemStatusClient
         CLIENT_AVAILABLE = True
         logger = logging.getLogger(__name__)
         logger.info("✅ Using local arris_status_client module")
     except ImportError:
         CLIENT_AVAILABLE = False
-        print("❌ ERROR: Cannot import ArrisStatusClient")
+        print("❌ ERROR: Cannot import ArrisModemStatusClient")
         print("📋 Please ensure arris_modem_status is installed or run from project directory")
 
 # Configure logging with timestamps
@@ -96,7 +96,7 @@ class ProductionTestRunner:
         }
 
         if not CLIENT_AVAILABLE:
-            raise ImportError("ArrisStatusClient not available. Please check installation.")
+            raise ImportError("ArrisModemStatusClient not available. Please check installation.")
 
     def run_quick_test(self) -> bool:
         """
@@ -117,7 +117,7 @@ class ProductionTestRunner:
             logger.info("🔧 Initializing HTTP-compatible client...")
             start_time = time.time()
 
-            with ArrisStatusClient(password=self.password, host=self.host, concurrent=self.concurrent) as client:
+            with ArrisModemStatusClient(password=self.password, host=self.host, concurrent=self.concurrent) as client:
 
                 # Get status with timing
                 logger.info("📊 Retrieving modem status...")
@@ -267,7 +267,7 @@ class ProductionTestRunner:
 
                 start_time = time.time()
 
-                with ArrisStatusClient(password=self.password, host=self.host, concurrent=self.concurrent) as client:
+                with ArrisModemStatusClient(password=self.password, host=self.host, concurrent=self.concurrent) as client:
                     # Time authentication separately if possible
                     auth_start = time.time()
                     if not client.authenticated:
@@ -341,7 +341,7 @@ class ProductionTestRunner:
         logger.info("🔍 Starting comprehensive analysis...")
 
         try:
-            with ArrisStatusClient(password=self.password, host=self.host, concurrent=self.concurrent) as client:
+            with ArrisModemStatusClient(password=self.password, host=self.host, concurrent=self.concurrent) as client:
                 # Get validation data
                 validation_data = client.validate_parsing()
 

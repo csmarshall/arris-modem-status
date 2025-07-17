@@ -4,11 +4,11 @@ import pytest
 from unittest.mock import Mock
 
 try:
-    from arris_modem_status import ArrisStatusClient, ChannelInfo
+    from arris_modem_status import ArrisModemStatusClient, ChannelInfo
     CLIENT_AVAILABLE = True
 except ImportError:
     CLIENT_AVAILABLE = False
-    pytest.skip("ArrisStatusClient not available", allow_module_level=True)
+    pytest.skip("ArrisModemStatusClient not available", allow_module_level=True)
 
 
 @pytest.mark.unit
@@ -106,7 +106,7 @@ class TestChannelDataParsing:
 
     def test_parse_downstream_channel_string(self, sample_channel_data):
         """Test parsing downstream channel string."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         channels = client._parse_channel_string(sample_channel_data["downstream"], "downstream")
 
@@ -124,7 +124,7 @@ class TestChannelDataParsing:
 
     def test_parse_upstream_channel_string(self, sample_channel_data):
         """Test parsing upstream channel string."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         channels = client._parse_channel_string(sample_channel_data["upstream"], "upstream")
 
@@ -140,7 +140,7 @@ class TestChannelDataParsing:
 
     def test_parse_multiple_channels(self):
         """Test parsing multiple channels in one string."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
         multi_channel_data = (
             "1^Locked^256QAM^^549000000^0.6^39.0^15^0|+|"
             "2^Locked^256QAM^^555000000^1.2^38.5^20^1|+|"
@@ -168,7 +168,7 @@ class TestChannelDataParsing:
 
     def test_parse_malformed_channel_string(self, sample_channel_data):
         """Test parsing malformed channel string."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         channels = client._parse_channel_string(sample_channel_data["malformed"], "downstream")
 
@@ -177,7 +177,7 @@ class TestChannelDataParsing:
 
     def test_parse_empty_channel_string(self, sample_channel_data):
         """Test parsing empty channel string."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         channels = client._parse_channel_string(sample_channel_data["empty"], "downstream")
 
@@ -185,7 +185,7 @@ class TestChannelDataParsing:
 
     def test_parse_channels_from_hnap_response(self):
         """Test channel parsing from complete HNAP response."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         hnap_response = {
             "GetCustomerStatusDownstreamChannelInfoResponse": {
@@ -211,7 +211,7 @@ class TestChannelDataParsing:
 
     def test_parse_channels_missing_data(self):
         """Test channel parsing with missing data."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         # Empty response
         empty_response = {}
@@ -222,7 +222,7 @@ class TestChannelDataParsing:
 
     def test_parse_channels_exception_handling(self):
         """Test channel parsing with exception."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         # Malformed response that would cause exceptions
         bad_response = {
@@ -243,7 +243,7 @@ class TestResponseParsing:
 
     def test_parse_responses_complete(self, mock_modem_responses):
         """Test parsing complete response data."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         responses = {
             "startup_connection": mock_modem_responses["complete_status"],
@@ -265,7 +265,7 @@ class TestResponseParsing:
 
     def test_parse_responses_partial(self):
         """Test parsing with partial response data."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         responses = {
             "startup_connection": '{"GetMultipleHNAPsResponse": {"GetCustomerStatusConnectionInfoResponse": {"StatusSoftwareModelName": "S34"}}}'
@@ -280,7 +280,7 @@ class TestResponseParsing:
 
     def test_parse_responses_invalid_json(self):
         """Test parsing with invalid JSON."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         responses = {
             "invalid": "not json",
@@ -296,7 +296,7 @@ class TestResponseParsing:
 
     def test_parse_responses_no_channels(self, mock_modem_responses):
         """Test parsing response with no channel data."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         responses = {
             "channel_info": mock_modem_responses["empty_channels"]

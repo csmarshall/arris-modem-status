@@ -1,4 +1,4 @@
-"""Core tests for ArrisStatusClient."""
+"""Core tests for ArrisModemStatusClient."""
 
 import pytest
 import json
@@ -8,7 +8,7 @@ from requests.exceptions import ConnectionError, Timeout
 from urllib3.exceptions import HeaderParsingError
 
 try:
-    from arris_modem_status import ArrisStatusClient, ChannelInfo
+    from arris_modem_status import ArrisModemStatusClient, ChannelInfo
     from arris_modem_status.arris_status_client import (
         PerformanceInstrumentation,
         ErrorCapture,
@@ -17,16 +17,16 @@ try:
     CLIENT_AVAILABLE = True
 except ImportError:
     CLIENT_AVAILABLE = False
-    pytest.skip("ArrisStatusClient not available", allow_module_level=True)
+    pytest.skip("ArrisModemStatusClient not available", allow_module_level=True)
 
 
 @pytest.mark.unit
-class TestArrisStatusClientInitialization:
+class TestArrisModemStatusClientInitialization:
     """Test client initialization and configuration."""
 
     def test_default_initialization(self):
         """Test client with default parameters."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         assert client.password == "test"
         assert client.username == "admin"
@@ -41,7 +41,7 @@ class TestArrisStatusClientInitialization:
 
     def test_custom_initialization(self, client_kwargs):
         """Test client with custom parameters."""
-        client = ArrisStatusClient(**client_kwargs)
+        client = ArrisModemStatusClient(**client_kwargs)
 
         assert client.password == "test_password"
         assert client.host == "192.168.100.1"
@@ -54,31 +54,31 @@ class TestArrisStatusClientInitialization:
 
     def test_serial_mode_initialization(self):
         """Test client in serial mode."""
-        client = ArrisStatusClient(password="test", concurrent=False)
+        client = ArrisModemStatusClient(password="test", concurrent=False)
 
         assert client.concurrent is False
         assert client.max_workers == 1
 
     def test_context_manager_protocol(self):
         """Test client as context manager."""
-        with ArrisStatusClient(password="test") as client:
-            assert isinstance(client, ArrisStatusClient)
+        with ArrisModemStatusClient(password="test") as client:
+            assert isinstance(client, ArrisModemStatusClient)
             assert hasattr(client, 'close')
 
     def test_base_url_construction(self):
         """Test base URL construction."""
-        client = ArrisStatusClient(password="test", host="192.168.1.1", port=8443)
+        client = ArrisModemStatusClient(password="test", host="192.168.1.1", port=8443)
 
         assert client.base_url == "https://192.168.1.1:8443"
 
 
 @pytest.mark.unit
-class TestArrisStatusClientAuthentication:
+class TestArrisModemStatusClientAuthentication:
     """Test authentication functionality."""
 
     def test_generate_hnap_auth_token_no_key(self):
         """Test HNAP auth token generation without private key."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         token = client._generate_hnap_auth_token("Login", 1234567890123)
 
@@ -90,7 +90,7 @@ class TestArrisStatusClientAuthentication:
 
     def test_generate_hnap_auth_token_with_key(self):
         """Test HNAP auth token generation with private key."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
         client.private_key = "test_private_key"
 
         token = client._generate_hnap_auth_token("GetMultipleHNAPs", 1234567890123)
@@ -103,7 +103,7 @@ class TestArrisStatusClientAuthentication:
 
     def test_successful_authentication(self, mock_successful_auth_flow):
         """Test successful authentication flow."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         result = client.authenticate()
 
@@ -118,7 +118,7 @@ class TestArrisStatusClientAuthentication:
         with patch('requests.Session.post') as mock_post:
             mock_post.side_effect = ConnectionError("Connection failed")
 
-            client = ArrisStatusClient(password="test")
+            client = ArrisModemStatusClient(password="test")
             result = client.authenticate()
 
             assert result is False
@@ -132,7 +132,7 @@ class TestArrisStatusClientAuthentication:
                 Mock(status_code=200, text=mock_modem_responses['login_failure'])
             ]
 
-            client = ArrisStatusClient(password="test")
+            client = ArrisModemStatusClient(password="test")
             result = client.authenticate()
 
             assert result is False
@@ -143,7 +143,7 @@ class TestArrisStatusClientAuthentication:
         with patch('requests.Session.post') as mock_post:
             mock_post.return_value = Mock(status_code=200, text="invalid json")
 
-            client = ArrisStatusClient(password="test")
+            client = ArrisModemStatusClient(password="test")
             result = client.authenticate()
 
             assert result is False
@@ -158,7 +158,7 @@ class TestArrisStatusClientAuthentication:
                 Mock(status_code=200, text='{"LoginResponse": {"LoginResult": "SUCCESS"}}')
             ]
 
-            client = ArrisStatusClient(password="test", enable_instrumentation=True)
+            client = ArrisModemStatusClient(password="test", enable_instrumentation=True)
             result = client.authenticate()
 
             assert result is True
@@ -167,12 +167,12 @@ class TestArrisStatusClientAuthentication:
 
 
 @pytest.mark.unit
-class TestArrisStatusClientDataRetrieval:
+class TestArrisModemStatusClientDataRetrieval:
     """Test data retrieval functionality."""
 
     def test_get_status_success(self, mock_successful_status_flow):
         """Test successful status retrieval."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         status = client.get_status()
 
@@ -188,7 +188,7 @@ class TestArrisStatusClientDataRetrieval:
 
     def test_get_status_channel_data_structure(self, mock_successful_status_flow):
         """Test channel data structure in status response."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         status = client.get_status()
 
@@ -223,7 +223,7 @@ class TestArrisStatusClientDataRetrieval:
                 Mock(status_code=200, text='{"GetMultipleHNAPsResponse": {}}')
             ]
 
-            client = ArrisStatusClient(password="test")
+            client = ArrisModemStatusClient(password="test")
             assert client.authenticated is False
 
             status = client.get_status()
@@ -236,14 +236,14 @@ class TestArrisStatusClientDataRetrieval:
         with patch('requests.Session.post') as mock_post:
             mock_post.side_effect = ConnectionError("Connection failed")
 
-            client = ArrisStatusClient(password="test")
+            client = ArrisModemStatusClient(password="test")
 
             with pytest.raises(RuntimeError, match="Authentication failed"):
                 client.get_status()
 
     def test_get_status_concurrent_mode(self, mock_successful_status_flow):
         """Test status retrieval in concurrent mode."""
-        client = ArrisStatusClient(password="test", concurrent=True, max_workers=3)
+        client = ArrisModemStatusClient(password="test", concurrent=True, max_workers=3)
 
         status = client.get_status()
 
@@ -252,7 +252,7 @@ class TestArrisStatusClientDataRetrieval:
 
     def test_get_status_serial_mode(self, mock_successful_status_flow):
         """Test status retrieval in serial mode."""
-        client = ArrisStatusClient(password="test", concurrent=False)
+        client = ArrisModemStatusClient(password="test", concurrent=False)
 
         status = client.get_status()
 
@@ -271,7 +271,7 @@ class TestArrisStatusClientDataRetrieval:
                 Mock(status_code=200, text=mock_modem_responses['complete_status'])
             ]
 
-            client = ArrisStatusClient(password="test", capture_errors=True)
+            client = ArrisModemStatusClient(password="test", capture_errors=True)
             status = client.get_status()
 
             assert '_error_analysis' in status
@@ -280,12 +280,12 @@ class TestArrisStatusClientDataRetrieval:
 
 
 @pytest.mark.unit
-class TestArrisStatusClientErrorHandling:
+class TestArrisModemStatusClientErrorHandling:
     """Test error handling and recovery."""
 
     def test_http_compatibility_error_detection(self):
         """Test HTTP compatibility error detection."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         # Test HeaderParsingError
         header_error = HeaderParsingError("3.500000 |Content-type: text/html", b"unparsed_data")
@@ -297,7 +297,7 @@ class TestArrisStatusClientErrorHandling:
 
     def test_exponential_backoff(self):
         """Test exponential backoff calculation."""
-        client = ArrisStatusClient(password="test", base_backoff=0.5)
+        client = ArrisModemStatusClient(password="test", base_backoff=0.5)
 
         # Test without jitter
         backoff_0 = client._exponential_backoff(0, jitter=False)
@@ -317,7 +317,7 @@ class TestArrisStatusClientErrorHandling:
         with patch('requests.Session.post') as mock_post:
             mock_post.return_value = Mock(status_code=200, text=mock_modem_responses['challenge_response'])
 
-            client = ArrisStatusClient(password="test")
+            client = ArrisModemStatusClient(password="test")
             client.authenticated = True
 
             result = client._make_hnap_request_with_retry(
@@ -336,7 +336,7 @@ class TestArrisStatusClientErrorHandling:
                 Mock(status_code=200, text='{"success": true}')
             ]
 
-            client = ArrisStatusClient(password="test", max_retries=2, capture_errors=True)
+            client = ArrisModemStatusClient(password="test", max_retries=2, capture_errors=True)
             client.authenticated = True
 
             result = client._make_hnap_request_with_retry(
@@ -353,7 +353,7 @@ class TestArrisStatusClientErrorHandling:
         with patch('requests.Session.post') as mock_post:
             mock_post.side_effect = HeaderParsingError("Persistent error", b"unparsed_data")
 
-            client = ArrisStatusClient(password="test", max_retries=2)
+            client = ArrisModemStatusClient(password="test", max_retries=2)
             client.authenticated = True
 
             result = client._make_hnap_request_with_retry(
@@ -366,12 +366,12 @@ class TestArrisStatusClientErrorHandling:
 
 
 @pytest.mark.unit
-class TestArrisStatusClientUtilities:
+class TestArrisModemStatusClientUtilities:
     """Test utility methods."""
 
     def test_get_error_analysis_no_errors(self):
         """Test error analysis with no captured errors."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         analysis = client.get_error_analysis()
 
@@ -379,7 +379,7 @@ class TestArrisStatusClientUtilities:
 
     def test_get_error_analysis_with_errors(self):
         """Test error analysis with captured errors."""
-        client = ArrisStatusClient(password="test", capture_errors=True)
+        client = ArrisModemStatusClient(password="test", capture_errors=True)
 
         # Manually add some error captures for testing
         client.error_captures = [
@@ -404,7 +404,7 @@ class TestArrisStatusClientUtilities:
 
     def test_validate_parsing_success(self, mock_successful_status_flow):
         """Test parsing validation with successful status."""
-        client = ArrisStatusClient(password="test")
+        client = ArrisModemStatusClient(password="test")
 
         validation = client.validate_parsing()
 
@@ -414,10 +414,10 @@ class TestArrisStatusClientUtilities:
 
     def test_validate_parsing_error(self):
         """Test parsing validation when get_status fails."""
-        with patch.object(ArrisStatusClient, 'get_status') as mock_get_status:
+        with patch.object(ArrisModemStatusClient, 'get_status') as mock_get_status:
             mock_get_status.side_effect = Exception("Test error")
 
-            client = ArrisStatusClient(password="test")
+            client = ArrisModemStatusClient(password="test")
             validation = client.validate_parsing()
 
             assert 'error' in validation
@@ -425,7 +425,7 @@ class TestArrisStatusClientUtilities:
     def test_close_method(self):
         """Test client close method."""
         with patch('requests.Session.close') as mock_close:
-            client = ArrisStatusClient(password="test", capture_errors=True)
+            client = ArrisModemStatusClient(password="test", capture_errors=True)
             client.error_captures = [Mock()]  # Add some captures
 
             client.close()

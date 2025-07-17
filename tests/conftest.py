@@ -139,7 +139,7 @@ def client_kwargs():
 @pytest.fixture
 def mock_performance_instrumentation():
     """Mock performance instrumentation."""
-    from arris_modem_status.arris_status_client import PerformanceInstrumentation
+    from arris_modem_status.instrumentation import PerformanceInstrumentation
 
     with patch.object(PerformanceInstrumentation, 'start_timer') as mock_start:
         with patch.object(PerformanceInstrumentation, 'record_timing') as mock_record:

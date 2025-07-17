@@ -55,7 +55,7 @@ import time
 from datetime import datetime
 from typing import Tuple, Optional
 
-from arris_modem_status import ArrisStatusClient
+from arris_modem_status import ArrisModemStatusClient
 
 
 def setup_logging(debug: bool = False) -> None:
@@ -141,11 +141,11 @@ def format_channel_data_for_display(status: dict) -> dict:
     """
     Convert ChannelInfo objects to dictionaries for JSON serialization.
 
-    The ArrisStatusClient returns ChannelInfo dataclass objects which need
+    The ArrisModemStatusClient returns ChannelInfo dataclass objects which need
     to be converted to dictionaries for JSON output.
 
     Args:
-        status: Status dictionary from ArrisStatusClient.get_status()
+        status: Status dictionary from ArrisModemStatusClient.get_status()
 
     Returns:
         Status dictionary with channels converted to JSON-serializable format
@@ -398,7 +398,7 @@ Quick Check:
         final_timeout = (connect_timeout, min(args.timeout, read_timeout))
 
         # Initialize the client with HTTP compatibility and optimal settings
-        client = ArrisStatusClient(
+        client = ArrisModemStatusClient(
             host=args.host,
             port=args.port,
             username=args.username,

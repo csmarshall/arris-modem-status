@@ -17,9 +17,9 @@ Features:
 - Production-ready with extensive testing and validation
 
 Example Usage:
-    from arris_modem_status import ArrisStatusClient
+    from arris_modem_status import ArrisModemStatusClient
 
-    client = ArrisStatusClient(password="your_password")
+    client = ArrisModemStatusClient(password="your_password")
     status = client.get_status()
 
     print(f"Internet: {status['internet_status']}")
@@ -30,16 +30,36 @@ License: MIT
 Version: 1.3.0
 """
 
-from .arris_status_client import ArrisStatusClient, ChannelInfo
+import warnings
+from .client import ArrisModemStatusClient
+from .models import ChannelInfo
 
 # Version information
 __version__ = "1.3.0"
 __author__ = "Charles Marshall"
 __license__ = "MIT"
 
+# Backward compatibility with deprecation warning
+class ArrisModemStatusClient(ArrisModemStatusClient):
+    """
+    Deprecated: Use ArrisModemStatusClient instead.
+
+    This class is maintained for backward compatibility and will be removed in v2.0.0.
+    """
+
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "ArrisModemStatusClient is deprecated and will be removed in v2.0.0. "
+            "Use ArrisModemStatusClient instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        super().__init__(*args, **kwargs)
+
 # Public API
 __all__ = [
-    "ArrisStatusClient",
+    "ArrisModemStatusClient",  # New preferred name
+    "ArrisModemStatusClient",       # Deprecated but supported
     "ChannelInfo",
     "__version__",
     "__author__",

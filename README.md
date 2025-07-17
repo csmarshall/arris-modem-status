@@ -135,11 +135,11 @@ Example output:
 
 #### High-Performance Interface (Recommended)
 ```python
-from arris_modem_status import ArrisStatusClient
+from arris_modem_status import ArrisModemStatusClient
 
 def monitor_modem():
     # Initialize high-performance client with HTTP compatibility
-    client = ArrisStatusClient(password="YOUR_PASSWORD")
+    client = ArrisModemStatusClient(password="YOUR_PASSWORD")
     
     # Get complete status (concurrent requests for speed)
     status = client.get_status()
@@ -169,9 +169,9 @@ monitor_modem()
 
 #### Context Manager Usage
 ```python
-from arris_modem_status import ArrisStatusClient
+from arris_modem_status import ArrisModemStatusClient
 
-with ArrisStatusClient(password="YOUR_PASSWORD") as client:
+with ArrisModemStatusClient(password="YOUR_PASSWORD") as client:
     status = client.get_status()
     
     # Check connection quality
@@ -188,10 +188,10 @@ with ArrisStatusClient(password="YOUR_PASSWORD") as client:
 
 #### Advanced Configuration
 ```python
-from arris_modem_status import ArrisStatusClient
+from arris_modem_status import ArrisModemStatusClient
 
 # High-performance configuration with custom settings
-client = ArrisStatusClient(
+client = ArrisModemStatusClient(
     password="your_password",
     host="192.168.100.1",
     max_workers=3,          # Concurrent request workers
@@ -326,10 +326,10 @@ export ARRIS_DEBUG="true"
 
 ### Advanced Client Configuration
 ```python
-from arris_modem_status import ArrisStatusClient
+from arris_modem_status import ArrisModemStatusClient
 
 # High-performance configuration
-client = ArrisStatusClient(
+client = ArrisModemStatusClient(
     password="your_password",
     host="192.168.100.1", 
     port=443,
@@ -402,7 +402,7 @@ logging.basicConfig(level=logging.DEBUG)
 logging.getLogger("arris-modem-status").setLevel(logging.DEBUG)
 
 # Performance profiling with error analysis
-client = ArrisStatusClient(password="PASSWORD", capture_errors=True)
+client = ArrisModemStatusClient(password="PASSWORD", capture_errors=True)
 validation = client.validate_parsing()
 error_analysis = client.get_error_analysis()
 
@@ -428,7 +428,7 @@ print(f"HTTP compatibility issues: {error_analysis.get('http_compatibility_issue
 ### Optimized Client Design
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                 ArrisStatusClient v1.3.0               │
+│                 ArrisModemStatusClient v1.3.0               │
 ├─────────────────────────────────────────────────────────┤
 │ ⚡ Concurrent Request Engine                             │
 │   ├── ThreadPoolExecutor (2-5 workers)                 │
@@ -537,7 +537,7 @@ EOF
 ### Prometheus Exporter
 ```python
 from prometheus_client import Gauge, start_http_server
-from arris_modem_status import ArrisStatusClient
+from arris_modem_status import ArrisModemStatusClient
 
 # Define metrics
 downstream_power = Gauge('arris_downstream_power_dbmv', 'Downstream power', ['channel_id'])
@@ -545,7 +545,7 @@ downstream_snr = Gauge('arris_downstream_snr_db', 'Downstream SNR', ['channel_id
 http_compatibility_issues = Gauge('arris_http_compatibility_issues_total', 'HTTP compatibility issues')
 
 def collect_metrics():
-    with ArrisStatusClient(password="PASSWORD") as client:
+    with ArrisModemStatusClient(password="PASSWORD") as client:
         status = client.get_status()
         
         for channel in status['downstream_channels']:
