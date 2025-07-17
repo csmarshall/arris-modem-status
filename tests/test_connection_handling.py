@@ -32,7 +32,7 @@ class TestConnectionHandling:
         """Test handling of connection timeouts."""
         with patch('requests.Session.post') as mock_post:
             mock_post.side_effect = ConnectTimeout("Connection timeout")
-            
+
             client = ArrisStatusClient(password="test")
             result = client.authenticate()
             assert result is False
@@ -41,7 +41,7 @@ class TestConnectionHandling:
         """Test handling of connection errors."""
         with patch('requests.Session.post') as mock_post:
             mock_post.side_effect = ConnectionError("Network unreachable")
-            
+
             client = ArrisStatusClient(password="test")
             result = client.authenticate()
             assert result is False
