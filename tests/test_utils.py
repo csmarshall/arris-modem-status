@@ -35,7 +35,7 @@ class MockArrisModem:
         if self.compatibility_issues:
             # Simulate urllib3 parsing strictness issues
             from urllib3.exceptions import HeaderParsingError
-            raise HeaderParsingError("3.500000 |Content-type: text/html")
+            raise HeaderParsingError("3.500000 |Content-type: text/html", b"unparsed_data")
 
         return response
 

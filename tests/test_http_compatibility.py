@@ -24,10 +24,9 @@ class TestHTTPCompatibility:
 
     def test_header_parsing_error_detection(self):
         """Test detection of HeaderParsingError as compatibility issue."""
-        error = HeaderParsingError("3.500000 |Content-type: text/html")
+        error = HeaderParsingError("3.500000 |Content-type: text/html", b"unparsed_data")
 
-        client = ArrisStatusClient(password="test", host="test",
-                                   quick_check=False)
+        client = ArrisStatusClient(password="test", host="test")
 
         is_compat_error = client._is_http_compatibility_error(error)
         assert is_compat_error is True

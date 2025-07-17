@@ -1,8 +1,7 @@
-"""Test connection handling and quick checks."""
+"""Test connection handling."""
 
 import pytest
-import socket
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from requests.exceptions import ConnectTimeout, ConnectionError
 
 try:
@@ -13,50 +12,36 @@ except ImportError:
     pytest.skip("ArrisStatusClient not available", allow_module_level=True)
 
 
+@pytest.mark.unit
+@pytest.mark.connection
 class TestConnectionHandling:
-    """Test connection handling, quick checks, and fail-fast behavior."""
+    """Test connection handling and basic functionality."""
 
-    def test_quick_connectivity_check_success(self):
-        """Test quick connectivity check with reachable host."""
-        with patch('socket.socket') as mock_socket:
-            mock_sock = Mock()
-            mock_socket.return_value = mock_sock
-            mock_sock.connect.return_value = None  # Success
-
-            client = ArrisStatusClient(
-                password="test",
-                host="192.168.100.1",
-                quick_check=True,
-                quick_timeout=2.0
-            )
-
-            # Should complete without exception
-            assert client.host == "192.168.100.1"
-            mock_sock.connect.assert_called_once()
-            mock_sock.close.assert_called_once()
-
-    def test_quick_connectivity_check_failure(self):
-        """Test quick connectivity check with unreachable host."""
-        with patch('socket.socket') as mock_socket:
-            mock_sock = Mock()
-            mock_socket.return_value = mock_sock
-            mock_sock.connect.side_effect = socket.timeout("Timeout")
-
-            with pytest.raises(ConnectionError):
-                ArrisStatusClient(
-                    password="test",
-                    host="192.168.1.99",  # Unreachable IP
-                    quick_check=True,
-                    fail_fast=True,
-                    quick_timeout=2.0
-                )
-
-    def test_quick_check_disabled(self):
-        """Test that client works when quick check is disabled."""
-        client = ArrisStatusClient(
-            password="test",
-            host="192.168.100.1",
-            quick_check=False
-        )
-
+    def test_basic_client_creation(self):
+        """Test basic client creation."""
+        client = ArrisStatusClient(password="test", host="192.168.100.1")
         assert client.host == "192.168.100.1"
+        assert client.password == "test"
+
+    def test_client_with_custom_host(self):
+        """Test client creation with custom host."""
+        client = ArrisStatusClient(password="test", host="192.168.1.1")
+        assert client.host == "192.168.1.1"
+
+    def test_connection_timeout_handling(self):
+        """Test handling of connection timeouts."""
+        with patch('requests.Session.post') as mock_post:
+            mock_post.side_effect = ConnectTimeout("Connection timeout")
+            
+            client = ArrisStatusClient(password="test")
+            result = client.authenticate()
+            assert result is False
+
+    def test_connection_error_handling(self):
+        """Test handling of connection errors."""
+        with patch('requests.Session.post') as mock_post:
+            mock_post.side_effect = ConnectionError("Network unreachable")
+            
+            client = ArrisStatusClient(password="test")
+            result = client.authenticate()
+            assert result is False

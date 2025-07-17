@@ -265,7 +265,7 @@ class TestArrisStatusClientDataRetrieval:
             mock_post.side_effect = [
                 Mock(status_code=200, text=mock_modem_responses['challenge_response']),
                 Mock(status_code=200, text=mock_modem_responses['login_success']),
-                HeaderParsingError("3.500000 |Content-type: text/html"),
+                HeaderParsingError("3.500000 |Content-type: text/html", b"unparsed_data"),
                 Mock(status_code=200, text=mock_modem_responses['complete_status']),
                 Mock(status_code=200, text=mock_modem_responses['complete_status']),
                 Mock(status_code=200, text=mock_modem_responses['complete_status'])
@@ -288,7 +288,7 @@ class TestArrisStatusClientErrorHandling:
         client = ArrisStatusClient(password="test")
 
         # Test HeaderParsingError
-        header_error = HeaderParsingError("3.500000 |Content-type: text/html")
+        header_error = HeaderParsingError("3.500000 |Content-type: text/html", b"unparsed_data")
         assert client._is_http_compatibility_error(header_error) is True
 
         # Test other errors
@@ -332,7 +332,7 @@ class TestArrisStatusClientErrorHandling:
         """Test HNAP request retry with HTTP compatibility error."""
         with patch('requests.Session.post') as mock_post:
             mock_post.side_effect = [
-                HeaderParsingError("3.500000 |Content-type: text/html"),
+                HeaderParsingError("3.500000 |Content-type: text/html", b"unparsed_data"),
                 Mock(status_code=200, text='{"success": true}')
             ]
 
@@ -351,7 +351,7 @@ class TestArrisStatusClientErrorHandling:
     def test_make_hnap_request_exhausted_retries(self):
         """Test HNAP request when all retries are exhausted."""
         with patch('requests.Session.post') as mock_post:
-            mock_post.side_effect = HeaderParsingError("Persistent error")
+            mock_post.side_effect = HeaderParsingError("Persistent error", b"unparsed_data")
 
             client = ArrisStatusClient(password="test", max_retries=2)
             client.authenticated = True

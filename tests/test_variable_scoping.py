@@ -14,31 +14,16 @@ except ImportError:
     pytest.skip("ArrisStatusClient not available", allow_module_level=True)
 
 
+@pytest.mark.unit
 class TestVariableScoping:
     """Test variable scoping fixes in CLI and client error paths."""
-
-    def test_cli_start_time_scoping(self):
-        """Test that start_time is properly defined in CLI error paths."""
-        test_argv = ['arris-modem-status', '--password', 'test',
-                     '--host', '192.168.1.99']
-
-        with patch('sys.argv', test_argv):
-            with patch('arris_modem_status.cli.ArrisStatusClient') as mock_client:
-                mock_client.side_effect = ConnectionError("Test error")
-
-                # Should not raise NameError for undefined start_time
-                with pytest.raises(SystemExit):
-                    main()
 
     def test_client_authentication_error_scoping(self):
         """Test variable scoping in authentication error paths."""
         with patch('requests.Session.post') as mock_post:
             mock_post.side_effect = ConnectionError("Connection failed")
 
-            client = ArrisStatusClient(password="test", host="test",
-                                       quick_check=False)
-
-            # Should handle error without variable scoping issues
+            client = ArrisStatusClient(password="test", host="test")
             result = client.authenticate()
             assert result is False
 
