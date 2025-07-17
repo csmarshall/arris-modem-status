@@ -1147,6 +1147,9 @@ class ArrisStatusClient:
         Uses concurrent or serial requests based on configuration, with built-in
         HTTP compatibility handling for urllib3 parsing strictness.
         """
+        # FIXED: Initialize start_time at the beginning to fix variable scoping
+        start_time = self.instrumentation.start_timer("get_status_complete") if self.instrumentation else time.time()
+
         try:
             if not self.authenticated:
                 if not self.authenticate():
@@ -1154,7 +1157,6 @@ class ArrisStatusClient:
 
             mode_str = "concurrent" if self.concurrent else "serial"
             logger.info(f"📊 Retrieving modem status with {mode_str} processing...")
-            start_time = self.instrumentation.start_timer("get_status_complete") if self.instrumentation else time.time()
 
             # Define the requests
             request_definitions = [

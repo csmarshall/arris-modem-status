@@ -5,49 +5,50 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "arris-modem-status"
 dynamic = ["version"]
-description = "High-performance Python client for querying Arris modem status via HNAP with HTTP compatibility and browser-compatible parsing."
+description = "High-performance Python client for Arris cable modem status via HNAP with HTTP compatibility"
 authors = [
     { name = "Charles Marshall", email = "charles@wozi.com" }
 ]
 license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.8"
+
+# SIMPLIFIED CORE DEPENDENCIES - Only essential runtime dependencies
 dependencies = [
     "requests>=2.25.1",
     "urllib3>=1.26.0"
 ]
+
+# IMPROVED CLASSIFIERS for better PyPI discoverability
 classifiers = [
     "Development Status :: 4 - Beta",
+    "Environment :: Console",
     "Intended Audience :: Developers",
-    "Intended Audience :: System Administrators",
-    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators", 
+    "Intended Audience :: Telecommunications Industry",
     "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.10", 
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Topic :: System :: Networking :: Monitoring",
-    "Topic :: System :: Hardware",
+    "Programming Language :: Python :: 3 :: Only",
     "Topic :: Internet",
+    "Topic :: System :: Hardware",
+    "Topic :: System :: Monitoring", 
+    "Topic :: System :: Networking :: Monitoring",
     "Topic :: Software Development :: Libraries :: Python Modules",
-    "Topic :: Utilities"
+    "Topic :: Utilities",
+    "Typing :: Typed"
 ]
+
+# FOCUSED KEYWORDS for better search results
 keywords = [
-    "arris",
-    "modem", 
-    "cable",
-    "DOCSIS",
-    "hnap",
-    "networking",
-    "monitoring",
-    "http-compatibility",
-    "urllib3",
-    "performance",
-    "concurrent",
-    "status"
+    "arris", "modem", "cable", "router", "DOCSIS", "networking", 
+    "monitoring", "HNAP", "status", "diagnostics", "internet"
 ]
 
 [project.urls]
@@ -56,98 +57,61 @@ Repository = "https://github.com/csmarshall/arris-modem-status"
 Documentation = "https://github.com/csmarshall/arris-modem-status#readme"
 "Bug Tracker" = "https://github.com/csmarshall/arris-modem-status/issues"
 Changelog = "https://github.com/csmarshall/arris-modem-status/blob/main/CHANGELOG.md"
+"Source Code" = "https://github.com/csmarshall/arris-modem-status"
 
 [project.scripts]
 arris-modem-status = "arris_modem_status.cli:main"
 
 [project.optional-dependencies]
-# Core development dependencies
+# SIMPLIFIED DEVELOPMENT DEPENDENCIES
 dev = [
-    # Testing framework
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-    "pytest-timeout>=2.1.0",
-    "pytest-asyncio>=0.20.0",
-    
-    # Code quality and formatting
-    "black>=22.0.0",
+    "pytest-mock>=3.10.0",
+    "black>=22.0.0", 
     "isort>=5.10.0",
     "flake8>=5.0.0",
     "mypy>=0.980",
-    
-    # Security and linting
-    "bandit>=1.7.5",
-    "safety>=2.0.0",
-    
-    # Coverage and reporting
-    "coverage>=6.0.0",
-    "coverage[toml]>=6.0.0",
-    
-    # Documentation and analysis
-    "beautifulsoup4>=4.9.0",
-    "lxml>=4.9.0",
-    
-    # Development utilities
-    "packaging>=21.0",
-    "setuptools>=65.0",
-    "wheel>=0.40.0",
     "build>=0.10.0",
     "twine>=4.0.0"
 ]
 
-# Testing-specific dependencies
-testing = [
+# TESTING ONLY
+test = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-    "pytest-timeout>=2.1.0",
-    "pytest-asyncio>=0.20.0",
     "pytest-mock>=3.10.0",
-    "pytest-xdist>=3.0.0",  # Parallel testing
-    "coverage>=6.0.0",
-    "coverage[toml]>=6.0.0",
-    "tox>=4.0.0"
+    "pytest-timeout>=2.1.0",
+    "coverage[toml]>=6.0.0"
 ]
 
-# Enhanced debugging and analysis tools
-debug = [
-    # Browser automation for enhanced capture
+# MONITORING AND DEBUGGING (optional for advanced users)
+monitoring = [
     "playwright>=1.40.0",
-    "selenium>=4.0.0",
-    "selenium-wire>=5.0.0",
-    "webdriver-manager>=3.8.0",
-    
-    # HTML parsing and analysis
-    "beautifulsoup4>=4.9.0",
-    "lxml>=4.9.0",
-    
-    # Network analysis
-    "requests-toolbelt>=0.10.0",
-    "urllib3>=1.26.0"
+    "beautifulsoup4>=4.9.0"
 ]
 
-# Quality assurance dependencies
-qa = [
+# CODE QUALITY (for contributors)
+quality = [
     "black>=22.0.0",
-    "isort>=5.10.0", 
-    "flake8>=5.0.0",
+    "isort>=5.10.0",
+    "flake8>=5.0.0", 
     "mypy>=0.980",
     "bandit>=1.7.5",
-    "safety>=2.0.0",
     "pre-commit>=3.0.0"
 ]
 
-# Build and release dependencies
+# BUILD AND RELEASE (for maintainers)
 build = [
     "build>=0.10.0",
-    "twine>=4.0.0",
+    "twine>=4.0.0", 
     "wheel>=0.40.0",
-    "setuptools>=65.0",
     "check-manifest>=0.49"
 ]
 
-# All dependencies for complete development environment
+# ALL DEVELOPMENT DEPENDENCIES
 all = [
-    "arris-modem-status[dev,testing,debug,qa,build]"
+    "arris-modem-status[dev,test,monitoring,quality,build]"
 ]
 
 # DYNAMIC VERSION CONFIGURATION
@@ -156,11 +120,12 @@ version = {attr = "arris_modem_status.__version__"}
 
 [tool.setuptools]
 packages = ["arris_modem_status"]
+zip-safe = false
 
 [tool.setuptools.package-data]
 arris_modem_status = ["py.typed"]
 
-# BLACK CODE FORMATTER CONFIGURATION
+# BLACK CODE FORMATTER
 [tool.black]
 line-length = 120
 target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
@@ -182,7 +147,7 @@ exclude = '''
 )/
 '''
 
-# ISORT IMPORT SORTING CONFIGURATION
+# ISORT IMPORT SORTING
 [tool.isort]
 profile = "black"
 line_length = 120
@@ -193,7 +158,7 @@ use_parentheses = true
 ensure_newline_before_comments = true
 src_paths = ["arris_modem_status", "tests"]
 
-# MYPY TYPE CHECKING CONFIGURATION
+# MYPY TYPE CHECKING
 [tool.mypy]
 python_version = "3.8"
 warn_return_any = true
@@ -214,34 +179,37 @@ show_error_codes = true
 module = [
     "urllib3.*",
     "requests.*",
-    "selenium.*",
+    "selenium.*", 
     "playwright.*"
 ]
 ignore_missing_imports = true
 
-# PYTEST CONFIGURATION
+# PYTEST CONFIGURATION - Enhanced for comprehensive testing
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = [
     "-ra",
-    "-q", 
+    "-q",
     "--strict-markers",
-    "--strict-config",
-    "--tb=short"
+    "--strict-config", 
+    "--tb=short",
+    "--cov=arris_modem_status",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-fail-under=80"
 ]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
+    "integration: marks tests as integration tests", 
     "unit: marks tests as unit tests",
     "http_compatibility: marks tests for HTTP compatibility",
     "connection: marks tests for connection handling",
     "performance: marks tests for performance validation",
-    "scoping: marks tests for variable scoping fixes",
     "auth: marks tests for authentication functionality",
     "parsing: marks tests for data parsing",
-    "errors: marks tests for error scenarios"
+    "cli: marks tests for CLI functionality"
 ]
 timeout = 30
 filterwarnings = [
@@ -260,6 +228,7 @@ omit = [
     "arris_modem_status/__main__.py"
 ]
 branch = true
+parallel = true
 
 [tool.coverage.report]
 exclude_lines = [
@@ -267,8 +236,8 @@ exclude_lines = [
     "def __repr__",
     "if self.debug:",
     "if settings.DEBUG",
-    "raise AssertionError",
-    "raise NotImplementedError", 
+    "raise AssertionError", 
+    "raise NotImplementedError",
     "if 0:",
     "if __name__ == .__main__.:",
     "class .*\\bProtocol\\):",
@@ -276,11 +245,17 @@ exclude_lines = [
 ]
 show_missing = true
 precision = 2
+skip_covered = false
+skip_empty = true
 
 [tool.coverage.html]
 directory = "htmlcov"
+title = "arris-modem-status coverage report"
 
-# BANDIT SECURITY LINTING CONFIGURATION
+[tool.coverage.xml]
+output = "coverage.xml"
+
+# BANDIT SECURITY LINTING
 [tool.bandit]
 exclude_dirs = ["tests", "build", "dist"]
 tests = ["B201", "B301"]
@@ -289,8 +264,26 @@ skips = ["B101", "B601"]
 [tool.bandit.assert_used]
 skips = ["*_test.py", "*/test_*.py"]
 
-# FLAKE8 CONFIGURATION (in setup.cfg since flake8 doesn't support pyproject.toml yet)
-# See setup.cfg for flake8 configuration
+# TOX CONFIGURATION (if using tox)
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py38,py39,py310,py311,py312,coverage-report
+isolated_build = true
 
-# NOTE: tox.ini and .pre-commit-config.yaml are separate files
-# This keeps pyproject.toml clean and focused on Python packaging
+[testenv]
+deps = 
+    pytest>=7.0.0
+    pytest-cov>=4.0.0
+    pytest-mock>=3.10.0
+commands = 
+    pytest tests/ --cov=arris_modem_status {posargs}
+
+[testenv:coverage-report]
+deps = coverage[toml]
+skip_install = true
+commands =
+    coverage combine
+    coverage report --show-missing
+    coverage html
+"""
