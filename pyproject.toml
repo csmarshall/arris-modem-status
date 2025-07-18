@@ -71,14 +71,8 @@ dev = [
     "black>=22.0.0", 
     "isort>=5.10.0",
     "flake8>=5.0.0",
-    "mypy>=0.980"
-]
-
-# VERSION MANAGEMENT TOOLS (for repo maintainers)
-version-tools = [
-    "tomli>=1.2.0; python_version<'3.11'",  # For version scripts
-    "build>=0.10.0",
-    "twine>=4.0.0"
+    "mypy>=0.980",
+    "bump2version>=1.0.1"
 ]
 
 # REVERSE ENGINEERING / DEBUG TOOLS (kept in repo, not shipped by default)
@@ -91,7 +85,7 @@ debug = [
 
 # ALL DEVELOPMENT DEPENDENCIES (everything above)
 all = [
-    "arris-modem-status[dev,version-tools,debug]"
+    "arris-modem-status[dev,debug]"
 ]
 
 # TESTING ONLY
