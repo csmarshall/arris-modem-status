@@ -66,3 +66,8 @@ Desktop.ini
 .mypy_cache/
 .dmypy.json
 dmypy.json
+# PyPI build artifacts
+dist/
+build/
+*.egg-info/
+.eggs/
