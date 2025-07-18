@@ -13,7 +13,7 @@ license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.8"
 
-# SIMPLIFIED CORE DEPENDENCIES - Only essential runtime dependencies
+# MINIMAL CORE DEPENDENCIES - Only what's needed for basic functionality
 dependencies = [
     "requests>=2.25.1",
     "urllib3>=1.26.0"
@@ -63,7 +63,7 @@ Changelog = "https://github.com/csmarshall/arris-modem-status/blob/main/CHANGELO
 arris-modem-status = "arris_modem_status.cli:main"
 
 [project.optional-dependencies]
-# SIMPLIFIED DEVELOPMENT DEPENDENCIES
+# BASIC DEVELOPMENT (ships to PyPI as optional)
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
@@ -71,9 +71,27 @@ dev = [
     "black>=22.0.0", 
     "isort>=5.10.0",
     "flake8>=5.0.0",
-    "mypy>=0.980",
+    "mypy>=0.980"
+]
+
+# VERSION MANAGEMENT TOOLS (for repo maintainers)
+version-tools = [
+    "tomli>=1.2.0; python_version<'3.11'",  # For version scripts
     "build>=0.10.0",
     "twine>=4.0.0"
+]
+
+# REVERSE ENGINEERING / DEBUG TOOLS (kept in repo, not shipped by default)
+debug = [
+    "playwright>=1.40.0",
+    "selenium>=4.0.0", 
+    "beautifulsoup4>=4.9.0",
+    "aiohttp>=3.8.0"  # For async debugging
+]
+
+# ALL DEVELOPMENT DEPENDENCIES (everything above)
+all = [
+    "arris-modem-status[dev,version-tools,debug]"
 ]
 
 # TESTING ONLY
@@ -85,22 +103,6 @@ test = [
     "coverage[toml]>=6.0.0"
 ]
 
-# MONITORING AND DEBUGGING (optional for advanced users)
-monitoring = [
-    "playwright>=1.40.0",
-    "beautifulsoup4>=4.9.0"
-]
-
-# CODE QUALITY (for contributors)
-quality = [
-    "black>=22.0.0",
-    "isort>=5.10.0",
-    "flake8>=5.0.0", 
-    "mypy>=0.980",
-    "bandit>=1.7.5",
-    "pre-commit>=3.0.0"
-]
-
 # BUILD AND RELEASE (for maintainers)
 build = [
     "build>=0.10.0",
@@ -109,21 +111,37 @@ build = [
     "check-manifest>=0.49"
 ]
 
-# ALL DEVELOPMENT DEPENDENCIES
-all = [
-    "arris-modem-status[dev,test,monitoring,quality,build]"
-]
-
 # DYNAMIC VERSION CONFIGURATION
 [tool.setuptools.dynamic]
 version = {attr = "arris_modem_status.__version__"}
 
 [tool.setuptools]
-packages = ["arris_modem_status"]
 zip-safe = false
+
+# PACKAGE DISCOVERY - Exclude development tools from PyPI package
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["arris_modem_status*"]
+exclude = [
+    "debug_tools*",
+    "scripts*", 
+    "tests*",
+    "concurrent_vs_serial_test*",
+    "error_analysis_test*", 
+    "production_test*"
+]
 
 [tool.setuptools.package-data]
 arris_modem_status = ["py.typed"]
+
+# EXCLUDE DEVELOPMENT FILES FROM PACKAGE
+[tool.setuptools.exclude-package-data]
+"*" = [
+    "debug_tools/*",
+    "*.sh",
+    "*_test.py",
+    "test_*"
+]
 
 # BLACK CODE FORMATTER
 [tool.black]
@@ -184,7 +202,7 @@ module = [
 ]
 ignore_missing_imports = true
 
-# PYTEST CONFIGURATION - Enhanced for comprehensive testing
+# PYTEST CONFIGURATION
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = [
@@ -252,38 +270,8 @@ skip_empty = true
 directory = "htmlcov"
 title = "arris-modem-status coverage report"
 
-[tool.coverage.xml]
-output = "coverage.xml"
-
 # BANDIT SECURITY LINTING
 [tool.bandit]
 exclude_dirs = ["tests", "build", "dist"]
 tests = ["B201", "B301"]
 skips = ["B101", "B601"]
-
-[tool.bandit.assert_used]
-skips = ["*_test.py", "*/test_*.py"]
-
-# TOX CONFIGURATION (if using tox)
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-envlist = py38,py39,py310,py311,py312,coverage-report
-isolated_build = true
-
-[testenv]
-deps = 
-    pytest>=7.0.0
-    pytest-cov>=4.0.0
-    pytest-mock>=3.10.0
-commands = 
-    pytest tests/ --cov=arris_modem_status {posargs}
-
-[testenv:coverage-report]
-deps = coverage[toml]
-skip_install = true
-commands =
-    coverage combine
-    coverage report --show-missing
-    coverage html
-"""

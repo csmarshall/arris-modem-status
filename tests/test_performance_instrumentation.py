@@ -2,15 +2,8 @@ import pytest
 import time
 from unittest.mock import Mock, patch
 
-try:
-    from arris_modem_status.arris_status_client import (
-        PerformanceInstrumentation,
-        TimingMetrics
-    )
-    CLIENT_AVAILABLE = True
-except ImportError:
-    CLIENT_AVAILABLE = False
-    pytest.skip("Performance instrumentation not available", allow_module_level=True)
+from arris_modem_status.instrumentation import PerformanceInstrumentation
+from arris_modem_status.models import TimingMetrics
 
 
 @pytest.mark.unit
@@ -232,7 +225,7 @@ class TestPerformanceInstrumentation:
         # Should track compatibility overhead
         assert "http_compatibility_overhead" in session_metrics
 
-    @patch('arris_modem_status.arris_status_client.logger')
+    @patch('arris_modem_status.instrumentation.logger')
     def test_debug_logging(self, mock_logger):
         """Test debug logging during timing recording."""
         instrumentation = PerformanceInstrumentation()

@@ -7,17 +7,9 @@ from unittest.mock import Mock, patch, MagicMock
 from requests.exceptions import ConnectionError, Timeout
 from urllib3.exceptions import HeaderParsingError
 
-try:
-    from arris_modem_status import ArrisModemStatusClient, ChannelInfo
-    from arris_modem_status.arris_status_client import (
-        PerformanceInstrumentation,
-        ErrorCapture,
-        TimingMetrics
-    )
-    CLIENT_AVAILABLE = True
-except ImportError:
-    CLIENT_AVAILABLE = False
-    pytest.skip("ArrisModemStatusClient not available", allow_module_level=True)
+from arris_modem_status import ArrisModemStatusClient, ChannelInfo
+from arris_modem_status.instrumentation import PerformanceInstrumentation
+from arris_modem_status.models import ErrorCapture, TimingMetrics
 
 
 @pytest.mark.unit

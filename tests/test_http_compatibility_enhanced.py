@@ -7,17 +7,12 @@ from unittest.mock import Mock, patch, MagicMock
 from urllib3.exceptions import HeaderParsingError
 import requests
 
-try:
-    from arris_modem_status.arris_status_client import (
-        ArrisCompatibleHTTPAdapter,
-        create_arris_compatible_session,
-        PerformanceInstrumentation,
-        ErrorCapture
-    )
-    CLIENT_AVAILABLE = True
-except ImportError:
-    CLIENT_AVAILABLE = False
-    pytest.skip("HTTP compatibility components not available", allow_module_level=True)
+from arris_modem_status.http_compatibility import (
+    ArrisCompatibleHTTPAdapter,
+    create_arris_compatible_session
+)
+from arris_modem_status.instrumentation import PerformanceInstrumentation
+from arris_modem_status.models import ErrorCapture
 
 
 @pytest.mark.unit
