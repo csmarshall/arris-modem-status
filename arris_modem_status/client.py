@@ -23,6 +23,7 @@ import requests
 from .models import ChannelInfo, ErrorCapture, TimingMetrics
 from .instrumentation import PerformanceInstrumentation
 from .http_compatibility import create_arris_compatible_session
+from urllib3.exceptions import HeaderParsingError
 
 logger = logging.getLogger("arris-modem-status")
 
