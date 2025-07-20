@@ -19,30 +19,30 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
+from urllib3.exceptions import HeaderParsingError
 
 from .models import ChannelInfo, ErrorCapture, TimingMetrics
 from .instrumentation import PerformanceInstrumentation
 from .http_compatibility import create_arris_compatible_session
-from urllib3.exceptions import HeaderParsingError
 
 logger = logging.getLogger("arris-modem-status")
+
 
 class ArrisModemStatusClient:
     """
     Enhanced Arris modem client with HTTP compatibility and performance instrumentation.
 
     This client provides high-performance access to Arris cable modem status
-    with built-in HTTP compatibility handling for urllib3 parsing strictness and
-    comprehensive performance monitoring.
+    with built-in relaxed HTTP parsing for compatibility with Arris modems'
+    non-standard but valid HTTP responses.
 
     Features:
     - 84% performance improvement through concurrent request processing
-    - Browser-compatible HTTP parsing for Arris modem responses
-    - Smart retry logic for HTTP compatibility issues
+    - Browser-compatible HTTP parsing by default for HNAP endpoints
+    - Smart retry logic for genuine network errors
     - Comprehensive error analysis and recovery
     - Detailed performance instrumentation and timing
     - Connection pooling optimization
-    - Suppressed urllib3 HeaderParsingError warnings (handled intentionally)
     """
 
     def __init__(
@@ -99,51 +99,56 @@ class ArrisModemStatusClient:
         # Performance instrumentation
         self.instrumentation = PerformanceInstrumentation() if enable_instrumentation else None
 
-        # Configure HTTP session with Arris compatibility and instrumentation
+        # Configure HTTP session with relaxed parsing for HNAP endpoints
         self.session = self._create_session()
 
         mode_str = "concurrent" if concurrent else "serial"
-        logger.info(f"🛡️ ArrisModemStatusClient v1.3 with HTTP compatibility initialized for {host}:{port}")
+        logger.info(f"🛡️ ArrisModemStatusClient v1.3 initialized for {host}:{port}")
         logger.info(f"🔧 Mode: {mode_str}, Workers: {self.max_workers}, Retries: {max_retries}")
+        logger.info(f"🔧 Using relaxed HTTP parsing for HNAP endpoints")
         if enable_instrumentation:
             logger.info("📊 Performance instrumentation enabled")
 
     def _create_session(self) -> requests.Session:
-        """Create HTTP session optimized for Arris compatibility with instrumentation."""
+        """Create HTTP session with relaxed parsing for HNAP endpoints."""
         return create_arris_compatible_session(self.instrumentation)
 
-    def _analyze_http_compatibility_issue(
+    def _analyze_error(
         self,
-        response: requests.Response,
         error: Exception,
-        request_type: str
+        request_type: str,
+        response: Optional[requests.Response] = None
     ) -> ErrorCapture:
-        """Enhanced error analysis with HTTP compatibility tracking."""
+        """Analyze errors for reporting and debugging."""
         try:
             error_details = str(error)
 
-            # Try to get partial content even from failed responses
+            # Extract response details if available
             partial_content = ""
-            try:
-                partial_content = response.text[:500] if hasattr(response, 'text') else ""
-            except Exception:
-                try:
-                    partial_content = str(response.content[:500])
-                except Exception:
-                    partial_content = "Unable to extract content"
-
-            # Extract headers that we can read
             headers = {}
-            try:
-                headers = dict(response.headers) if hasattr(response, 'headers') else {}
-            except Exception:
-                headers = {"error": "Unable to extract headers"}
+            http_status = 0
+
+            if response is not None:
+                try:
+                    partial_content = response.text[:500] if hasattr(response, 'text') else ""
+                except Exception:
+                    try:
+                        partial_content = str(response.content[:500])
+                    except Exception:
+                        partial_content = "Unable to extract content"
+
+                try:
+                    headers = dict(response.headers) if hasattr(response, 'headers') else {}
+                    http_status = getattr(response, 'status_code', 0)
+                except Exception:
+                    pass
 
             # Classify error type
             error_type = "unknown"
             is_compatibility_issue = False
 
             if "HeaderParsingError" in error_details:
+                # This shouldn't happen with relaxed parsing, but keep for safety
                 error_type = "http_compatibility"
                 is_compatibility_issue = True
             elif "HTTP 403" in error_details:
@@ -152,11 +157,13 @@ class ArrisModemStatusClient:
                 error_type = "http_500"
             elif "timeout" in error_details.lower():
                 error_type = "timeout"
+            elif "connection" in error_details.lower():
+                error_type = "connection"
 
             capture = ErrorCapture(
                 timestamp=time.time(),
                 request_type=request_type,
-                http_status=getattr(response, 'status_code', 0),
+                http_status=http_status,
                 error_type=error_type,
                 raw_error=error_details,
                 response_headers=headers,
@@ -168,35 +175,17 @@ class ArrisModemStatusClient:
             if self.capture_errors:
                 self.error_captures.append(capture)
 
-            # Enhanced logging with compatibility context
             mode_str = "concurrent" if self.concurrent else "serial"
-            logger.warning(f"🔍 HTTP issue analysis ({mode_str} mode):")
+            logger.warning(f"🔍 Error analysis ({mode_str} mode):")
             logger.warning(f"   Request type: {request_type}")
-            logger.warning(f"   HTTP status: {getattr(response, 'status_code', 'unknown')}")
+            logger.warning(f"   HTTP status: {http_status or 'unknown'}")
             logger.warning(f"   Error type: {error_type}")
-
-            if is_compatibility_issue:
-                logger.debug(f"   🔧 HTTP compatibility issue detected - using browser-compatible parsing")
-
             logger.warning(f"   Raw error: {error_details[:200]}...")
-
-            # Extract parsing artifacts for analysis
-            if "HeaderParsingError" in error_details and "|" in error_details:
-                try:
-                    import re
-                    match = re.search(r'(\d+\.?\d*)\s*\|', error_details)
-                    if match:
-                        artifact = match.group(1)
-                        logger.debug(f"   🔍 Parsing artifact detected: {artifact}")
-                        logger.debug(f"   💡 This is urllib3 parsing strictness, not data corruption")
-
-                except Exception as e:
-                    logger.debug(f"Failed to extract parsing artifact: {e}")
 
             return capture
 
         except Exception as e:
-            logger.error(f"Failed to analyze HTTP compatibility issue: {e}")
+            logger.error(f"Failed to analyze error: {e}")
             return ErrorCapture(
                 timestamp=time.time(),
                 request_type=request_type,
@@ -209,26 +198,13 @@ class ArrisModemStatusClient:
                 compatibility_issue=False
             )
 
-    def _is_http_compatibility_error(self, error: Exception) -> bool:
-        """Detect HTTP compatibility issues with urllib3 parsing."""
-        error_str = str(error).lower()
-
-        compatibility_patterns = [
-            "headerparsingerror",
-            "firstheaderlineiscontinuationdefect",
-            "unparsed data:",
-            "failed to parse headers"
-        ]
-
-        return any(pattern in error_str for pattern in compatibility_patterns)
-
     def _make_hnap_request_with_retry(
         self,
         soap_action: str,
         request_body: Dict[str, Any],
         extra_headers: Optional[Dict[str, str]] = None
     ) -> Optional[str]:
-        """Make HNAP request with retry logic for HTTP compatibility issues."""
+        """Make HNAP request with retry logic for network errors."""
         last_error = None
         last_capture = None
 
@@ -247,22 +223,21 @@ class ArrisModemStatusClient:
                         logger.info(f"✅ Recovery successful for {soap_action} on attempt {attempt + 1}")
                     return response
 
-            except (HeaderParsingError, requests.exceptions.RequestException) as e:
+            except requests.exceptions.RequestException as e:
                 last_error = e
-                try:
-                    response_obj = getattr(e, 'response', None)
-                    last_capture = self._analyze_http_compatibility_issue(response_obj, e, soap_action)
-                except Exception as analysis_error:
-                    logger.debug(f"Error analysis failed: {analysis_error}")
+                response_obj = getattr(e, 'response', None)
+                last_capture = self._analyze_error(e, soap_action, response_obj)
 
-                if self._is_http_compatibility_error(e):
+                # Only retry for network/timeout errors, not HTTP errors
+                error_str = str(e).lower()
+                if any(term in error_str for term in ['timeout', 'connection', 'network']):
                     mode_str = "concurrent" if self.concurrent else "serial"
-                    logger.debug(f"🔧 HTTP compatibility issue in {mode_str} mode, attempt {attempt + 1}")
+                    logger.debug(f"🔧 Network error in {mode_str} mode, attempt {attempt + 1}")
 
                     if attempt < self.max_retries:
                         continue
                 else:
-                    logger.error(f"❌ Unknown error type for {soap_action}: {e}")
+                    logger.error(f"❌ Non-retryable error for {soap_action}: {e}")
                     break
 
             except Exception as e:
@@ -288,7 +263,7 @@ class ArrisModemStatusClient:
         request_body: Dict[str, Any],
         extra_headers: Optional[Dict[str, str]] = None
     ) -> Optional[str]:
-        """Make raw HNAP request using HTTP-compatible session with instrumentation."""
+        """Make raw HNAP request using HTTP session with relaxed parsing."""
         start_time = self.instrumentation.start_timer(f"hnap_request_{soap_action}") if self.instrumentation else time.time()
 
         # Generate authentication token
@@ -322,7 +297,7 @@ class ArrisModemStatusClient:
         logger.debug(f"📤 HNAP: {soap_action}")
 
         try:
-            # Execute request with HTTP compatibility and instrumentation
+            # Execute request with relaxed parsing (handled by our session)
             response = self.session.post(
                 f"{self.base_url}/HNAP1/",
                 json=request_body,
@@ -388,7 +363,7 @@ class ArrisModemStatusClient:
         return f"{auth_hash} {timestamp}"
 
     def authenticate(self) -> bool:
-        """Perform HNAP authentication with HTTP compatibility and instrumentation."""
+        """Perform HNAP authentication with relaxed HTTP parsing."""
         try:
             logger.info("🔐 Starting authentication...")
             start_time = self.instrumentation.start_timer("authentication_complete") if self.instrumentation else time.time()
@@ -496,12 +471,12 @@ class ArrisModemStatusClient:
 
     def get_status(self) -> Dict[str, Any]:
         """
-        Retrieve comprehensive modem status with HTTP compatibility and instrumentation.
+        Retrieve comprehensive modem status using relaxed HTTP parsing.
 
         Uses concurrent or serial requests based on configuration, with built-in
-        HTTP compatibility handling for urllib3 parsing strictness.
+        relaxed HTTP parsing for compatibility with Arris modems.
         """
-        # FIXED: Initialize start_time at the beginning to fix variable scoping
+        # Initialize start_time at the beginning to fix variable scoping
         start_time = self.instrumentation.start_timer("get_status_complete") if self.instrumentation else time.time()
 
         try:
@@ -540,7 +515,7 @@ class ArrisModemStatusClient:
 
             if self.concurrent:
                 # Concurrent mode: Use ThreadPoolExecutor
-                logger.debug("🚀 Using concurrent request processing with HTTP compatibility")
+                logger.debug("🚀 Using concurrent request processing with relaxed HTTP parsing")
                 concurrent_start = self.instrumentation.start_timer("concurrent_request_processing") if self.instrumentation else time.time()
 
                 with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
@@ -571,7 +546,7 @@ class ArrisModemStatusClient:
 
             else:
                 # Serial mode: Process requests one by one
-                logger.debug("🔄 Using serial request processing with HTTP compatibility")
+                logger.debug("🔄 Using serial request processing with relaxed HTTP parsing")
                 serial_start = self.instrumentation.start_timer("serial_request_processing") if self.instrumentation else time.time()
 
                 for req_name, req_body in request_definitions:
@@ -608,7 +583,7 @@ class ArrisModemStatusClient:
             logger.info(f"✅ Status retrieved! {channel_count} channels in {total_time:.2f}s ({mode_str} mode)")
             logger.info(f"📊 Success rate: {successful_requests}/{len(request_definitions)} requests")
 
-            # Enhanced error analysis with HTTP compatibility tracking
+            # Enhanced error analysis
             if self.capture_errors and self.error_captures:
                 error_count = len(self.error_captures)
                 recovery_count = len([e for e in self.error_captures if e.recovery_successful])
@@ -623,8 +598,6 @@ class ArrisModemStatusClient:
                 }
 
                 logger.info(f"🔍 Error analysis: {error_count} errors, {recovery_count} recovered")
-                if compatibility_issues > 0:
-                    logger.debug(f"🔧 HTTP compatibility issues handled: {compatibility_issues}")
 
             # Add mode and performance information
             parsed_data['_request_mode'] = 'concurrent' if self.concurrent else 'serial'
@@ -659,7 +632,7 @@ class ArrisModemStatusClient:
         return self.instrumentation.get_performance_summary()
 
     def get_error_analysis(self) -> Dict[str, Any]:
-        """Enhanced error analysis with HTTP compatibility breakdown."""
+        """Enhanced error analysis."""
         if not self.error_captures:
             return {"message": "No errors captured yet"}
 
@@ -667,7 +640,6 @@ class ArrisModemStatusClient:
             "total_errors": len(self.error_captures),
             "error_types": {},
             "http_compatibility_issues": 0,
-            "parsing_artifacts": [],
             "recovery_stats": {
                 "total_recoveries": 0,
                 "recovery_rate": 0.0
@@ -677,7 +649,7 @@ class ArrisModemStatusClient:
             "patterns": []
         }
 
-        # Analyze errors by type and compatibility
+        # Analyze errors by type
         for capture in self.error_captures:
             error_type = capture.error_type
             if error_type not in analysis["error_types"]:
@@ -691,18 +663,6 @@ class ArrisModemStatusClient:
             # Track HTTP compatibility issues
             if capture.compatibility_issue:
                 analysis["http_compatibility_issues"] += 1
-
-            # Extract parsing artifacts
-            try:
-                import re
-                pipe_matches = re.findall(r'(\d+\.?\d*)\s*\|', capture.raw_error)
-                for match in pipe_matches:
-                    if match not in analysis["parsing_artifacts"]:
-                        analysis["parsing_artifacts"].append(match)
-                        logger.debug(f"🔍 Found parsing artifact: {match}")
-
-            except Exception as e:
-                logger.debug(f"Error extracting artifacts from {capture.error_type}: {e}")
 
             # Add to timeline
             analysis["timeline"].append({
@@ -718,18 +678,15 @@ class ArrisModemStatusClient:
         if analysis["total_errors"] > 0:
             analysis["recovery_stats"]["recovery_rate"] = analysis["recovery_stats"]["total_recoveries"] / analysis["total_errors"]
 
-        # Enhanced pattern analysis
+        # Generate pattern analysis
         compatibility_issues = analysis["http_compatibility_issues"]
         other_errors = analysis["total_errors"] - compatibility_issues
 
         if compatibility_issues > 0:
-            analysis["patterns"].append(f"HTTP compatibility issues: {compatibility_issues} (handled by browser-compatible parsing)")
+            analysis["patterns"].append(f"HTTP compatibility issues: {compatibility_issues} (should be rare with relaxed parsing)")
 
         if other_errors > 0:
-            analysis["patterns"].append(f"Other errors: {other_errors} (non-compatibility related)")
-
-        if analysis["parsing_artifacts"]:
-            analysis["patterns"].append(f"Parsing artifacts detected: {analysis['parsing_artifacts']} (urllib3 strictness, not data corruption)")
+            analysis["patterns"].append(f"Other errors: {other_errors} (network/timeout issues)")
 
         return analysis
 
@@ -751,7 +708,7 @@ class ArrisModemStatusClient:
             ]
             completeness_score = (sum(completeness_factors) / len(completeness_factors)) * 100
 
-            # Enhanced validation with HTTP compatibility information
+            # Enhanced validation
             channel_quality = {}
             if downstream_count > 0:
                 downstream_locked = sum(1 for ch in status['downstream_channels'] if 'Locked' in ch.lock_status)
@@ -939,7 +896,7 @@ class ArrisModemStatusClient:
 
             logger.info(f"📊 Session captured {total_errors} errors for analysis ({mode_str} mode)")
             if compatibility_issues > 0:
-                logger.debug(f"🔧 HTTP compatibility issues handled: {compatibility_issues}")
+                logger.debug(f"🔧 HTTP compatibility issues: {compatibility_issues} (should be rare with relaxed parsing)")
 
         if self.instrumentation:
             performance_summary = self.instrumentation.get_performance_summary()
@@ -957,7 +914,6 @@ class ArrisModemStatusClient:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.close()
-
 
 
 # Export main client

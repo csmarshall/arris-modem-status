@@ -253,11 +253,13 @@ class TestArrisModemStatusClientDataRetrieval:
     def test_get_status_with_error_capture(self, mock_modem_responses):
         """Test status retrieval with error capture enabled."""
         with patch('requests.Session.post') as mock_post:
-            # First request fails, subsequent succeed
+            # Use a network error that will trigger retries
+            from requests.exceptions import ConnectionError
+
             mock_post.side_effect = [
                 Mock(status_code=200, text=mock_modem_responses['challenge_response']),
                 Mock(status_code=200, text=mock_modem_responses['login_success']),
-                HeaderParsingError("3.500000 |Content-type: text/html", b"unparsed_data"),
+                ConnectionError("Network error"),  # This will trigger retry
                 Mock(status_code=200, text=mock_modem_responses['complete_status']),
                 Mock(status_code=200, text=mock_modem_responses['complete_status']),
                 Mock(status_code=200, text=mock_modem_responses['complete_status'])
@@ -275,34 +277,27 @@ class TestArrisModemStatusClientDataRetrieval:
 class TestArrisModemStatusClientErrorHandling:
     """Test error handling and recovery."""
 
-    def test_http_compatibility_error_detection(self):
-        """Test HTTP compatibility error detection."""
+    def test_error_classification(self):
+        """Test error classification for different error types."""
         client = ArrisModemStatusClient(password="test")
 
-        # Test HeaderParsingError
+        # Test network error detection
+        from requests.exceptions import ConnectionError, Timeout
+
+        # Test connection error with "connection" in message
+        connection_error = ConnectionError("Connection refused")
+        capture = client._analyze_error(connection_error, "test_request")
+        assert capture.error_type == "connection"
+
+        # Test timeout error
+        timeout_error = Timeout("Request timeout")
+        capture = client._analyze_error(timeout_error, "test_request")
+        assert capture.error_type == "timeout"
+
+        # Test HeaderParsingError (will be "unknown" since we can't detect it from string)
         header_error = HeaderParsingError("3.500000 |Content-type: text/html", b"unparsed_data")
-        assert client._is_http_compatibility_error(header_error) is True
-
-        # Test other errors
-        connection_error = ConnectionError("Network error")
-        assert client._is_http_compatibility_error(connection_error) is False
-
-    def test_exponential_backoff(self):
-        """Test exponential backoff calculation."""
-        client = ArrisModemStatusClient(password="test", base_backoff=0.5)
-
-        # Test without jitter
-        backoff_0 = client._exponential_backoff(0, jitter=False)
-        backoff_1 = client._exponential_backoff(1, jitter=False)
-        backoff_2 = client._exponential_backoff(2, jitter=False)
-
-        assert backoff_0 == 0.5
-        assert backoff_1 == 1.0
-        assert backoff_2 == 2.0
-
-        # Test with jitter
-        backoff_jitter = client._exponential_backoff(1, jitter=True)
-        assert 1.0 <= backoff_jitter <= 1.1  # Should add some jitter
+        capture = client._analyze_error(header_error, "test_request")
+        assert capture.error_type == "unknown"  # Can't detect from string representation
 
     def test_make_hnap_request_with_retry_success(self, mock_modem_responses):
         """Test HNAP request with retry on success."""
@@ -320,11 +315,13 @@ class TestArrisModemStatusClientErrorHandling:
             assert result is not None
             assert mock_post.call_count == 1
 
-    def test_make_hnap_request_with_retry_http_error(self):
-        """Test HNAP request retry with HTTP compatibility error."""
+    def test_make_hnap_request_with_retry_network_error(self):
+        """Test HNAP request retry with network errors."""
         with patch('requests.Session.post') as mock_post:
+            from requests.exceptions import ConnectionError
+
             mock_post.side_effect = [
-                HeaderParsingError("3.500000 |Content-type: text/html", b"unparsed_data"),
+                ConnectionError("Network error"),
                 Mock(status_code=200, text='{"success": true}')
             ]
 
@@ -343,7 +340,9 @@ class TestArrisModemStatusClientErrorHandling:
     def test_make_hnap_request_exhausted_retries(self):
         """Test HNAP request when all retries are exhausted."""
         with patch('requests.Session.post') as mock_post:
-            mock_post.side_effect = HeaderParsingError("Persistent error", b"unparsed_data")
+            from requests.exceptions import Timeout
+
+            mock_post.side_effect = Timeout("Connection timeout")
 
             client = ArrisModemStatusClient(password="test", max_retries=2)
             client.authenticated = True

@@ -2,8 +2,8 @@
 HTTP Compatibility Layer for Arris Modem Status Client
 =====================================================
 
-This module provides HTTP compatibility handling for urllib3 parsing strictness
-issues with Arris modem responses.
+This module provides HTTP compatibility handling for Arris modem responses
+by using relaxed parsing by default, avoiding urllib3's strict standards.
 
 Author: Charles Marshall
 Version: 1.3.0
@@ -41,63 +41,73 @@ logging.getLogger('urllib3.connectionpool').setLevel(logging.ERROR)
 logger = logging.getLogger("arris-modem-status")
 
 
-class HttpCompatibilityFilter(logging.Filter):
-    """Filter to suppress urllib3 HeaderParsingError warnings that we handle intentionally."""
-
-    def filter(self, record):
-        # Suppress HeaderParsingError warnings since we handle them gracefully
-        if record.name.startswith('urllib3'):
-            message = record.getMessage()
-            if any(phrase in message for phrase in [
-                'Failed to parse headers',
-                'HeaderParsingError',
-                'FirstHeaderLineIsContinuationDefect'
-            ]):
-                return False  # Suppress these warnings
-        return True  # Allow all other log messages
-
-
-# Apply the filter immediately to prevent warnings during import
-for logger_name in ['urllib3.connectionpool', 'urllib3', 'urllib3.util.retry']:
-    logger_obj = logging.getLogger(logger_name)
-    logger_obj.addFilter(HttpCompatibilityFilter())
-
-
 class ArrisCompatibleHTTPAdapter(HTTPAdapter):
     """
-    Custom HTTPAdapter that handles Arris modem HTTP parsing compatibility.
+    Custom HTTPAdapter that uses relaxed HTTP parsing for Arris modems.
 
-    This adapter catches urllib3 HeaderParsingError exceptions and falls back
-    to raw socket parsing for Arris modems that send valid but non-standard HTTP.
+    This adapter bypasses urllib3's strict HTTP parsing and uses a browser-like
+    tolerant parser that handles the non-standard but valid HTTP responses from
+    Arris modems.
 
     Root cause: urllib3 is overly strict compared to browsers. Arris modems send
     valid HTTP that browsers handle fine, but urllib3 rejects with HeaderParsingError.
 
-    Solution: Catch parsing errors and use raw socket fallback that mirrors
-    browser tolerance for non-standard but valid HTTP formatting.
+    Solution: Use relaxed parsing by default for all /HNAP1/ requests.
     """
 
     def __init__(self, instrumentation=None, *args, **kwargs):
         """Initialize the Arris-compatible HTTP adapter."""
         super().__init__(*args, **kwargs)
         self.instrumentation = instrumentation
-        logger.debug("🔧 Initialized ArrisCompatibleHTTPAdapter for relaxed HTTP parsing")
+        logger.debug("🔧 Initialized ArrisCompatibleHTTPAdapter with relaxed HTTP parsing")
 
     def send(self, request, stream=False, timeout=None, verify=None, cert=None, proxies=None):
         """
-        Send HTTP request with fallback to raw parsing for HeaderParsingError.
+        Send HTTP request using relaxed parsing for HNAP endpoints.
 
-        This method first attempts normal requests/urllib3 processing. If that
-        fails with HeaderParsingError (urllib3 being too strict), it falls back
-        to raw socket communication that mirrors browser tolerance.
+        For /HNAP1/ endpoints, we skip urllib3's strict parsing and use our
+        browser-compatible parser directly.
         """
         start_time = time.time() if self.instrumentation else None
 
+        # Always use relaxed parsing for HNAP endpoints
+        if "/HNAP1/" in request.url:
+            logger.debug("🔧 Using relaxed HTTP parsing for HNAP endpoint")
+
+            try:
+                response = self._raw_socket_request(request, timeout, verify)
+
+                # Record successful timing
+                if self.instrumentation:
+                    response_size = len(response.content) if hasattr(response, 'content') else 0
+                    self.instrumentation.record_timing(
+                        "http_request_relaxed",
+                        start_time,
+                        success=True,
+                        http_status=response.status_code,
+                        response_size=response_size
+                    )
+
+                return response
+
+            except Exception as e:
+                logger.error(f"❌ Relaxed parsing failed: {e}")
+
+                # Record failed timing
+                if self.instrumentation:
+                    self.instrumentation.record_timing(
+                        "http_request_relaxed",
+                        start_time,
+                        success=False,
+                        error_type=str(type(e).__name__)
+                    )
+
+                raise
+
+        # For non-HNAP endpoints, use standard urllib3 processing
         try:
-            # First attempt: Standard requests/urllib3 processing
             response = super().send(request, stream, timeout, verify, cert, proxies)
 
-            # Record successful timing
             if self.instrumentation:
                 response_size = len(response.content) if hasattr(response, 'content') else 0
                 self.instrumentation.record_timing(
@@ -110,72 +120,24 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
 
             return response
 
-        except HeaderParsingError as e:
-            # HeaderParsingError indicates urllib3 is too strict for this response
-            logger.debug(f"🔧 HTTP compatibility issue detected, using browser-compatible parsing")
+        except Exception as e:
+            if self.instrumentation:
+                self.instrumentation.record_timing(
+                    "http_request_standard",
+                    start_time,
+                    success=False,
+                    error_type=str(type(e).__name__)
+                )
+            raise
 
-            # Extract parsing artifacts for analysis
-            parsing_artifacts = self._extract_parsing_artifacts(str(e))
-            if parsing_artifacts:
-                logger.debug(f"🔍 Parsing artifacts detected: {parsing_artifacts}")
-                logger.debug("💡 These are urllib3 parsing strictness issues, not data corruption")
-
-            # Fallback: Raw socket request with relaxed parsing
-            try:
-                fallback_start = time.time() if self.instrumentation else None
-                response = self._raw_socket_fallback(request, timeout, verify)
-
-                # Record fallback timing
-                if self.instrumentation:
-                    response_size = len(response.content) if hasattr(response, 'content') else 0
-                    self.instrumentation.record_timing(
-                        "http_request_compatibility_fallback",
-                        fallback_start,
-                        success=True,
-                        http_status=response.status_code,
-                        response_size=response_size,
-                        retry_count=1
-                    )
-
-                return response
-
-            except Exception as fallback_error:
-                logger.error(f"❌ Browser-compatible parsing fallback failed: {fallback_error}")
-
-                # Record failed fallback timing
-                if self.instrumentation:
-                    self.instrumentation.record_timing(
-                        "http_request_compatibility_fallback",
-                        fallback_start if 'fallback_start' in locals() else start_time,
-                        success=False,
-                        error_type=str(type(fallback_error).__name__),
-                        retry_count=1
-                    )
-
-                # Re-raise original HeaderParsingError if fallback fails
-                raise e
-
-    def _extract_parsing_artifacts(self, error_message: str) -> List[str]:
+    def _raw_socket_request(self, request, timeout=None, verify=None) -> Response:
         """
-        Extract parsing artifacts from HeaderParsingError for analysis.
-
-        These patterns were originally thought to be data injection but are
-        actually urllib3 parsing artifacts from strict header validation.
-        """
-        import re
-        # Look for the classic pattern: "3.500000 |Content-type"
-        pattern = r'(\d+\.?\d*)\s*\|'
-        return re.findall(pattern, error_message)
-
-    def _raw_socket_fallback(self, request, timeout=None, verify=None) -> Response:
-        """
-        Raw socket fallback that mirrors browser HTTP tolerance.
+        Make HTTP request using raw socket with browser-like tolerance.
 
         This method replicates what browsers do: parse HTTP more tolerantly
-        than urllib3's strict standards. It handles the same responses that
-        cause HeaderParsingError but work fine in browsers.
+        than urllib3's strict standards.
         """
-        logger.debug("🔌 Using browser-compatible HTTP parsing fallback")
+        logger.debug("🔌 Making request with browser-compatible HTTP parsing")
 
         # Parse URL components
         url_parts = request.url.split('://', 1)[1].split('/', 1)
@@ -391,11 +353,10 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
 
 def create_arris_compatible_session(instrumentation=None) -> requests.Session:
     """
-    Create a requests Session with Arris modem HTTP compatibility.
+    Create a requests Session optimized for Arris modem compatibility.
 
-    This session uses the ArrisCompatibleHTTPAdapter that handles urllib3's
-    strict HTTP parsing by falling back to browser-like tolerant parsing
-    when HeaderParsingError occurs.
+    This session uses relaxed HTTP parsing by default for HNAP endpoints,
+    providing browser-like tolerance for non-standard but valid HTTP.
 
     Returns:
         requests.Session configured for Arris modem HTTP compatibility
@@ -411,7 +372,7 @@ def create_arris_compatible_session(instrumentation=None) -> requests.Session:
         respect_retry_after_header=False
     )
 
-    # Use the Arris-compatible adapter with instrumentation
+    # Use the Arris-compatible adapter with relaxed parsing
     adapter = ArrisCompatibleHTTPAdapter(
         instrumentation=instrumentation,
         pool_connections=1,
@@ -432,9 +393,9 @@ def create_arris_compatible_session(instrumentation=None) -> requests.Session:
         "Connection": "keep-alive"
     })
 
-    logger.debug("🔧 Created Arris-compatible session with browser-like HTTP parsing")
+    logger.debug("🔧 Created Arris-compatible session with relaxed HTTP parsing for HNAP endpoints")
     return session
 
 
 # Export HTTP compatibility components
-__all__ = ["ArrisCompatibleHTTPAdapter", "create_arris_compatible_session", "HttpCompatibilityFilter"]
+__all__ = ["ArrisCompatibleHTTPAdapter", "create_arris_compatible_session"]

@@ -242,6 +242,157 @@ class TestPerformanceInstrumentation:
         assert "ms" in call_args
         assert "success: True" in call_args
 
+    def test_record_timing_with_zero_response_size(self):
+        """Test recording timing with zero response size."""
+        instrumentation = PerformanceInstrumentation()
+        start_time = time.time()
+
+        # Record with zero response size
+        metric = instrumentation.record_timing(
+            "empty_response",
+            start_time,
+            success=True,
+            http_status=204,  # No Content
+            response_size=0
+        )
+
+        assert metric.response_size == 0
+        assert metric.http_status == 204
+
+    def test_performance_insights_low_throughput(self):
+        """Test performance insights for low throughput scenario."""
+        instrumentation = PerformanceInstrumentation()
+
+        # Record very few operations over a long time
+        # This should trigger the low throughput insight
+        instrumentation.session_start_time = time.time() - 10  # 10 seconds ago
+
+        instrumentation.record_timing("slow_op1", time.time() - 5, success=True)
+        instrumentation.record_timing("slow_op2", time.time() - 2, success=True)
+
+        summary = instrumentation.get_performance_summary()
+        insights = summary["performance_insights"]
+
+        # Should have insight about low throughput
+        assert any("low throughput" in insight.lower() for insight in insights)
+
+    def test_performance_insights_no_errors(self):
+        """Test performance insights when there are no errors."""
+        instrumentation = PerformanceInstrumentation()
+
+        # Record only successful operations
+        for i in range(5):
+            instrumentation.record_timing(f"success_{i}", time.time() - i, success=True)
+
+        summary = instrumentation.get_performance_summary()
+        insights = summary["performance_insights"]
+
+        # Should have insight about perfect reliability
+        assert any("perfect reliability" in insight.lower() or "0% error" in insight.lower() for insight in insights)
+
+    def test_performance_insights_slow_auth(self):
+        """Test performance insights for slow authentication."""
+        instrumentation = PerformanceInstrumentation()
+
+        # Record slow auth operations (manually set durations)
+        metric1 = instrumentation.record_timing("authentication_complete", time.time() - 10, success=True)
+        metric1.duration = 3.5  # Manually set to trigger slow auth insight
+
+        metric2 = instrumentation.record_timing("authentication_challenge", time.time() - 5, success=True)
+        metric2.duration = 2.5
+
+        summary = instrumentation.get_performance_summary()
+        insights = summary["performance_insights"]
+
+        # Should have insight about slow authentication
+        assert any("authentication" in insight.lower() and "consider" in insight.lower() for insight in insights)
+
+    def test_performance_insights_fast_auth(self):
+        """Test performance insights for fast authentication."""
+        instrumentation = PerformanceInstrumentation()
+
+        # Record fast auth operations
+        metric1 = instrumentation.record_timing("authentication_complete", time.time() - 1, success=True)
+        metric1.duration = 0.5  # Fast auth
+
+        metric2 = instrumentation.record_timing("authentication_challenge", time.time() - 0.5, success=True)
+        metric2.duration = 0.3
+
+        summary = instrumentation.get_performance_summary()
+        insights = summary["performance_insights"]
+
+        # Should have insight about excellent authentication performance
+        assert any("excellent" in insight.lower() and "authentication" in insight.lower() for insight in insights)
+
+    def test_percentiles_with_single_value(self):
+        """Test percentile calculation with only one value."""
+        instrumentation = PerformanceInstrumentation()
+
+        # Record single metric
+        metric = instrumentation.record_timing("single_op", time.time() - 1.0, success=True)
+        metric.duration = 1.0  # Set specific duration
+
+        summary = instrumentation.get_performance_summary()
+        percentiles = summary["response_time_percentiles"]
+
+        # All percentiles should be the same with single value
+        assert percentiles["p50"] == percentiles["p90"]
+        assert percentiles["p90"] == percentiles["p95"]
+        assert percentiles["p95"] == percentiles["p99"]
+        assert percentiles["p50"] == 1.0
+
+    def test_percentiles_with_no_successful_operations(self):
+        """Test percentile calculation when all operations failed."""
+        instrumentation = PerformanceInstrumentation()
+
+        # Record only failed operations
+        instrumentation.record_timing("fail1", time.time() - 1.0, success=False, error_type="TestError")
+        instrumentation.record_timing("fail2", time.time() - 0.5, success=False, error_type="TestError")
+
+        summary = instrumentation.get_performance_summary()
+        percentiles = summary["response_time_percentiles"]
+
+        # Should have zero percentiles when no successful operations
+        assert percentiles["p50"] == 0
+        assert percentiles["p90"] == 0
+        assert percentiles["p95"] == 0
+        assert percentiles["p99"] == 0
+
+    def test_performance_insights_high_error_rate(self):
+        """Test performance insights with high error rate."""
+        instrumentation = PerformanceInstrumentation()
+
+        # Record mostly failed operations
+        for i in range(8):
+            instrumentation.record_timing(f"fail_{i}", time.time() - i, success=False, error_type="NetworkError")
+
+        # Only 2 successful
+        instrumentation.record_timing("success_1", time.time() - 1, success=True)
+        instrumentation.record_timing("success_2", time.time() - 0.5, success=True)
+
+        summary = instrumentation.get_performance_summary()
+        insights = summary["performance_insights"]
+
+        # Should have insight about high error rate
+        assert any("high error rate" in insight.lower() for insight in insights)
+
+    def test_http_compatibility_overhead_calculation(self):
+        """Test calculation of HTTP compatibility overhead."""
+        instrumentation = PerformanceInstrumentation()
+
+        # Record normal operation
+        normal = instrumentation.record_timing("normal_request", time.time() - 1, success=True)
+        normal.duration = 0.5
+
+        # Record operation with compatibility handling (has retry)
+        compat = instrumentation.record_timing("http_compatibility_fallback", time.time() - 0.5, success=True, retry_count=1)
+        compat.duration = 0.8
+
+        summary = instrumentation.get_performance_summary()
+
+        # Should calculate compatibility overhead
+        assert "http_compatibility_overhead" in summary["session_metrics"]
+        assert summary["session_metrics"]["http_compatibility_overhead"] == 0.8  # Only the compat operation
 
 @pytest.mark.unit
 @pytest.mark.performance
