@@ -135,11 +135,16 @@ class PerformanceInstrumentation:
         # Authentication performance
         auth_ops = [op for op in operation_stats.keys() if "auth" in op.lower()]
         if auth_ops:
-            auth_time = sum(operation_stats[op]["avg_time"] for op in auth_ops)
-            if auth_time > 2.0:
-                insights.append(f"Authentication taking {auth_time:.2f}s - consider network optimization")
-            elif auth_time < 1.0:
-                insights.append(f"Excellent authentication performance: {auth_time:.2f}s")
+            # Calculate total auth time across all auth operations
+            total_auth_time = 0
+            for op in auth_ops:
+                avg_time = operation_stats[op].get("avg_time", 0)
+                total_auth_time += avg_time
+
+            if total_auth_time > 2.0:
+                insights.append(f"Authentication taking {total_auth_time:.2f}s - consider network optimization")
+            elif total_auth_time < 1.0:
+                insights.append(f"Excellent authentication performance: {total_auth_time:.2f}s")
 
         # Overall throughput
         if total_time > 0:

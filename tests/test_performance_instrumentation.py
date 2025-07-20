@@ -309,19 +309,43 @@ class TestPerformanceInstrumentation:
 
     def test_performance_insights_fast_auth(self):
         """Test performance insights for fast authentication."""
+        from arris_modem_status.models import TimingMetrics
+
         instrumentation = PerformanceInstrumentation()
 
-        # Record fast auth operations
-        metric1 = instrumentation.record_timing("authentication_complete", time.time() - 1, success=True)
-        metric1.duration = 0.5  # Fast auth
+        # Create metrics with consistent timing data
+        start_time = time.time()
 
-        metric2 = instrumentation.record_timing("authentication_challenge", time.time() - 0.5, success=True)
-        metric2.duration = 0.3
+        # First create the timing metrics with proper structure
+        metric1 = TimingMetrics(
+            operation="authentication_complete",
+            start_time=start_time - 1.0,
+            end_time=start_time - 0.5,
+            duration=0.5,
+            success=True
+        )
+
+        metric2 = TimingMetrics(
+            operation="authentication_challenge",
+            start_time=start_time - 0.5,
+            end_time=start_time - 0.2,
+            duration=0.3,
+            success=True
+        )
+
+        # Add to instrumentation
+        instrumentation.timing_metrics.append(metric1)
+        instrumentation.timing_metrics.append(metric2)
+
+        # IMPORTANT: Update request_metrics to match
+        instrumentation.request_metrics["authentication_complete"] = [0.5]
+        instrumentation.request_metrics["authentication_challenge"] = [0.3]
 
         summary = instrumentation.get_performance_summary()
         insights = summary["performance_insights"]
 
-        # Should have insight about excellent authentication performance
+        # The total auth time is 0.5 + 0.3 = 0.8, which is < 1.0
+        # So it should generate the "excellent" message
         assert any("excellent" in insight.lower() and "authentication" in insight.lower() for insight in insights)
 
     def test_percentiles_with_single_value(self):

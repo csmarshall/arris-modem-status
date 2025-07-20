@@ -336,8 +336,8 @@ class TestRawSocketImplementation:
 
                 adapter._raw_socket_request(request)
 
-                # Should connect to custom port
-                mock_wrapped_socket.connect.assert_called_with(('192.168.100.1', 8443))
+                # Should connect to custom port on the RAW socket (before SSL wrapping)
+                mock_socket_instance.connect.assert_called_with(('192.168.100.1', 8443))
 
 
 @pytest.mark.unit
@@ -854,28 +854,30 @@ class TestHTTPCompatibilityErrorPaths:
             with pytest.raises(Exception, match="Socket connection failed"):
                 adapter.send(request)
 
-    def test_raw_socket_request_socket_close_on_error(self):
+    @patch('arris_modem_status.http_compatibility.socket.socket')
+    def test_raw_socket_request_socket_close_on_error(self, mock_socket_class):
         """Test that socket is properly closed even when errors occur."""
         adapter = ArrisCompatibleHTTPAdapter()
 
-        with patch('socket.socket') as mock_socket_class:
-            mock_socket = Mock()
-            mock_socket_class.return_value = mock_socket
+        # Create a mock socket
+        mock_socket = MagicMock()
+        mock_socket_class.return_value = mock_socket
 
-            # Make connect raise an exception
-            mock_socket.connect.side_effect = socket.error("Connection refused")
+        # Make connect raise an exception BEFORE SSL wrapping
+        mock_socket.connect.side_effect = socket.error("Connection refused")
 
-            request = Mock()
-            request.url = "https://192.168.100.1/HNAP1/"
-            request.method = "GET"
-            request.headers = {}
-            request.body = None
+        request = Mock()
+        request.url = "https://192.168.100.1/HNAP1/"
+        request.method = "GET"
+        request.headers = {}
+        request.body = None
 
-            with pytest.raises(socket.error):
-                adapter._raw_socket_request(request)
+        # The socket error should be raised before SSL wrapping
+        with pytest.raises(socket.error):
+            adapter._raw_socket_request(request)
 
-            # Socket should still be closed
-            mock_socket.close.assert_called_once()
+        # Socket should still be closed
+        mock_socket.close.assert_called_once()
 
     def test_ssl_context_no_verify_with_error(self):
         """Test SSL context when verify=False and socket operations fail."""
@@ -909,8 +911,10 @@ class TestHTTPCompatibilityErrorPaths:
         """Test parse_response_tolerantly when parsing completely fails."""
         adapter = ArrisCompatibleHTTPAdapter()
 
-        # Mock a response that causes an exception during parsing
-        raw_response = b"\xff\xfe\xfd"  # Invalid UTF-8 bytes
+        # To trigger the exception path, we need to cause an actual exception
+        # during parsing. We'll use a mock that raises when decode is called.
+        raw_response = Mock()
+        raw_response.decode.side_effect = Exception("Catastrophic failure")
 
         request = Mock()
         request.url = "https://192.168.100.1/test"
@@ -918,8 +922,10 @@ class TestHTTPCompatibilityErrorPaths:
         # Should handle the exception and return error response
         response = adapter._parse_response_tolerantly(raw_response, request)
 
+        # This should return 500 from the exception handler
         assert response.status_code == 500
         assert b'{"error": "Parsing failed with browser-compatible parser"}' in response.content
+        assert response.reason == 'Internal Server Error'
 
     def test_receive_response_tolerantly_general_exception(self):
         """Test receive_response_tolerantly with general exception."""
@@ -945,34 +951,39 @@ class TestHTTPCompatibilityErrorPaths:
         # Bytes that can't be decoded as UTF-8
         request.body = b'\xff\xfe\xfd\xfc'
 
-        # Should still build the request (will use decode with errors='replace' or similar)
+        # After the fix, this should handle the decode error gracefully
         http_request = adapter._build_raw_http_request(request, "192.168.100.1", "/HNAP1/")
 
         assert "POST /HNAP1/ HTTP/1.1" in http_request
         assert "Content-Length: 4" in http_request
+        # The body should be empty due to decode error
+        assert http_request.endswith("\r\n\r\n")  # Empty body after headers
 
-    def test_socket_timeout_on_connect(self):
+    @patch('arris_modem_status.http_compatibility.socket.socket')
+    def test_socket_timeout_on_connect(self, mock_socket_class):
         """Test socket timeout during connection."""
         adapter = ArrisCompatibleHTTPAdapter()
 
-        with patch('socket.socket') as mock_socket_class:
-            mock_socket = Mock()
-            mock_socket_class.return_value = mock_socket
+        # Create a mock socket
+        mock_socket = MagicMock()
+        mock_socket_class.return_value = mock_socket
 
-            # Make connect raise timeout
-            mock_socket.connect.side_effect = socket.timeout("Connection timed out")
+        # Make connect raise timeout BEFORE SSL wrapping
+        mock_socket.connect.side_effect = socket.timeout("Connection timed out")
 
-            request = Mock()
-            request.url = "https://192.168.100.1/HNAP1/"
-            request.method = "GET"
-            request.headers = {}
-            request.body = None
+        request = Mock()
+        request.url = "https://192.168.100.1/HNAP1/"
+        request.method = "GET"
+        request.headers = {}
+        request.body = None
 
-            with pytest.raises(socket.timeout):
-                adapter._raw_socket_request(request, timeout=5)
+        with pytest.raises(socket.timeout):
+            adapter._raw_socket_request(request, timeout=5)
 
-            # Should have set timeout
-            mock_socket.settimeout.assert_called_with(5)
+        # Should have set timeout
+        mock_socket.settimeout.assert_called_with(5)
+        # Socket should be closed
+        mock_socket.close.assert_called_once()
 
     def test_receive_response_tolerantly_content_length_parsing_error(self):
         """Test receive_response_tolerantly when content-length can't be parsed."""

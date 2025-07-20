@@ -162,16 +162,16 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
                 sock.settimeout(timeout)
 
         try:
-            # SSL wrap for HTTPS
+            # Connect to server first (this can raise socket.error or socket.timeout)
+            sock.connect((host, port))
+
+            # SSL wrap for HTTPS (only after successful connection)
             if request.url.startswith('https'):
                 context = ssl.create_default_context()
                 if not verify:
                     context.check_hostname = False
                     context.verify_mode = ssl.CERT_NONE
                 sock = context.wrap_socket(sock, server_hostname=host)
-
-            # Connect to server
-            sock.connect((host, port))
 
             # Build HTTP request
             http_request = self._build_raw_http_request(request, host, path)
@@ -186,6 +186,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
             return self._parse_response_tolerantly(raw_response, request)
 
         finally:
+            # Always close the socket
             sock.close()
 
     def _build_raw_http_request(self, request, host: str, path: str) -> str:
@@ -209,7 +210,13 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
             if isinstance(request.body, str):
                 lines.append(request.body)
             else:
-                lines.append(request.body.decode('utf-8'))
+                try:
+                    lines.append(request.body.decode('utf-8'))
+                except UnicodeDecodeError:
+                    # For binary data that can't be decoded, we shouldn't include it in the request
+                    # This is a limitation of our text-based HTTP request building
+                    logger.warning("Binary body data cannot be included in raw HTTP request")
+                    lines.append("")  # Empty body
 
         return "\r\n".join(lines)
 
@@ -348,6 +355,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
             response._content = b'{"error": "Parsing failed with browser-compatible parser"}'
             response.url = original_request.url
             response.request = original_request
+            response.reason = 'Internal Server Error'  # Add this line
             return response
 
 
