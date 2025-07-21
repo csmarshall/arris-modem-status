@@ -12,7 +12,7 @@ License: MIT
 import logging
 import socket
 import sys
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -75,10 +75,10 @@ def get_optimal_timeouts(host: str) -> Tuple[float, float]:
     """
     # Check if this appears to be a local network address
     is_local = (
-        host.startswith('192.168.') or
-        host.startswith('10.') or
-        host.startswith('172.') or
-        host in ['localhost', '127.0.0.1']
+        host.startswith("192.168.")
+        or host.startswith("10.")
+        or host.startswith("172.")
+        or host in ["localhost", "127.0.0.1"]
     )
 
     if is_local:

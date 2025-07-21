@@ -39,10 +39,4 @@ __author__ = "Charles Marshall"
 __license__ = "MIT"
 
 # Public API
-__all__ = [
-    "ArrisModemStatusClient",
-    "ChannelInfo",
-    "__version__",
-    "__author__",
-    "__license__"
-]
+__all__ = ["ArrisModemStatusClient", "ChannelInfo", "__version__", "__author__", "__license__"]

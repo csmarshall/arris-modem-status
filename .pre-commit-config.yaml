@@ -52,6 +52,13 @@ repos:
         name: Sort Python imports
         args: ['--profile=black', '--line-length=120']
 
+  # Additional PEP8 fixes
+  - repo: https://github.com/hhatto/autopep8
+    rev: v2.0.4
+    hooks:
+      - id: autopep8
+        args: ['--max-line-length=120', '--in-place']
+
   - repo: https://github.com/pycqa/flake8
     rev: 6.0.0
     hooks:

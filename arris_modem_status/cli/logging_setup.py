@@ -35,14 +35,13 @@ def setup_logging(debug: bool = False, log_file: Optional[str] = None) -> None:
     if debug:
         # More detailed format for debug mode
         formatter = logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(name)s - %(funcName)s:%(lineno)d - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
+            "%(asctime)s - %(levelname)s - %(name)s - %(funcName)s:%(lineno)d - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
     else:
         # Simpler format for normal mode
         formatter = logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(name)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
+            "%(asctime)s - %(levelname)s - %(name)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
         )
 
     console_handler.setFormatter(formatter)
@@ -56,11 +55,7 @@ def setup_logging(debug: bool = False, log_file: Optional[str] = None) -> None:
         handlers.append(file_handler)
 
     # Configure the root logger
-    logging.basicConfig(
-        level=level,
-        handlers=handlers,
-        force=True  # Replace any existing handlers
-    )
+    logging.basicConfig(level=level, handlers=handlers, force=True)  # Replace any existing handlers
 
     # Configure third-party libraries to be less verbose unless debug is enabled
     if not debug:

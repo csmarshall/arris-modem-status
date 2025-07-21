@@ -31,7 +31,6 @@ help: ## Show this help message
 	@echo ""
 	@echo "$(YELLOW)Quick Start:$(RESET)"
 	@echo "  $(BLUE)make setup-dev$(RESET)     # Setup development environment"
-	@echo "  $(BLUE)make fix-build$(RESET)     # Fix build issues (run if 'make build' fails)"
 	@echo "  $(BLUE)make dev-check$(RESET)     # Run complete development check"
 	@echo ""
 	@echo "$(YELLOW)All Commands:$(RESET)"
@@ -58,14 +57,55 @@ test-integration: ## Run integration tests (requires modem password)
 		echo "$(RED)❌ Please provide PASSWORD: make test-integration PASSWORD=your_password$(RESET)"; \
 		exit 1; \
 	fi
-	$(PYTHON) production_test.py --password "$(PASSWORD)" --comprehensive
+	# Use pytest markers for integration tests
+	$(PYTHON) -m pytest tests/ -m integration -v
 	@echo "$(GREEN)✅ Integration tests complete$(RESET)"
 
-format: ## Format code with Black and isort
+test-quick: ## Quick test without coverage
+	@echo "$(GREEN)Running quick tests...$(RESET)"
+	pytest tests/ -x -q -m "not integration"
+	@echo "$(GREEN)✅ Quick tests complete$(RESET)"
+
+format: ## Format code with Black, isort, and autopep8
 	@echo "$(GREEN)Formatting Python code...$(RESET)"
-	black arris_modem_status/ tests/ scripts/ --line-length 120
-	isort arris_modem_status/ tests/ scripts/ --profile black --line-length 120
+	# Black handles most formatting including whitespace
+	black arris_modem_status/ tests/ --line-length 120
+	# isort handles import sorting
+	isort arris_modem_status/ tests/ --profile black --line-length 120
+	# autopep8 for any remaining PEP8 issues (whitespace, etc)
+	autopep8 --in-place --recursive --max-line-length 120 arris_modem_status/ tests/
 	@echo "$(GREEN)✅ Code formatting complete$(RESET)"
+
+format-check: ## Check formatting without changing files
+	@echo "$(GREEN)Checking code formatting...$(RESET)"
+	black --check arris_modem_status/ tests/ --line-length 120
+	isort --check-only arris_modem_status/ tests/ --profile black --line-length 120
+	@echo "$(GREEN)✅ Format check complete$(RESET)"
+
+fix-whitespace: ## Fix whitespace issues specifically
+	@echo "$(GREEN)Fixing whitespace issues...$(RESET)"
+	# Remove trailing whitespace
+	find arris_modem_status tests -name "*.py" -type f -exec sed -i '' 's/[[:space:]]*$$//' {} \;
+	# Ensure files end with newline
+	find arris_modem_status tests -name "*.py" -type f -exec sh -c 'tail -c1 {} | read -r _ || echo >> {}' \;
+	# Fix tabs to spaces
+	find arris_modem_status tests -name "*.py" -type f -exec sed -i '' 's/\t/    /g' {} \;
+	@echo "$(GREEN)✅ Whitespace cleanup complete$(RESET)"
+
+fix-all: ## Fix all formatting, whitespace, and PEP8 issues
+	@echo "$(GREEN)🔧 Running complete code cleanup...$(RESET)"
+	# Run all formatters
+	$(MAKE) format
+	# Run pre-commit to catch anything else
+	pre-commit run --all-files || true
+	# Final validation
+	$(MAKE) lint
+	@echo "$(GREEN)✅ All code issues fixed!$(RESET)"
+
+pep8-report: ## Generate detailed PEP8 compliance report
+	@echo "$(GREEN)Generating PEP8 compliance report...$(RESET)"
+	flake8 arris_modem_status/ tests/ --max-line-length=120 --extend-ignore=E203,W503 --statistics --output-file=pep8-report.txt
+	@echo "$(GREEN)✅ Report saved to pep8-report.txt$(RESET)"
 
 lint: ## Run all linting checks
 	@echo "$(GREEN)Running linting checks...$(RESET)"
@@ -74,55 +114,24 @@ lint: ## Run all linting checks
 	bandit -r arris_modem_status/ -ll
 	@echo "$(GREEN)✅ Linting complete$(RESET)"
 
-clean-whitespace: ## Clean up whitespace issues (PEP 8 compliance)
-	@echo "$(GREEN)Cleaning whitespace issues...$(RESET)"
-	$(PYTHON) scripts/manage_version.py --clean
-	@echo "$(GREEN)✅ Whitespace cleanup complete$(RESET)"
-
-migrate-setup-cfg: ## Migrate setup.cfg to modern pyproject.toml
-	@echo "$(GREEN)Migrating setup.cfg configuration...$(RESET)"
-	$(PYTHON) scripts/migrate_setup_cfg.py --migrate
-	@echo "$(GREEN)✅ setup.cfg migration complete$(RESET)"
-
-check-setup-cfg: ## Check setup.cfg for version conflicts
-	@echo "$(GREEN)Checking setup.cfg for conflicts...$(RESET)"
-	$(PYTHON) scripts/migrate_setup_cfg.py --analyze
-
 version: ## Show current version
-	@echo "$(BLUE)Current version information:$(RESET)"
-	@$(PYTHON) scripts/manage_version.py --current
-
-version-info: ## Show detailed version information
-	@$(PYTHON) scripts/manage_version.py --info
+	@echo "$(BLUE)Current version:$(RESET)"
+	@grep -E '^__version__' arris_modem_status/__init__.py | cut -d'"' -f2
 
 version-bump-patch: ## Bump patch version (1.3.0 -> 1.3.1)
 	@echo "$(GREEN)Bumping patch version...$(RESET)"
-	$(PYTHON) scripts/manage_version.py --bump patch
+	bump-my-version bump patch
 	@echo "$(GREEN)✅ Patch version bumped$(RESET)"
 
 version-bump-minor: ## Bump minor version (1.3.0 -> 1.4.0)
 	@echo "$(GREEN)Bumping minor version...$(RESET)"
-	$(PYTHON) scripts/manage_version.py --bump minor
+	bump-my-version bump minor
 	@echo "$(GREEN)✅ Minor version bumped$(RESET)"
 
 version-bump-major: ## Bump major version (1.3.0 -> 2.0.0)
 	@echo "$(YELLOW)Bumping major version (breaking changes)...$(RESET)"
-	$(PYTHON) scripts/manage_version.py --bump major
+	bump-my-version bump major
 	@echo "$(GREEN)✅ Major version bumped$(RESET)"
-
-version-set: ## Set specific version (usage: make version-set VERSION=1.3.1)
-	@if [ -z "$(VERSION)" ]; then \
-		echo "$(RED)❌ Please provide VERSION: make version-set VERSION=1.3.1$(RESET)"; \
-		exit 1; \
-	fi
-	@echo "$(GREEN)Setting version to $(VERSION)...$(RESET)"
-	$(PYTHON) scripts/manage_version.py --set $(VERSION)
-	@echo "$(GREEN)✅ Version set to $(VERSION)$(RESET)"
-
-validate: ## Validate version consistency and code quality
-	@echo "$(GREEN)Validating project consistency...$(RESET)"
-	$(PYTHON) scripts/manage_version.py --validate
-	@echo "$(GREEN)✅ Validation complete$(RESET)"
 
 clean: ## Clean build artifacts and cache files
 	@echo "$(GREEN)Cleaning build artifacts...$(RESET)"
@@ -158,13 +167,13 @@ build-check: ## Check build artifacts
 
 install-build-deps: ## Install build dependencies
 	@echo "$(GREEN)Installing build dependencies...$(RESET)"
-	$(PIP) install build twine wheel
+	$(PIP) install build twine wheel bump-my-version
 	@echo "$(GREEN)✅ Build dependencies installed$(RESET)"
 
-fix-build: ## Fix build dependency issues automatically
-	@echo "$(GREEN)Fixing build dependencies...$(RESET)"
-	$(PYTHON) scripts/fix_build_deps.py
-	@echo "$(GREEN)✅ Build dependencies fixed$(RESET)"
+check-deps: ## Check for missing dependencies
+	@echo "$(GREEN)Checking dependencies...$(RESET)"
+	$(PIP) check
+	@echo "$(GREEN)✅ Dependency check complete$(RESET)"
 
 release-test: build build-check ## Test release to TestPyPI
 	@echo "$(YELLOW)Uploading to TestPyPI...$(RESET)"
@@ -177,23 +186,25 @@ release: build build-check ## Release to PyPI (production)
 	$(PYTHON) -m twine upload dist/*
 	@echo "$(GREEN)✅ Production release complete$(RESET)"
 
-setup-dev: ## Setup development environment
+setup-dev: ## Setup development environment with pre-commit
 	@echo "$(GREEN)Setting up development environment...$(RESET)"
 	$(PIP) install -e .[dev,build]
-	@if command -v pre-commit >/dev/null 2>&1; then \
-		pre-commit install; \
-		echo "$(GREEN)✅ Pre-commit hooks installed$(RESET)"; \
-	else \
-		echo "$(YELLOW)⚠️  Pre-commit not available, installing...$(RESET)"; \
-		$(PIP) install pre-commit; \
-		pre-commit install; \
-	fi
+	# Install and setup pre-commit hooks
+	pre-commit install
+	pre-commit install --hook-type pre-push
+	@echo "$(GREEN)✅ Pre-commit hooks installed$(RESET)"
+	@echo "$(BLUE)ℹ️  Code will be auto-formatted on every commit$(RESET)"
 	@echo "$(GREEN)✅ Development environment ready$(RESET)"
 
-pre-commit: ## Run pre-commit hooks on all files
-	@echo "$(GREEN)Running pre-commit hooks...$(RESET)"
+pre-commit-run: ## Run pre-commit on all files manually
+	@echo "$(GREEN)Running pre-commit hooks on all files...$(RESET)"
 	pre-commit run --all-files
 	@echo "$(GREEN)✅ Pre-commit checks complete$(RESET)"
+
+pre-commit-update: ## Update pre-commit hooks to latest versions
+	@echo "$(GREEN)Updating pre-commit hooks...$(RESET)"
+	pre-commit autoupdate
+	@echo "$(GREEN)✅ Pre-commit hooks updated$(RESET)"
 
 docs: ## Generate documentation (placeholder)
 	@echo "$(BLUE)Documentation generation not yet implemented$(RESET)"

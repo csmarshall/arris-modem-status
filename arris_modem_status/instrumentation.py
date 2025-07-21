@@ -49,7 +49,7 @@ class PerformanceInstrumentation:
         error_type: Optional[str] = None,
         retry_count: int = 0,
         http_status: Optional[int] = None,
-        response_size: int = 0
+        response_size: int = 0,
     ) -> TimingMetrics:
         """Record timing metrics for an operation."""
         end_time = time.time()
@@ -64,7 +64,7 @@ class PerformanceInstrumentation:
             error_type=error_type,
             retry_count=retry_count,
             http_status=http_status,
-            response_size=response_size
+            response_size=response_size,
         )
 
         self.timing_metrics.append(metric)
@@ -94,7 +94,8 @@ class PerformanceInstrumentation:
                     "avg_time": sum(durations) / len(durations),
                     "min_time": min(durations),
                     "max_time": max(durations),
-                    "success_rate": len([m for m in self.timing_metrics if m.operation == operation and m.success]) / len([m for m in self.timing_metrics if m.operation == operation])
+                    "success_rate": len([m for m in self.timing_metrics if m.operation == operation and m.success])
+                    / len([m for m in self.timing_metrics if m.operation == operation]),
                 }
 
         # Calculate percentiles for total response time
@@ -106,13 +107,15 @@ class PerformanceInstrumentation:
                 "p50": all_durations[n // 2] if n > 0 else 0,
                 "p90": all_durations[int(n * 0.9)] if n > 0 else 0,
                 "p95": all_durations[int(n * 0.95)] if n > 0 else 0,
-                "p99": all_durations[int(n * 0.99)] if n > 0 else 0
+                "p99": all_durations[int(n * 0.99)] if n > 0 else 0,
             }
         else:
             percentiles = {"p50": 0, "p90": 0, "p95": 0, "p99": 0}
 
         # HTTP compatibility overhead
-        compatibility_metrics = [m for m in self.timing_metrics if "compatibility" in m.operation.lower() or m.retry_count > 0]
+        compatibility_metrics = [
+            m for m in self.timing_metrics if "compatibility" in m.operation.lower() or m.retry_count > 0
+        ]
         compatibility_overhead = sum(m.duration for m in compatibility_metrics)
 
         return {
@@ -121,11 +124,11 @@ class PerformanceInstrumentation:
                 "total_operations": len(self.timing_metrics),
                 "successful_operations": len([m for m in self.timing_metrics if m.success]),
                 "failed_operations": len([m for m in self.timing_metrics if not m.success]),
-                "http_compatibility_overhead": compatibility_overhead
+                "http_compatibility_overhead": compatibility_overhead,
             },
             "operation_breakdown": operation_stats,
             "response_time_percentiles": percentiles,
-            "performance_insights": self._generate_performance_insights(operation_stats, total_session_time)
+            "performance_insights": self._generate_performance_insights(operation_stats, total_session_time),
         }
 
     def _generate_performance_insights(self, operation_stats: Dict[str, Any], total_time: float) -> List[str]:

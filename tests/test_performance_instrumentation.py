@@ -1,6 +1,7 @@
-import pytest
 import time
 from unittest.mock import Mock, patch
+
+import pytest
 
 from arris_modem_status.instrumentation import PerformanceInstrumentation
 from arris_modem_status.models import TimingMetrics
@@ -25,7 +26,7 @@ class TestTimingMetrics:
             error_type=None,
             retry_count=0,
             http_status=200,
-            response_size=1024
+            response_size=1024,
         )
 
         assert metrics.operation == "test_op"
@@ -45,7 +46,7 @@ class TestTimingMetrics:
             success=False,
             error_type="ConnectionError",
             retry_count=2,
-            http_status=500
+            http_status=500,
         )
 
         assert metrics.success is False
@@ -81,11 +82,7 @@ class TestPerformanceInstrumentation:
         start_time = time.time()
 
         metric = instrumentation.record_timing(
-            "test_operation",
-            start_time,
-            success=True,
-            http_status=200,
-            response_size=1024
+            "test_operation", start_time, success=True, http_status=200, response_size=1024
         )
 
         assert isinstance(metric, TimingMetrics)
@@ -102,11 +99,7 @@ class TestPerformanceInstrumentation:
         start_time = time.time()
 
         metric = instrumentation.record_timing(
-            "failed_operation",
-            start_time,
-            success=False,
-            error_type="ConnectionError",
-            retry_count=1
+            "failed_operation", start_time, success=False, error_type="ConnectionError", retry_count=1
         )
 
         assert metric.success is False
@@ -189,11 +182,7 @@ class TestPerformanceInstrumentation:
 
         # Record metrics with known durations
         for i, duration in enumerate([0.1, 0.2, 0.3, 0.4, 0.5]):
-            instrumentation.record_timing(
-                f"op_{i}",
-                base_time,
-                success=True
-            )
+            instrumentation.record_timing(f"op_{i}", base_time, success=True)
             # Manually set duration for testing
             instrumentation.timing_metrics[-1].duration = duration
 
@@ -225,7 +214,7 @@ class TestPerformanceInstrumentation:
         # Should track compatibility overhead
         assert "http_compatibility_overhead" in session_metrics
 
-    @patch('arris_modem_status.instrumentation.logger')
+    @patch("arris_modem_status.instrumentation.logger")
     def test_debug_logging(self, mock_logger):
         """Test debug logging during timing recording."""
         instrumentation = PerformanceInstrumentation()
@@ -249,11 +238,7 @@ class TestPerformanceInstrumentation:
 
         # Record with zero response size
         metric = instrumentation.record_timing(
-            "empty_response",
-            start_time,
-            success=True,
-            http_status=204,  # No Content
-            response_size=0
+            "empty_response", start_time, success=True, http_status=204, response_size=0  # No Content
         )
 
         assert metric.response_size == 0
@@ -322,7 +307,7 @@ class TestPerformanceInstrumentation:
             start_time=start_time - 1.0,
             end_time=start_time - 0.5,
             duration=0.5,
-            success=True
+            success=True,
         )
 
         metric2 = TimingMetrics(
@@ -330,7 +315,7 @@ class TestPerformanceInstrumentation:
             start_time=start_time - 0.5,
             end_time=start_time - 0.2,
             duration=0.3,
-            success=True
+            success=True,
         )
 
         # Add to instrumentation
@@ -409,7 +394,9 @@ class TestPerformanceInstrumentation:
         normal.duration = 0.5
 
         # Record operation with compatibility handling (has retry)
-        compat = instrumentation.record_timing("http_compatibility_fallback", time.time() - 0.5, success=True, retry_count=1)
+        compat = instrumentation.record_timing(
+            "http_compatibility_fallback", time.time() - 0.5, success=True, retry_count=1
+        )
         compat.duration = 0.8
 
         summary = instrumentation.get_performance_summary()
@@ -417,6 +404,7 @@ class TestPerformanceInstrumentation:
         # Should calculate compatibility overhead
         assert "http_compatibility_overhead" in summary["session_metrics"]
         assert summary["session_metrics"]["http_compatibility_overhead"] == 0.8  # Only the compat operation
+
 
 @pytest.mark.unit
 @pytest.mark.performance

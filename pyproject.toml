@@ -63,7 +63,6 @@ Changelog = "https://github.com/csmarshall/arris-modem-status/blob/main/CHANGELO
 arris-modem-status = "arris_modem_status.cli.main:main"
 
 [project.optional-dependencies]
-# BASIC DEVELOPMENT (ships to PyPI as optional)
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
@@ -72,7 +71,9 @@ dev = [
     "isort>=5.10.0",
     "flake8>=5.0.0",
     "mypy>=0.980",
-    "bump2version>=1.0.1"
+    "bump-my-version>=0.17.0",
+    "autopep8>=2.0.0",
+    "pre-commit>=3.0.0"
 ]
 
 # REVERSE ENGINEERING / DEBUG TOOLS (kept in repo, not shipped by default)
@@ -101,8 +102,7 @@ test = [
 build = [
     "build>=0.10.0",
     "twine>=4.0.0", 
-    "wheel>=0.40.0",
-    "check-manifest>=0.49"
+    "wheel>=0.40.0"
 ]
 
 # DYNAMIC VERSION CONFIGURATION

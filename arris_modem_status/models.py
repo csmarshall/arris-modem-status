@@ -10,12 +10,13 @@ Version: 1.3.0
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 
 @dataclass
 class TimingMetrics:
     """Detailed timing metrics for performance analysis."""
+
     operation: str
     start_time: float
     end_time: float
@@ -35,6 +36,7 @@ class TimingMetrics:
 @dataclass
 class ErrorCapture:
     """Captures details about HTTP compatibility issues for analysis."""
+
     timestamp: float
     request_type: str
     http_status: int
@@ -49,6 +51,7 @@ class ErrorCapture:
 @dataclass
 class ChannelInfo:
     """Represents a single modem channel with optimized field access."""
+
     channel_id: str
     frequency: str
     power: str

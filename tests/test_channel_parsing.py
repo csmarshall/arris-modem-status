@@ -1,10 +1,12 @@
 """Tests for channel data parsing functionality."""
 
-import pytest
 from unittest.mock import Mock
+
+import pytest
 
 try:
     from arris_modem_status import ArrisModemStatusClient, ChannelInfo
+
     CLIENT_AVAILABLE = True
 except ImportError:
     CLIENT_AVAILABLE = False
@@ -19,18 +21,13 @@ class TestChannelInfoModel:
     def test_channel_info_basic_creation(self):
         """Test basic ChannelInfo creation."""
         channel = ChannelInfo(
-            channel_id="1",
-            frequency="549000000",
-            power="0.6",
-            snr="39.0",
-            modulation="256QAM",
-            lock_status="Locked"
+            channel_id="1", frequency="549000000", power="0.6", snr="39.0", modulation="256QAM", lock_status="Locked"
         )
 
         assert channel.channel_id == "1"
         assert channel.frequency == "549000000 Hz"  # Auto-formatted
-        assert channel.power == "0.6 dBmV"         # Auto-formatted
-        assert channel.snr == "39.0 dB"           # Auto-formatted
+        assert channel.power == "0.6 dBmV"  # Auto-formatted
+        assert channel.snr == "39.0 dB"  # Auto-formatted
         assert channel.modulation == "256QAM"
         assert channel.lock_status == "Locked"
 
@@ -42,7 +39,7 @@ class TestChannelInfoModel:
             power="1.2 dBmV",
             snr="38.5 dB",
             modulation="256QAM",
-            lock_status="Locked"
+            lock_status="Locked",
         )
 
         # Should not double-format
@@ -58,7 +55,7 @@ class TestChannelInfoModel:
             power="-0.2",
             snr="N/A",  # Special case for upstream
             modulation="OFDMA",
-            lock_status="Unlocked"
+            lock_status="Unlocked",
         )
 
         assert channel.frequency == "561000000 Hz"
@@ -74,7 +71,7 @@ class TestChannelInfoModel:
             power="invalid",
             snr="37.0",
             modulation="256QAM",
-            lock_status="Locked"
+            lock_status="Locked",
         )
 
         # Should handle invalid power gracefully
@@ -91,7 +88,7 @@ class TestChannelInfoModel:
             lock_status="Locked",
             corrected_errors="150",
             uncorrected_errors="5",
-            channel_type="downstream"
+            channel_type="downstream",
         )
 
         assert channel.corrected_errors == "150"
@@ -193,7 +190,7 @@ class TestChannelDataParsing:
             },
             "GetCustomerStatusUpstreamChannelInfoResponse": {
                 "CustomerConnUpstreamChannel": "1^Locked^SC-QAM^^^30600000^46.5"
-            }
+            },
         }
 
         channels = client._parse_channels(hnap_response)
@@ -225,9 +222,7 @@ class TestChannelDataParsing:
         client = ArrisModemStatusClient(password="test")
 
         # Malformed response that would cause exceptions
-        bad_response = {
-            "GetCustomerStatusDownstreamChannelInfoResponse": None
-        }
+        bad_response = {"GetCustomerStatusDownstreamChannelInfoResponse": None}
 
         # Should handle gracefully without raising
         channels = client._parse_channels(bad_response)
@@ -248,7 +243,7 @@ class TestResponseParsing:
         responses = {
             "startup_connection": mock_modem_responses["complete_status"],
             "internet_register": mock_modem_responses["complete_status"],
-            "channel_info": mock_modem_responses["complete_status"]
+            "channel_info": mock_modem_responses["complete_status"],
         }
 
         parsed_data = client._parse_responses(responses)
@@ -282,10 +277,7 @@ class TestResponseParsing:
         """Test parsing with invalid JSON."""
         client = ArrisModemStatusClient(password="test")
 
-        responses = {
-            "invalid": "not json",
-            "empty": ""
-        }
+        responses = {"invalid": "not json", "empty": ""}
 
         parsed_data = client._parse_responses(responses)
 
@@ -298,9 +290,7 @@ class TestResponseParsing:
         """Test parsing response with no channel data."""
         client = ArrisModemStatusClient(password="test")
 
-        responses = {
-            "channel_info": mock_modem_responses["empty_channels"]
-        }
+        responses = {"channel_info": mock_modem_responses["empty_channels"]}
 
         parsed_data = client._parse_responses(responses)
 

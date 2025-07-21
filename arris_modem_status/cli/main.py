@@ -15,18 +15,10 @@ import time
 from datetime import datetime
 
 from arris_modem_status import ArrisModemStatusClient, __version__
+
 from .args import parse_args
-from .connectivity import (
-    quick_connectivity_check,
-    get_optimal_timeouts,
-    print_connectivity_troubleshooting
-)
-from .formatters import (
-    print_summary_to_stderr,
-    format_json_output,
-    print_json_output,
-    print_error_suggestions
-)
+from .connectivity import get_optimal_timeouts, print_connectivity_troubleshooting, quick_connectivity_check
+from .formatters import format_json_output, print_error_suggestions, print_json_output, print_summary_to_stderr
 from .logging_setup import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -46,7 +38,7 @@ def main():
 
         # Log startup information (to stderr)
         if not args.quiet:
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             mode_str = "serial" if args.serial else "concurrent"
             print(f"Arris Modem Status Client v{__version__} - {timestamp}", file=sys.stderr)
             print(f"Connecting to {args.host}:{args.port} as {args.username} ({mode_str} mode)", file=sys.stderr)
@@ -79,7 +71,7 @@ def main():
             concurrent=not args.serial,
             max_workers=args.workers,
             max_retries=args.retries,
-            timeout=final_timeout
+            timeout=final_timeout,
         )
 
         logger.info(f"Querying modem at {args.host}:{args.port}")
@@ -116,9 +108,9 @@ def main():
 
         # Check if this looks like a connectivity issue and we haven't done a quick check
         error_str = str(e).lower()
-        is_connectivity_error = any(term in error_str for term in [
-            'timeout', 'connection', 'refused', 'unreachable', 'network'
-        ])
+        is_connectivity_error = any(
+            term in error_str for term in ["timeout", "connection", "refused", "unreachable", "network"]
+        )
 
         if is_connectivity_error and not connectivity_checked:
             print_connectivity_troubleshooting(args.host, args.port, str(e))

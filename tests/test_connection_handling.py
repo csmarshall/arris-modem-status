@@ -1,11 +1,13 @@
 """Test connection handling."""
 
-import pytest
 from unittest.mock import patch
-from requests.exceptions import ConnectTimeout, ConnectionError
+
+import pytest
+from requests.exceptions import ConnectionError, ConnectTimeout
 
 try:
     from arris_modem_status import ArrisModemStatusClient
+
     CLIENT_AVAILABLE = True
 except ImportError:
     CLIENT_AVAILABLE = False
@@ -30,7 +32,7 @@ class TestConnectionHandling:
 
     def test_connection_timeout_handling(self):
         """Test handling of connection timeouts."""
-        with patch('requests.Session.post') as mock_post:
+        with patch("requests.Session.post") as mock_post:
             mock_post.side_effect = ConnectTimeout("Connection timeout")
 
             client = ArrisModemStatusClient(password="test")
@@ -39,7 +41,7 @@ class TestConnectionHandling:
 
     def test_connection_error_handling(self):
         """Test handling of connection errors."""
-        with patch('requests.Session.post') as mock_post:
+        with patch("requests.Session.post") as mock_post:
             mock_post.side_effect = ConnectionError("Network unreachable")
 
             client = ArrisModemStatusClient(password="test")

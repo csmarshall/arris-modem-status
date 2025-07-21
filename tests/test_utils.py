@@ -35,6 +35,7 @@ class MockArrisModem:
         if self.compatibility_issues:
             # Simulate urllib3 parsing strictness issues
             from urllib3.exceptions import HeaderParsingError
+
             raise HeaderParsingError("3.500000 |Content-type: text/html", b"unparsed_data")
 
         return response
@@ -45,10 +46,8 @@ def mock_http_compatibility_error():
     """Context manager that simulates HTTP compatibility errors."""
     from urllib3.exceptions import HeaderParsingError
 
-    with patch('requests.Session.post') as mock_post:
-        mock_post.side_effect = HeaderParsingError(
-            "3.500000 |Content-type: text/html"
-        )
+    with patch("requests.Session.post") as mock_post:
+        mock_post.side_effect = HeaderParsingError("3.500000 |Content-type: text/html")
         yield mock_post
 
 
@@ -61,7 +60,7 @@ def mock_network_timeout(timeout_duration=1.0):
         time.sleep(timeout_duration)
         raise ConnectTimeout("Connection timeout")
 
-    with patch('requests.Session.post', side_effect=slow_response):
+    with patch("requests.Session.post", side_effect=slow_response):
         yield
 
 
@@ -104,17 +103,17 @@ def assert_valid_channel_data(channels, channel_type="downstream"):
     assert len(channels) > 0
 
     for channel in channels:
-        assert hasattr(channel, 'channel_id')
-        assert hasattr(channel, 'frequency')
-        assert hasattr(channel, 'power')
-        assert hasattr(channel, 'lock_status')
+        assert hasattr(channel, "channel_id")
+        assert hasattr(channel, "frequency")
+        assert hasattr(channel, "power")
+        assert hasattr(channel, "lock_status")
 
         # Check formatting
         assert " Hz" in channel.frequency
         assert " dBmV" in channel.power
 
         if channel_type == "downstream":
-            assert hasattr(channel, 'snr')
+            assert hasattr(channel, "snr")
             assert " dB" in channel.snr or channel.snr == "N/A"
 
 
@@ -138,7 +137,7 @@ def create_mock_status_response():
                 lock_status="Locked",
                 corrected_errors="15",
                 uncorrected_errors="0",
-                channel_type="downstream"
+                channel_type="downstream",
             )
         ],
         "upstream_channels": [
@@ -149,13 +148,9 @@ def create_mock_status_response():
                 snr="N/A",
                 modulation="SC-QAM",
                 lock_status="Locked",
-                channel_type="upstream"
+                channel_type="upstream",
             )
         ],
         "channel_data_available": True,
-        "_error_analysis": {
-            "total_errors": 2,
-            "http_compatibility_issues": 2,
-            "recovery_rate": 1.0
-        }
+        "_error_analysis": {"total_errors": 2, "http_compatibility_issues": 2, "recovery_rate": 1.0},
     }

@@ -51,72 +51,28 @@ Serial Mode:
 Quick Check:
   Use --quick-check to perform a fast connectivity test before attempting
   the full connection. This helps identify unreachable devices quickly.
-        """
+        """,
     )
 
     # Connection settings
-    parser.add_argument(
-        "--host",
-        default="192.168.100.1",
-        help="Modem hostname or IP address (default: %(default)s)"
-    )
-    parser.add_argument(
-        "--port",
-        default=443,
-        type=int,
-        help="HTTPS port for modem connection (default: %(default)s)"
-    )
-    parser.add_argument(
-        "--username",
-        default="admin",
-        help="Modem login username (default: %(default)s)"
-    )
-    parser.add_argument(
-        "--password",
-        required=True,
-        help="Modem login password (required)"
-    )
+    parser.add_argument("--host", default="192.168.100.1", help="Modem hostname or IP address (default: %(default)s)")
+    parser.add_argument("--port", default=443, type=int, help="HTTPS port for modem connection (default: %(default)s)")
+    parser.add_argument("--username", default="admin", help="Modem login username (default: %(default)s)")
+    parser.add_argument("--password", required=True, help="Modem login password (required)")
 
     # Output options
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable debug logging output to stderr"
-    )
-    parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Suppress summary output to stderr (JSON only to stdout)"
-    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging output to stderr")
+    parser.add_argument("--quiet", action="store_true", help="Suppress summary output to stderr (JSON only to stdout)")
 
     # Performance options
+    parser.add_argument("--timeout", type=int, default=30, help="Request timeout in seconds (default: %(default)s)")
+    parser.add_argument("--workers", type=int, default=2, help="Number of concurrent workers (default: %(default)s)")
+    parser.add_argument("--retries", type=int, default=3, help="Maximum retry attempts (default: %(default)s)")
     parser.add_argument(
-        "--timeout",
-        type=int,
-        default=30,
-        help="Request timeout in seconds (default: %(default)s)"
+        "--serial", action="store_true", help="Use serial requests instead of concurrent (for maximum compatibility)"
     )
     parser.add_argument(
-        "--workers",
-        type=int,
-        default=2,
-        help="Number of concurrent workers (default: %(default)s)"
-    )
-    parser.add_argument(
-        "--retries",
-        type=int,
-        default=3,
-        help="Maximum retry attempts (default: %(default)s)"
-    )
-    parser.add_argument(
-        "--serial",
-        action="store_true",
-        help="Use serial requests instead of concurrent (for maximum compatibility)"
-    )
-    parser.add_argument(
-        "--quick-check",
-        action="store_true",
-        help="Perform quick connectivity check before attempting connection"
+        "--quick-check", action="store_true", help="Perform quick connectivity check before attempting connection"
     )
 
     return parser

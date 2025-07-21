@@ -1,9 +1,10 @@
 """Core tests for ArrisModemStatusClient."""
 
-import pytest
 import json
 import time
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 from requests.exceptions import ConnectionError, Timeout
 from urllib3.exceptions import HeaderParsingError
 
@@ -55,7 +56,7 @@ class TestArrisModemStatusClientInitialization:
         """Test client as context manager."""
         with ArrisModemStatusClient(password="test") as client:
             assert isinstance(client, ArrisModemStatusClient)
-            assert hasattr(client, 'close')
+            assert hasattr(client, "close")
 
     def test_base_url_construction(self):
         """Test base URL construction."""
@@ -107,7 +108,7 @@ class TestArrisModemStatusClientAuthentication:
 
     def test_authentication_challenge_failure(self):
         """Test authentication failure at challenge stage."""
-        with patch('requests.Session.post') as mock_post:
+        with patch("requests.Session.post") as mock_post:
             mock_post.side_effect = ConnectionError("Connection failed")
 
             client = ArrisModemStatusClient(password="test")
@@ -118,10 +119,10 @@ class TestArrisModemStatusClientAuthentication:
 
     def test_authentication_login_failure(self, mock_modem_responses):
         """Test authentication failure at login stage."""
-        with patch('requests.Session.post') as mock_post:
+        with patch("requests.Session.post") as mock_post:
             mock_post.side_effect = [
-                Mock(status_code=200, text=mock_modem_responses['challenge_response']),
-                Mock(status_code=200, text=mock_modem_responses['login_failure'])
+                Mock(status_code=200, text=mock_modem_responses["challenge_response"]),
+                Mock(status_code=200, text=mock_modem_responses["login_failure"]),
             ]
 
             client = ArrisModemStatusClient(password="test")
@@ -132,7 +133,7 @@ class TestArrisModemStatusClientAuthentication:
 
     def test_authentication_json_parse_error(self):
         """Test authentication with invalid JSON response."""
-        with patch('requests.Session.post') as mock_post:
+        with patch("requests.Session.post") as mock_post:
             mock_post.return_value = Mock(status_code=200, text="invalid json")
 
             client = ArrisModemStatusClient(password="test")
@@ -144,10 +145,13 @@ class TestArrisModemStatusClientAuthentication:
         """Test authentication with performance instrumentation."""
         mock_start, mock_record = mock_performance_instrumentation
 
-        with patch('requests.Session.post') as mock_post:
+        with patch("requests.Session.post") as mock_post:
             mock_post.side_effect = [
-                Mock(status_code=200, text='{"LoginResponse": {"Challenge": "test", "PublicKey": "test", "Cookie": "test"}}'),
-                Mock(status_code=200, text='{"LoginResponse": {"LoginResult": "SUCCESS"}}')
+                Mock(
+                    status_code=200,
+                    text='{"LoginResponse": {"Challenge": "test", "PublicKey": "test", "Cookie": "test"}}',
+                ),
+                Mock(status_code=200, text='{"LoginResponse": {"LoginResult": "SUCCESS"}}'),
             ]
 
             client = ArrisModemStatusClient(password="test", enable_instrumentation=True)
@@ -169,14 +173,14 @@ class TestArrisModemStatusClientDataRetrieval:
         status = client.get_status()
 
         assert isinstance(status, dict)
-        assert 'model_name' in status
-        assert 'internet_status' in status
-        assert 'downstream_channels' in status
-        assert 'upstream_channels' in status
-        assert status['model_name'] == "S34"
-        assert status['internet_status'] == "Connected"
-        assert len(status['downstream_channels']) == 3
-        assert len(status['upstream_channels']) == 3
+        assert "model_name" in status
+        assert "internet_status" in status
+        assert "downstream_channels" in status
+        assert "upstream_channels" in status
+        assert status["model_name"] == "S34"
+        assert status["internet_status"] == "Connected"
+        assert len(status["downstream_channels"]) == 3
+        assert len(status["upstream_channels"]) == 3
 
     def test_get_status_channel_data_structure(self, mock_successful_status_flow):
         """Test channel data structure in status response."""
@@ -185,7 +189,7 @@ class TestArrisModemStatusClientDataRetrieval:
         status = client.get_status()
 
         # Test downstream channels
-        downstream = status['downstream_channels']
+        downstream = status["downstream_channels"]
         assert len(downstream) > 0
 
         first_channel = downstream[0]
@@ -198,7 +202,7 @@ class TestArrisModemStatusClientDataRetrieval:
         assert "dB" in first_channel.snr
 
         # Test upstream channels
-        upstream = status['upstream_channels']
+        upstream = status["upstream_channels"]
         assert len(upstream) > 0
 
         first_upstream = upstream[0]
@@ -208,11 +212,14 @@ class TestArrisModemStatusClientDataRetrieval:
 
     def test_get_status_without_authentication(self):
         """Test status retrieval triggers authentication."""
-        with patch('requests.Session.post') as mock_post:
+        with patch("requests.Session.post") as mock_post:
             mock_post.side_effect = [
-                Mock(status_code=200, text='{"LoginResponse": {"Challenge": "test", "PublicKey": "test", "Cookie": "test"}}'),
+                Mock(
+                    status_code=200,
+                    text='{"LoginResponse": {"Challenge": "test", "PublicKey": "test", "Cookie": "test"}}',
+                ),
                 Mock(status_code=200, text='{"LoginResponse": {"LoginResult": "SUCCESS"}}'),
-                Mock(status_code=200, text='{"GetMultipleHNAPsResponse": {}}')
+                Mock(status_code=200, text='{"GetMultipleHNAPsResponse": {}}'),
             ]
 
             client = ArrisModemStatusClient(password="test")
@@ -225,7 +232,7 @@ class TestArrisModemStatusClientDataRetrieval:
 
     def test_get_status_authentication_failure(self):
         """Test status retrieval when authentication fails."""
-        with patch('requests.Session.post') as mock_post:
+        with patch("requests.Session.post") as mock_post:
             mock_post.side_effect = ConnectionError("Connection failed")
 
             client = ArrisModemStatusClient(password="test")
@@ -239,8 +246,8 @@ class TestArrisModemStatusClientDataRetrieval:
 
         status = client.get_status()
 
-        assert status['_request_mode'] == 'concurrent'
-        assert '_performance' in status
+        assert status["_request_mode"] == "concurrent"
+        assert "_performance" in status
 
     def test_get_status_serial_mode(self, mock_successful_status_flow):
         """Test status retrieval in serial mode."""
@@ -248,29 +255,29 @@ class TestArrisModemStatusClientDataRetrieval:
 
         status = client.get_status()
 
-        assert status['_request_mode'] == 'serial'
+        assert status["_request_mode"] == "serial"
 
     def test_get_status_with_error_capture(self, mock_modem_responses):
         """Test status retrieval with error capture enabled."""
-        with patch('requests.Session.post') as mock_post:
+        with patch("requests.Session.post") as mock_post:
             # Use a network error that will trigger retries
             from requests.exceptions import ConnectionError
 
             mock_post.side_effect = [
-                Mock(status_code=200, text=mock_modem_responses['challenge_response']),
-                Mock(status_code=200, text=mock_modem_responses['login_success']),
+                Mock(status_code=200, text=mock_modem_responses["challenge_response"]),
+                Mock(status_code=200, text=mock_modem_responses["login_success"]),
                 ConnectionError("Network error"),  # This will trigger retry
-                Mock(status_code=200, text=mock_modem_responses['complete_status']),
-                Mock(status_code=200, text=mock_modem_responses['complete_status']),
-                Mock(status_code=200, text=mock_modem_responses['complete_status'])
+                Mock(status_code=200, text=mock_modem_responses["complete_status"]),
+                Mock(status_code=200, text=mock_modem_responses["complete_status"]),
+                Mock(status_code=200, text=mock_modem_responses["complete_status"]),
             ]
 
             client = ArrisModemStatusClient(password="test", capture_errors=True)
             status = client.get_status()
 
-            assert '_error_analysis' in status
-            error_analysis = status['_error_analysis']
-            assert error_analysis['total_errors'] > 0
+            assert "_error_analysis" in status
+            error_analysis = status["_error_analysis"]
+            assert error_analysis["total_errors"] > 0
 
 
 @pytest.mark.unit
@@ -301,37 +308,28 @@ class TestArrisModemStatusClientErrorHandling:
 
     def test_make_hnap_request_with_retry_success(self, mock_modem_responses):
         """Test HNAP request with retry on success."""
-        with patch('requests.Session.post') as mock_post:
-            mock_post.return_value = Mock(status_code=200, text=mock_modem_responses['challenge_response'])
+        with patch("requests.Session.post") as mock_post:
+            mock_post.return_value = Mock(status_code=200, text=mock_modem_responses["challenge_response"])
 
             client = ArrisModemStatusClient(password="test")
             client.authenticated = True
 
-            result = client._make_hnap_request_with_retry(
-                "Login",
-                {"Login": {"Action": "request"}}
-            )
+            result = client._make_hnap_request_with_retry("Login", {"Login": {"Action": "request"}})
 
             assert result is not None
             assert mock_post.call_count == 1
 
     def test_make_hnap_request_with_retry_network_error(self):
         """Test HNAP request retry with network errors."""
-        with patch('requests.Session.post') as mock_post:
+        with patch("requests.Session.post") as mock_post:
             from requests.exceptions import ConnectionError
 
-            mock_post.side_effect = [
-                ConnectionError("Network error"),
-                Mock(status_code=200, text='{"success": true}')
-            ]
+            mock_post.side_effect = [ConnectionError("Network error"), Mock(status_code=200, text='{"success": true}')]
 
             client = ArrisModemStatusClient(password="test", max_retries=2, capture_errors=True)
             client.authenticated = True
 
-            result = client._make_hnap_request_with_retry(
-                "Test",
-                {"Test": {}}
-            )
+            result = client._make_hnap_request_with_retry("Test", {"Test": {}})
 
             assert result is not None
             assert mock_post.call_count == 2
@@ -339,7 +337,7 @@ class TestArrisModemStatusClientErrorHandling:
 
     def test_make_hnap_request_exhausted_retries(self):
         """Test HNAP request when all retries are exhausted."""
-        with patch('requests.Session.post') as mock_post:
+        with patch("requests.Session.post") as mock_post:
             from requests.exceptions import Timeout
 
             mock_post.side_effect = Timeout("Connection timeout")
@@ -347,10 +345,7 @@ class TestArrisModemStatusClientErrorHandling:
             client = ArrisModemStatusClient(password="test", max_retries=2)
             client.authenticated = True
 
-            result = client._make_hnap_request_with_retry(
-                "Test",
-                {"Test": {}}
-            )
+            result = client._make_hnap_request_with_retry("Test", {"Test": {}})
 
             assert result is None
             assert mock_post.call_count == 3  # Initial + 2 retries
@@ -366,7 +361,7 @@ class TestArrisModemStatusClientUtilities:
 
         analysis = client.get_error_analysis()
 
-        assert analysis['message'] == "No errors captured yet"
+        assert analysis["message"] == "No errors captured yet"
 
     def test_get_error_analysis_with_errors(self):
         """Test error analysis with captured errors."""
@@ -383,15 +378,15 @@ class TestArrisModemStatusClientUtilities:
                 response_headers={},
                 partial_content="",
                 recovery_successful=True,
-                compatibility_issue=True
+                compatibility_issue=True,
             )
         ]
 
         analysis = client.get_error_analysis()
 
-        assert analysis['total_errors'] == 1
-        assert analysis['http_compatibility_issues'] == 1
-        assert analysis['recovery_stats']['recovery_rate'] == 1.0
+        assert analysis["total_errors"] == 1
+        assert analysis["http_compatibility_issues"] == 1
+        assert analysis["recovery_stats"]["recovery_rate"] == 1.0
 
     def test_validate_parsing_success(self, mock_successful_status_flow):
         """Test parsing validation with successful status."""
@@ -399,23 +394,23 @@ class TestArrisModemStatusClientUtilities:
 
         validation = client.validate_parsing()
 
-        assert 'parsing_validation' in validation
-        assert 'performance_metrics' in validation
-        assert validation['parsing_validation']['basic_info_parsed'] is True
+        assert "parsing_validation" in validation
+        assert "performance_metrics" in validation
+        assert validation["parsing_validation"]["basic_info_parsed"] is True
 
     def test_validate_parsing_error(self):
         """Test parsing validation when get_status fails."""
-        with patch.object(ArrisModemStatusClient, 'get_status') as mock_get_status:
+        with patch.object(ArrisModemStatusClient, "get_status") as mock_get_status:
             mock_get_status.side_effect = Exception("Test error")
 
             client = ArrisModemStatusClient(password="test")
             validation = client.validate_parsing()
 
-            assert 'error' in validation
+            assert "error" in validation
 
     def test_close_method(self):
         """Test client close method."""
-        with patch('requests.Session.close') as mock_close:
+        with patch("requests.Session.close") as mock_close:
             client = ArrisModemStatusClient(password="test", capture_errors=True)
             client.error_captures = [Mock()]  # Add some captures
 

@@ -1,13 +1,15 @@
 """Test variable scoping fixes."""
 
-import pytest
-from unittest.mock import patch
-from io import StringIO
 from contextlib import redirect_stderr
+from io import StringIO
+from unittest.mock import patch
+
+import pytest
 
 try:
     from arris_modem_status import ArrisModemStatusClient
     from arris_modem_status.cli import main
+
     CLIENT_AVAILABLE = True
 except ImportError:
     CLIENT_AVAILABLE = False
@@ -20,8 +22,9 @@ class TestVariableScoping:
 
     def test_client_authentication_error_scoping(self):
         """Test variable scoping in authentication error paths."""
-        with patch('requests.Session.post') as mock_post:
+        with patch("requests.Session.post") as mock_post:
             from requests.exceptions import ConnectionError
+
             mock_post.side_effect = ConnectionError("Connection failed")
 
             client = ArrisModemStatusClient(password="test", host="test")
@@ -30,10 +33,10 @@ class TestVariableScoping:
 
     def test_cli_error_handling_no_undefined_vars(self):
         """Test CLI error handling doesn't have undefined variables."""
-        test_argv = ['arris-modem-status', '--password', 'test']
+        test_argv = ["arris-modem-status", "--password", "test"]
 
-        with patch('sys.argv', test_argv):
-            with patch('arris_modem_status.cli.main.ArrisModemStatusClient') as mock_client:
+        with patch("sys.argv", test_argv):
+            with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client:
                 mock_client.side_effect = Exception("Generic error")
 
                 stderr_capture = StringIO()

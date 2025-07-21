@@ -13,7 +13,7 @@ import json
 import logging
 import sys
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
 
 from arris_modem_status import __version__
 
@@ -48,7 +48,7 @@ def format_channel_data_for_display(status: dict) -> dict:
                 "lock_status": ch.lock_status,
                 "corrected_errors": ch.corrected_errors,
                 "uncorrected_errors": ch.uncorrected_errors,
-                "channel_type": ch.channel_type
+                "channel_type": ch.channel_type,
             }
             for ch in output["downstream_channels"]
         ]
@@ -64,7 +64,7 @@ def format_channel_data_for_display(status: dict) -> dict:
                 "snr": ch.snr,
                 "modulation": ch.modulation,
                 "lock_status": ch.lock_status,
-                "channel_type": ch.channel_type
+                "channel_type": ch.channel_type,
             }
             for ch in output["upstream_channels"]
         ]
@@ -89,11 +89,11 @@ def print_summary_to_stderr(status: dict) -> None:
     print(f"Internet Status: {status.get('internet_status', 'Unknown')}", file=sys.stderr)
     print(f"Connection Status: {status.get('connection_status', 'Unknown')}", file=sys.stderr)
 
-    if status.get('mac_address', 'Unknown') != 'Unknown':
+    if status.get("mac_address", "Unknown") != "Unknown":
         print(f"MAC Address: {status.get('mac_address')}", file=sys.stderr)
 
-    downstream_count = len(status.get('downstream_channels', []))
-    upstream_count = len(status.get('upstream_channels', []))
+    downstream_count = len(status.get("downstream_channels", []))
+    upstream_count = len(status.get("upstream_channels", []))
 
     print(f"Downstream Channels: {downstream_count}", file=sys.stderr)
     print(f"Upstream Channels: {upstream_count}", file=sys.stderr)
@@ -101,16 +101,16 @@ def print_summary_to_stderr(status: dict) -> None:
 
     # Show sample channel if available
     if downstream_count > 0:
-        sample = status['downstream_channels'][0]
+        sample = status["downstream_channels"][0]
         sample_info = f"ID {sample.channel_id}, {sample.frequency}, {sample.power}, SNR {sample.snr}"
         print(f"Sample Channel: {sample_info}", file=sys.stderr)
 
     # Show error analysis if available
-    error_analysis = status.get('_error_analysis')
+    error_analysis = status.get("_error_analysis")
     if error_analysis:
-        total_errors = error_analysis.get('total_errors', 0)
-        recovery_rate = error_analysis.get('recovery_rate', 0) * 100
-        compatibility_issues = error_analysis.get('http_compatibility_issues', 0)
+        total_errors = error_analysis.get("total_errors", 0)
+        recovery_rate = error_analysis.get("recovery_rate", 0) * 100
+        compatibility_issues = error_analysis.get("http_compatibility_issues", 0)
 
         print(f"Error Analysis: {total_errors} errors, {recovery_rate:.1f}% recovery", file=sys.stderr)
         if compatibility_issues > 0:
@@ -139,6 +139,7 @@ def format_json_output(status: dict, args, elapsed_time: float, connectivity_che
 
     # Get optimal timeouts for metadata
     from .connectivity import get_optimal_timeouts
+
     connect_timeout, read_timeout = get_optimal_timeouts(args.host)
     final_timeout = (connect_timeout, min(args.timeout, read_timeout))
 
@@ -153,7 +154,7 @@ def format_json_output(status: dict, args, elapsed_time: float, connectivity_che
         "timeout": final_timeout,
         "concurrent_mode": not args.serial,
         "http_compatibility": True,
-        "quick_check_performed": connectivity_checked
+        "quick_check_performed": connectivity_checked,
     }
 
     return json_output
@@ -180,6 +181,7 @@ def print_error_suggestions(debug: bool = False) -> None:
     if debug:
         # Print full traceback in debug mode
         import traceback
+
         traceback.print_exc(file=sys.stderr)
     else:
         # Provide helpful suggestions for common issues

@@ -1,72 +1,62 @@
-import pytest
 import json
 import time
-from unittest.mock import Mock, MagicMock, patch
-from typing import Dict, Any
+from typing import Any, Dict
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 
 @pytest.fixture
 def mock_modem_responses():
     """Fixture providing comprehensive mock modem responses."""
     return {
-        "challenge_response": json.dumps({
-            "LoginResponse": {
-                "Challenge": "a1b2c3d4e5f6789012345678901234567890abcd",
-                "PublicKey": "fedcba9876543210abcdef1234567890fedcba98",
-                "Cookie": "12345678-abcd-4321-9876-fedcba987654",
-                "LoginResult": "SUCCESS"
-            }
-        }),
-        "login_success": json.dumps({
-            "LoginResponse": {
-                "LoginResult": "SUCCESS"
-            }
-        }),
-        "login_failure": json.dumps({
-            "LoginResponse": {
-                "LoginResult": "FAILED"
-            }
-        }),
-        "complete_status": json.dumps({
-            "GetMultipleHNAPsResponse": {
-                "GetCustomerStatusDownstreamChannelInfoResponse": {
-                    "CustomerConnDownstreamChannel": (
-                        "1^Locked^256QAM^^549000000^0.6^39.0^15^0|+|"
-                        "2^Locked^256QAM^^555000000^1.2^38.5^20^1|+|"
-                        "3^Locked^256QAM^^561000000^-0.2^37.8^25^2"
-                    )
-                },
-                "GetCustomerStatusUpstreamChannelInfoResponse": {
-                    "CustomerConnUpstreamChannel": (
-                        "1^Locked^SC-QAM^^^30600000^46.5|+|"
-                        "2^Locked^SC-QAM^^^23700000^45.2|+|"
-                        "3^Locked^OFDMA^^^25000000^44.8"
-                    )
-                },
-                "GetCustomerStatusConnectionInfoResponse": {
-                    "StatusSoftwareModelName": "S34",
-                    "CustomerCurSystemTime": "7 days 14:23:56",
-                    "CustomerConnNetworkAccess": "Allowed"
-                },
-                "GetInternetConnectionStatusResponse": {
-                    "InternetConnection": "Connected"
-                },
-                "GetArrisRegisterInfoResponse": {
-                    "MacAddress": "AA:BB:CC:DD:EE:FF",
-                    "SerialNumber": "ABCD12345678"
+        "challenge_response": json.dumps(
+            {
+                "LoginResponse": {
+                    "Challenge": "a1b2c3d4e5f6789012345678901234567890abcd",
+                    "PublicKey": "fedcba9876543210abcdef1234567890fedcba98",
+                    "Cookie": "12345678-abcd-4321-9876-fedcba987654",
+                    "LoginResult": "SUCCESS",
                 }
             }
-        }),
-        "empty_channels": json.dumps({
-            "GetMultipleHNAPsResponse": {
-                "GetCustomerStatusDownstreamChannelInfoResponse": {
-                    "CustomerConnDownstreamChannel": ""
-                },
-                "GetCustomerStatusUpstreamChannelInfoResponse": {
-                    "CustomerConnUpstreamChannel": ""
+        ),
+        "login_success": json.dumps({"LoginResponse": {"LoginResult": "SUCCESS"}}),
+        "login_failure": json.dumps({"LoginResponse": {"LoginResult": "FAILED"}}),
+        "complete_status": json.dumps(
+            {
+                "GetMultipleHNAPsResponse": {
+                    "GetCustomerStatusDownstreamChannelInfoResponse": {
+                        "CustomerConnDownstreamChannel": (
+                            "1^Locked^256QAM^^549000000^0.6^39.0^15^0|+|"
+                            "2^Locked^256QAM^^555000000^1.2^38.5^20^1|+|"
+                            "3^Locked^256QAM^^561000000^-0.2^37.8^25^2"
+                        )
+                    },
+                    "GetCustomerStatusUpstreamChannelInfoResponse": {
+                        "CustomerConnUpstreamChannel": (
+                            "1^Locked^SC-QAM^^^30600000^46.5|+|"
+                            "2^Locked^SC-QAM^^^23700000^45.2|+|"
+                            "3^Locked^OFDMA^^^25000000^44.8"
+                        )
+                    },
+                    "GetCustomerStatusConnectionInfoResponse": {
+                        "StatusSoftwareModelName": "S34",
+                        "CustomerCurSystemTime": "7 days 14:23:56",
+                        "CustomerConnNetworkAccess": "Allowed",
+                    },
+                    "GetInternetConnectionStatusResponse": {"InternetConnection": "Connected"},
+                    "GetArrisRegisterInfoResponse": {"MacAddress": "AA:BB:CC:DD:EE:FF", "SerialNumber": "ABCD12345678"},
                 }
             }
-        })
+        ),
+        "empty_channels": json.dumps(
+            {
+                "GetMultipleHNAPsResponse": {
+                    "GetCustomerStatusDownstreamChannelInfoResponse": {"CustomerConnDownstreamChannel": ""},
+                    "GetCustomerStatusUpstreamChannelInfoResponse": {"CustomerConnUpstreamChannel": ""},
+                }
+            }
+        ),
     }
 
 
@@ -84,10 +74,10 @@ def mock_http_session():
 @pytest.fixture
 def mock_successful_auth_flow(mock_modem_responses):
     """Mock successful authentication flow."""
-    with patch('requests.Session.post') as mock_post:
+    with patch("requests.Session.post") as mock_post:
         mock_post.side_effect = [
-            Mock(status_code=200, text=mock_modem_responses['challenge_response']),
-            Mock(status_code=200, text=mock_modem_responses['login_success'])
+            Mock(status_code=200, text=mock_modem_responses["challenge_response"]),
+            Mock(status_code=200, text=mock_modem_responses["login_success"]),
         ]
         yield mock_post
 
@@ -95,14 +85,14 @@ def mock_successful_auth_flow(mock_modem_responses):
 @pytest.fixture
 def mock_successful_status_flow(mock_modem_responses):
     """Mock successful complete status flow."""
-    with patch('requests.Session.post') as mock_post:
+    with patch("requests.Session.post") as mock_post:
         # Auth flow + 3 status requests
         mock_post.side_effect = [
-            Mock(status_code=200, text=mock_modem_responses['challenge_response']),
-            Mock(status_code=200, text=mock_modem_responses['login_success']),
-            Mock(status_code=200, text=mock_modem_responses['complete_status']),
-            Mock(status_code=200, text=mock_modem_responses['complete_status']),
-            Mock(status_code=200, text=mock_modem_responses['complete_status'])
+            Mock(status_code=200, text=mock_modem_responses["challenge_response"]),
+            Mock(status_code=200, text=mock_modem_responses["login_success"]),
+            Mock(status_code=200, text=mock_modem_responses["complete_status"]),
+            Mock(status_code=200, text=mock_modem_responses["complete_status"]),
+            Mock(status_code=200, text=mock_modem_responses["complete_status"]),
         ]
         yield mock_post
 
@@ -114,7 +104,7 @@ def sample_channel_data():
         "downstream": "1^Locked^256QAM^^549000000^0.6^39.0^15^0",
         "upstream": "1^Locked^SC-QAM^^^30600000^46.5",
         "malformed": "1^Locked",  # Not enough fields
-        "empty": ""
+        "empty": "",
     }
 
 
@@ -132,7 +122,7 @@ def client_kwargs():
         "base_backoff": 0.1,
         "capture_errors": True,
         "timeout": (3, 12),
-        "enable_instrumentation": True
+        "enable_instrumentation": True,
     }
 
 
@@ -141,13 +131,8 @@ def mock_performance_instrumentation():
     """Mock performance instrumentation."""
     from arris_modem_status.instrumentation import PerformanceInstrumentation
 
-    with patch.object(PerformanceInstrumentation, 'start_timer') as mock_start:
-        with patch.object(PerformanceInstrumentation, 'record_timing') as mock_record:
+    with patch.object(PerformanceInstrumentation, "start_timer") as mock_start:
+        with patch.object(PerformanceInstrumentation, "record_timing") as mock_record:
             mock_start.return_value = time.time()
-            mock_record.return_value = Mock(
-                operation="test",
-                duration=0.1,
-                success=True,
-                duration_ms=100
-            )
+            mock_record.return_value = Mock(operation="test", duration=0.1, success=True, duration_ms=100)
             yield mock_start, mock_record

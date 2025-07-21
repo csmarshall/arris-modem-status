@@ -5,18 +5,16 @@ This module tests the HTTP compatibility implementation that provides
 relaxed parsing for Arris modem responses.
 """
 
-import pytest
 import socket
 import ssl
-from unittest.mock import Mock, patch, MagicMock
-from urllib3.exceptions import HeaderParsingError
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 import requests
+from urllib3.exceptions import HeaderParsingError
 
 from arris_modem_status import ArrisModemStatusClient
-from arris_modem_status.http_compatibility import (
-    ArrisCompatibleHTTPAdapter,
-    create_arris_compatible_session
-)
+from arris_modem_status.http_compatibility import ArrisCompatibleHTTPAdapter, create_arris_compatible_session
 from arris_modem_status.instrumentation import PerformanceInstrumentation
 from arris_modem_status.models import ErrorCapture
 
@@ -49,7 +47,7 @@ class TestHTTPCompatibilityBasics:
         test_cases = [
             ("HeaderParsingError: 3.500000 |Content-type: text/html", ["3.500000"]),
             ("Error: 2.100000 |Accept: application/json", ["2.100000"]),
-            ("No artifacts here", [])
+            ("No artifacts here", []),
         ]
 
         adapter = ArrisCompatibleHTTPAdapter()
@@ -57,8 +55,9 @@ class TestHTTPCompatibilityBasics:
         # The adapter no longer has this method since we use relaxed parsing
         # But we can test the pattern matching directly
         import re
+
         for error_message, expected_artifacts in test_cases:
-            pattern = r'(\d+\.?\d*)\s*\|'
+            pattern = r"(\d+\.?\d*)\s*\|"
             artifacts = re.findall(pattern, error_message)
             assert artifacts == expected_artifacts
 
@@ -95,7 +94,7 @@ class TestArrisCompatibleHTTPAdapter:
         adapter = ArrisCompatibleHTTPAdapter()
 
         # Mock the raw socket request method
-        with patch.object(adapter, '_raw_socket_request') as mock_raw_request:
+        with patch.object(adapter, "_raw_socket_request") as mock_raw_request:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.content = b"test content"
@@ -116,7 +115,7 @@ class TestArrisCompatibleHTTPAdapter:
         adapter = ArrisCompatibleHTTPAdapter()
 
         # Mock the parent send method
-        with patch('requests.adapters.HTTPAdapter.send') as mock_parent_send:
+        with patch("requests.adapters.HTTPAdapter.send") as mock_parent_send:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.content = b"test content"
@@ -138,7 +137,7 @@ class TestArrisCompatibleHTTPAdapter:
         adapter = ArrisCompatibleHTTPAdapter(instrumentation=instrumentation)
 
         # Mock the raw socket request to raise an exception
-        with patch.object(adapter, '_raw_socket_request') as mock_raw_request:
+        with patch.object(adapter, "_raw_socket_request") as mock_raw_request:
             mock_raw_request.side_effect = Exception("Connection failed")
 
             request = Mock()
@@ -189,7 +188,7 @@ class TestArrisCompatibleHTTPAdapter:
         request = Mock()
         request.method = "POST"
         request.headers = {"Content-Type": "application/octet-stream"}
-        request.body = b'\x00\x01\x02\x03'
+        request.body = b"\x00\x01\x02\x03"
 
         http_request = adapter._build_raw_http_request(request, "192.168.100.1", "/HNAP1/")
 
@@ -202,7 +201,7 @@ class TestArrisCompatibleHTTPAdapter:
 class TestRawSocketImplementation:
     """Test raw socket implementation details."""
 
-    @patch('socket.socket')
+    @patch("socket.socket")
     def test_raw_socket_request_https(self, mock_socket_class):
         """Test raw socket request for HTTPS."""
         adapter = ArrisCompatibleHTTPAdapter()
@@ -215,11 +214,11 @@ class TestRawSocketImplementation:
         mock_wrapped_socket = Mock()
         mock_ssl_context.wrap_socket.return_value = mock_wrapped_socket
 
-        with patch('ssl.create_default_context', return_value=mock_ssl_context):
-            with patch.object(adapter, '_receive_response_tolerantly') as mock_receive:
+        with patch("ssl.create_default_context", return_value=mock_ssl_context):
+            with patch.object(adapter, "_receive_response_tolerantly") as mock_receive:
                 mock_receive.return_value = b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html></html>"
 
-                with patch.object(adapter, '_parse_response_tolerantly') as mock_parse:
+                with patch.object(adapter, "_parse_response_tolerantly") as mock_parse:
                     mock_response = Mock()
                     mock_response.status_code = 200
                     mock_parse.return_value = mock_response
@@ -236,7 +235,7 @@ class TestRawSocketImplementation:
                     assert response.status_code == 200
                     mock_ssl_context.wrap_socket.assert_called_once()
 
-    @patch('socket.socket')
+    @patch("socket.socket")
     def test_raw_socket_request_http(self, mock_socket_class):
         """Test raw socket request for HTTP."""
         adapter = ArrisCompatibleHTTPAdapter()
@@ -245,10 +244,10 @@ class TestRawSocketImplementation:
         mock_socket_instance = Mock()
         mock_socket_class.return_value = mock_socket_instance
 
-        with patch.object(adapter, '_receive_response_tolerantly') as mock_receive:
+        with patch.object(adapter, "_receive_response_tolerantly") as mock_receive:
             mock_receive.return_value = b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html></html>"
 
-            with patch.object(adapter, '_parse_response_tolerantly') as mock_parse:
+            with patch.object(adapter, "_parse_response_tolerantly") as mock_parse:
                 mock_response = Mock()
                 mock_response.status_code = 200
                 mock_parse.return_value = mock_response
@@ -264,10 +263,10 @@ class TestRawSocketImplementation:
                 # Should return the parsed response
                 assert response.status_code == 200
                 # Should not use SSL for HTTP
-                mock_socket_instance.connect.assert_called_with(('192.168.100.1', 80))
+                mock_socket_instance.connect.assert_called_with(("192.168.100.1", 80))
 
-    @patch('ssl.create_default_context')
-    @patch('socket.socket')
+    @patch("ssl.create_default_context")
+    @patch("socket.socket")
     def test_raw_socket_request_with_timeout(self, mock_socket_class, mock_ssl_context_class):
         """Test raw socket request with timeout handling."""
         adapter = ArrisCompatibleHTTPAdapter()
@@ -281,10 +280,10 @@ class TestRawSocketImplementation:
         mock_wrapped_socket = Mock()
         mock_ssl_context.wrap_socket.return_value = mock_wrapped_socket
 
-        with patch.object(adapter, '_receive_response_tolerantly') as mock_receive:
+        with patch.object(adapter, "_receive_response_tolerantly") as mock_receive:
             mock_receive.return_value = b"HTTP/1.1 200 OK\r\n\r\n"
 
-            with patch.object(adapter, '_parse_response_tolerantly') as mock_parse:
+            with patch.object(adapter, "_parse_response_tolerantly") as mock_parse:
                 mock_response = Mock()
                 mock_response.status_code = 200
                 mock_parse.return_value = mock_response
@@ -306,8 +305,8 @@ class TestRawSocketImplementation:
                 response = adapter._raw_socket_request(request, timeout=15)
                 mock_socket_instance.settimeout.assert_called_with(15)
 
-    @patch('ssl.create_default_context')
-    @patch('socket.socket')
+    @patch("ssl.create_default_context")
+    @patch("socket.socket")
     def test_raw_socket_request_custom_port(self, mock_socket_class, mock_ssl_context_class):
         """Test raw socket request with custom port."""
         adapter = ArrisCompatibleHTTPAdapter()
@@ -321,10 +320,10 @@ class TestRawSocketImplementation:
         mock_wrapped_socket = Mock()
         mock_ssl_context.wrap_socket.return_value = mock_wrapped_socket
 
-        with patch.object(adapter, '_receive_response_tolerantly') as mock_receive:
+        with patch.object(adapter, "_receive_response_tolerantly") as mock_receive:
             mock_receive.return_value = b"HTTP/1.1 200 OK\r\n\r\n"
 
-            with patch.object(adapter, '_parse_response_tolerantly') as mock_parse:
+            with patch.object(adapter, "_parse_response_tolerantly") as mock_parse:
                 mock_response = Mock()
                 mock_parse.return_value = mock_response
 
@@ -337,7 +336,7 @@ class TestRawSocketImplementation:
                 adapter._raw_socket_request(request)
 
                 # Should connect to custom port on the SSL-WRAPPED socket (not raw socket)
-                mock_wrapped_socket.connect.assert_called_with(('192.168.100.1', 8443))
+                mock_wrapped_socket.connect.assert_called_with(("192.168.100.1", 8443))
 
 
 @pytest.mark.unit
@@ -364,7 +363,7 @@ class TestResponseParsing:
 
         # Should parse standard response correctly
         assert response.status_code == 200
-        assert response.headers['Content-Type'] == 'application/json'
+        assert response.headers["Content-Type"] == "application/json"
         assert b'{"status": "success"}' == response.content
 
     def test_parse_response_tolerantly_nonstandard(self):
@@ -387,8 +386,8 @@ class TestResponseParsing:
 
         # Should handle non-standard formatting gracefully
         assert response.status_code == 200
-        assert response.headers['Content-Type'] == 'text/html'
-        assert response.headers['Some-Weird-Header'] == 'value_without_space'
+        assert response.headers["Content-Type"] == "text/html"
+        assert response.headers["Some-Weird-Header"] == "value_without_space"
         assert b"<html><body>content</body></html>" == response.content
 
     def test_parse_response_tolerantly_malformed(self):
@@ -406,7 +405,7 @@ class TestResponseParsing:
         # The tolerant parser is designed to handle even malformed content gracefully
         # It defaults to 200 for anything it can process, with empty body for malformed content
         assert response.status_code == 200
-        assert response.content == b''  # Malformed content results in empty body
+        assert response.content == b""  # Malformed content results in empty body
 
     def test_parse_response_tolerantly_various_status_codes(self):
         """Test parsing various HTTP status codes."""
@@ -444,7 +443,7 @@ class TestResponseParsing:
 
         # Should take the last value for duplicate headers
         assert response.status_code == 200
-        assert response.headers['Set-Cookie'] == 'session2=def'
+        assert response.headers["Set-Cookie"] == "session2=def"
 
     def test_receive_response_tolerantly_with_content_length(self):
         """Test tolerant response receiving with Content-Length."""
@@ -452,12 +451,7 @@ class TestResponseParsing:
 
         mock_socket = Mock()
         # Simulate receiving response in chunks
-        response_chunks = [
-            b"HTTP/1.1 200 OK\r\n",
-            b"Content-Length: 11\r\n",
-            b"\r\n",
-            b"Hello World"
-        ]
+        response_chunks = [b"HTTP/1.1 200 OK\r\n", b"Content-Length: 11\r\n", b"\r\n", b"Hello World"]
         mock_socket.recv.side_effect = response_chunks + [b""]  # End with empty to stop
 
         response_data = adapter._receive_response_tolerantly(mock_socket)
@@ -470,10 +464,7 @@ class TestResponseParsing:
         adapter = ArrisCompatibleHTTPAdapter()
 
         mock_socket = Mock()
-        mock_socket.recv.side_effect = [
-            b"HTTP/1.1 200 OK\r\n\r\n",
-            socket.timeout("Timeout")
-        ]
+        mock_socket.recv.side_effect = [b"HTTP/1.1 200 OK\r\n\r\n", socket.timeout("Timeout")]
 
         response_data = adapter._receive_response_tolerantly(mock_socket)
 
@@ -491,7 +482,7 @@ class TestResponseParsing:
             b"5\r\n",
             b"Hello\r\n",
             b"0\r\n\r\n",
-            b""
+            b"",
         ]
 
         response_data = adapter._receive_response_tolerantly(mock_socket)
@@ -537,7 +528,7 @@ class TestHttpCompatibilitySession:
         adapter = session.get_adapter("https://example.com")
 
         # Should have conservative retry strategy
-        assert hasattr(adapter, 'max_retries')
+        assert hasattr(adapter, "max_retries")
 
     def test_session_mounting(self):
         """Test that adapters are mounted correctly."""
@@ -557,8 +548,8 @@ class TestHttpCompatibilitySession:
         adapter = session.get_adapter("https://example.com")
 
         # Check pool configuration
-        assert hasattr(adapter, '_pool_connections')
-        assert hasattr(adapter, '_pool_maxsize')
+        assert hasattr(adapter, "_pool_connections")
+        assert hasattr(adapter, "_pool_maxsize")
 
 
 @pytest.mark.unit
@@ -571,7 +562,7 @@ class TestInstrumentation:
         instrumentation = PerformanceInstrumentation()
         adapter = ArrisCompatibleHTTPAdapter(instrumentation=instrumentation)
 
-        with patch.object(adapter, '_raw_socket_request') as mock_raw_request:
+        with patch.object(adapter, "_raw_socket_request") as mock_raw_request:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.content = b"test"
@@ -593,7 +584,7 @@ class TestInstrumentation:
         instrumentation = PerformanceInstrumentation()
         adapter = ArrisCompatibleHTTPAdapter(instrumentation=instrumentation)
 
-        with patch('requests.adapters.HTTPAdapter.send') as mock_parent_send:
+        with patch("requests.adapters.HTTPAdapter.send") as mock_parent_send:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.content = b"test"
@@ -615,7 +606,7 @@ class TestInstrumentation:
         instrumentation = PerformanceInstrumentation()
         adapter = ArrisCompatibleHTTPAdapter(instrumentation=instrumentation)
 
-        with patch.object(adapter, '_raw_socket_request') as mock_raw_request:
+        with patch.object(adapter, "_raw_socket_request") as mock_raw_request:
             mock_raw_request.side_effect = Exception("Network error")
 
             request = Mock()
@@ -647,9 +638,9 @@ class TestHttpCompatibilityIntegration:
         analysis = client.get_error_analysis()
 
         # Should have proper structure even with no errors
-        assert 'total_errors' in analysis or 'message' in analysis
-        if 'total_errors' in analysis:
-            assert analysis.get('http_compatibility_issues', 0) == 0
+        assert "total_errors" in analysis or "message" in analysis
+        if "total_errors" in analysis:
+            assert analysis.get("http_compatibility_issues", 0) == 0
 
     def test_client_uses_relaxed_parsing_by_default(self):
         """Test that client uses relaxed parsing for HNAP endpoints."""
@@ -688,7 +679,7 @@ class TestHttpCompatibilityIntegration:
         client = ArrisModemStatusClient(password="test", capture_errors=True, max_retries=3)
 
         # Mock a successful request
-        with patch.object(client, '_make_hnap_request_raw') as mock_request:
+        with patch.object(client, "_make_hnap_request_raw") as mock_request:
             mock_request.return_value = '{"success": true}'
 
             result = client._make_hnap_request_with_retry("Test", {})
@@ -702,12 +693,13 @@ class TestHttpCompatibilityIntegration:
         client = ArrisModemStatusClient(password="test", capture_errors=True, max_retries=2)
 
         # Mock network errors followed by success
-        with patch.object(client, '_make_hnap_request_raw') as mock_request:
+        with patch.object(client, "_make_hnap_request_raw") as mock_request:
             from requests.exceptions import ConnectionError
+
             mock_request.side_effect = [
                 ConnectionError("Network error"),
                 ConnectionError("Network error"),
-                '{"success": true}'
+                '{"success": true}',
             ]
 
             result = client._make_hnap_request_with_retry("Test", {})
@@ -721,8 +713,9 @@ class TestHttpCompatibilityIntegration:
         client = ArrisModemStatusClient(password="test", capture_errors=True, max_retries=3)
 
         # Mock HTTP error
-        with patch.object(client, '_make_hnap_request_raw') as mock_request:
+        with patch.object(client, "_make_hnap_request_raw") as mock_request:
             from requests.exceptions import HTTPError
+
             error = HTTPError("403 Forbidden")
             error.response = Mock(status_code=403)
             mock_request.side_effect = error
@@ -751,7 +744,7 @@ class TestEdgeCases:
 
         # Should handle empty response gracefully
         assert response.status_code == 200  # Default
-        assert response.content == b''
+        assert response.content == b""
 
     def test_unicode_handling_in_response(self):
         """Test handling of Unicode in HTTP responses."""
@@ -783,17 +776,17 @@ class TestEdgeCases:
         response_data = adapter._receive_response_tolerantly(mock_socket)
 
         # Should return whatever was received before the error
-        assert response_data == b''
+        assert response_data == b""
 
     def test_ssl_context_with_verification(self):
         """Test SSL context creation with verification enabled."""
         adapter = ArrisCompatibleHTTPAdapter()
 
-        with patch('socket.socket') as mock_socket_class:
+        with patch("socket.socket") as mock_socket_class:
             mock_socket_instance = Mock()
             mock_socket_class.return_value = mock_socket_instance
 
-            with patch('ssl.create_default_context') as mock_ssl_context_class:
+            with patch("ssl.create_default_context") as mock_ssl_context_class:
                 mock_context = Mock()
                 mock_ssl_context_class.return_value = mock_context
                 mock_wrapped_socket = Mock()
@@ -813,7 +806,7 @@ class TestEdgeCases:
 
                 # When verify=True, check_hostname should not be set to False
                 # If check_hostname is set, it should not be False
-                if hasattr(mock_context, 'check_hostname'):
+                if hasattr(mock_context, "check_hostname"):
                     # The mock might not have check_hostname set at all if verify=True
                     # since we only set it to False when verify=False
                     pass
@@ -843,7 +836,7 @@ class TestHTTPCompatibilityErrorPaths:
         adapter = ArrisCompatibleHTTPAdapter(instrumentation=instrumentation)
 
         # Mock the raw socket request to fail after standard parsing fails
-        with patch.object(adapter, '_raw_socket_request') as mock_raw_request:
+        with patch.object(adapter, "_raw_socket_request") as mock_raw_request:
             mock_raw_request.side_effect = Exception("Socket connection failed")
 
             request = Mock()
@@ -854,7 +847,7 @@ class TestHTTPCompatibilityErrorPaths:
             with pytest.raises(Exception, match="Socket connection failed"):
                 adapter.send(request)
 
-    @patch('arris_modem_status.http_compatibility.socket.socket')  # Add this decorator
+    @patch("arris_modem_status.http_compatibility.socket.socket")  # Add this decorator
     def test_raw_socket_request_socket_close_on_error(self, mock_socket_class):
         """Test that socket is properly closed even when errors occur."""
         adapter = ArrisCompatibleHTTPAdapter()
@@ -868,7 +861,7 @@ class TestHTTPCompatibilityErrorPaths:
         mock_socket.fileno.return_value = 1  # SSL needs a file descriptor
 
         # Make SSL wrapping fail after socket is created
-        with patch('ssl.create_default_context') as mock_ssl_context_class:
+        with patch("ssl.create_default_context") as mock_ssl_context_class:
             mock_context = Mock()
             mock_ssl_context_class.return_value = mock_context
             # Make wrap_socket raise an exception
@@ -890,11 +883,11 @@ class TestHTTPCompatibilityErrorPaths:
         """Test SSL context when verify=False and socket operations fail."""
         adapter = ArrisCompatibleHTTPAdapter()
 
-        with patch('socket.socket') as mock_socket_class:
+        with patch("socket.socket") as mock_socket_class:
             mock_socket = Mock()
             mock_socket_class.return_value = mock_socket
 
-            with patch('ssl.create_default_context') as mock_ssl_context_class:
+            with patch("ssl.create_default_context") as mock_ssl_context_class:
                 mock_context = Mock()
                 mock_ssl_context_class.return_value = mock_context
 
@@ -932,7 +925,7 @@ class TestHTTPCompatibilityErrorPaths:
         # This should return 500 from the exception handler
         assert response.status_code == 500
         assert b'{"error": "Parsing failed with browser-compatible parser"}' in response.content
-        assert response.reason == 'Internal Server Error'
+        assert response.reason == "Internal Server Error"
 
     def test_receive_response_tolerantly_general_exception(self):
         """Test receive_response_tolerantly with general exception."""
@@ -946,7 +939,7 @@ class TestHTTPCompatibilityErrorPaths:
         response_data = adapter._receive_response_tolerantly(mock_socket)
 
         # Should return empty bytes when error occurs
-        assert response_data == b''
+        assert response_data == b""
 
     def test_build_raw_http_request_bytes_body_decode_error(self):
         """Test building raw HTTP request when bytes body can't be decoded."""
@@ -956,7 +949,7 @@ class TestHTTPCompatibilityErrorPaths:
         request.method = "POST"
         request.headers = {"Content-Type": "application/octet-stream"}
         # Bytes that can't be decoded as UTF-8
-        request.body = b'\xff\xfe\xfd\xfc'
+        request.body = b"\xff\xfe\xfd\xfc"
 
         # After the fix, this should handle the decode error gracefully
         http_request = adapter._build_raw_http_request(request, "192.168.100.1", "/HNAP1/")
@@ -966,7 +959,7 @@ class TestHTTPCompatibilityErrorPaths:
         # The body should be empty due to decode error
         assert http_request.endswith("\r\n\r\n")  # Empty body after headers
 
-    @patch('arris_modem_status.http_compatibility.socket.socket')
+    @patch("arris_modem_status.http_compatibility.socket.socket")
     def test_socket_timeout_on_connect(self, mock_socket_class):
         """Test socket timeout during connection."""
         adapter = ArrisCompatibleHTTPAdapter()
@@ -979,7 +972,7 @@ class TestHTTPCompatibilityErrorPaths:
         mock_socket.type = socket.SOCK_STREAM
         mock_socket.fileno.return_value = 1
 
-        with patch('ssl.create_default_context') as mock_ssl_context_class:
+        with patch("ssl.create_default_context") as mock_ssl_context_class:
             mock_context = Mock()
             mock_ssl_context_class.return_value = mock_context
             mock_wrapped_socket = Mock()
@@ -1013,7 +1006,7 @@ class TestHTTPCompatibilityErrorPaths:
             b"Content-Length: invalid\r\n",  # Non-numeric content-length
             b"\r\n",
             b"Response body",
-            socket.timeout()  # End with timeout
+            socket.timeout(),  # End with timeout
         ]
 
         response_data = adapter._receive_response_tolerantly(mock_socket)
