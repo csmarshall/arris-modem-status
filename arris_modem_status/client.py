@@ -266,14 +266,22 @@ class ArrisModemStatusClient:
         """Make raw HNAP request using HTTP session with relaxed parsing."""
         start_time = self.instrumentation.start_timer(f"hnap_request_{soap_action}") if self.instrumentation else time.time()
 
-        # Generate authentication token
-        auth_token = self._generate_hnap_auth_token(soap_action)
-
         # Build headers
         headers = {
-            "HNAP_AUTH": auth_token,
             "Content-Type": "application/json"
         }
+        
+        # Check if this is the initial challenge request
+        is_challenge_request = (
+            soap_action == "Login" and 
+            request_body.get("Login", {}).get("Action") == "request" and
+            request_body.get("Login", {}).get("LoginPassword", "") == ""
+        )
+        
+        # Only include HNAP_AUTH for non-challenge requests
+        if not is_challenge_request:
+            auth_token = self._generate_hnap_auth_token(soap_action)
+            headers["HNAP_AUTH"] = auth_token
 
         # Add SOAP action header
         if soap_action == "Login":

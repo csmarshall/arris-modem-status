@@ -162,16 +162,16 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
                 sock.settimeout(timeout)
 
         try:
-            # Connect to server first (this can raise socket.error or socket.timeout)
-            sock.connect((host, port))
-
-            # SSL wrap for HTTPS (only after successful connection)
+            # SSL wrap for HTTPS BEFORE connecting
             if request.url.startswith('https'):
                 context = ssl.create_default_context()
                 if not verify:
                     context.check_hostname = False
                     context.verify_mode = ssl.CERT_NONE
                 sock = context.wrap_socket(sock, server_hostname=host)
+
+            # Connect to server (now with SSL if HTTPS)
+            sock.connect((host, port))
 
             # Build HTTP request
             http_request = self._build_raw_http_request(request, host, path)
@@ -194,9 +194,10 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
         lines = [f"{request.method} {path} HTTP/1.1"]
         lines.append(f"Host: {host}")
 
-        # Add headers
+        # Add headers, but skip Content-Length as we'll calculate it ourselves
         for name, value in request.headers.items():
-            lines.append(f"{name}: {value}")
+            if name.lower() != 'content-length':  # Skip Content-Length
+                lines.append(f"{name}: {value}")
 
         # Add body length if present
         if request.body:
