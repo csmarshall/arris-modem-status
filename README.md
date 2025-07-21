@@ -1,5 +1,11 @@
 # arris-modem-status
 
+[![Quality Check](https://github.com/csmarshall/arris-modem-status/actions/workflows/quality-check.yml/badge.svg)](https://github.com/csmarshall/arris-modem-status/actions/workflows/quality-check.yml)
+[![codecov](https://codecov.io/gh/csmarshall/arris-modem-status/branch/main/graph/badge.svg)](https://codecov.io/gh/csmarshall/arris-modem-status)
+[![PyPI version](https://badge.fury.io/py/arris-modem-status.svg)](https://badge.fury.io/py/arris-modem-status)
+[![Python versions](https://img.shields.io/pypi/pyversions/arris-modem-status.svg)](https://pypi.org/project/arris-modem-status/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 `arris-modem-status` is a high-performance, production-ready Python library and CLI tool for querying comprehensive status and diagnostics data from Arris cable modems (S33/S34/SB8200) over the local network.
 
 ## 🚀 High-Performance v1.3.0 with HTTP Compatibility
@@ -45,7 +51,7 @@ This library implements the complete Arris HNAP (Home Network Administration Pro
 ```
 1. Session Establishment   → GET https://192.168.100.1/
 2. Challenge Request       → POST /HNAP1/ (get challenge + public key)
-3. Private Key Generation  → HMAC(PublicKey + Password, Challenge)  
+3. Private Key Generation  → HMAC(PublicKey + Password, Challenge)
 4. Login Password Compute  → HMAC(PrivateKey, Challenge)
 5. Authentication Request  → POST /HNAP1/ (send computed login hash)
 6. Authenticated Requests  → POST /HNAP1/ (with uid + PrivateKey cookies)
@@ -106,12 +112,12 @@ Example output:
 ```json
 {
   "model_name": "S34",
-  "internet_status": "Connected", 
+  "internet_status": "Connected",
   "downstream_channels": [
     {
       "channel_id": "1",
       "frequency": "549000000 Hz",
-      "power": "0.6 dBmV", 
+      "power": "0.6 dBmV",
       "snr": "39.0 dB",
       "modulation": "256QAM",
       "lock_status": "Locked",
@@ -140,28 +146,28 @@ from arris_modem_status import ArrisModemStatusClient
 def monitor_modem():
     # Initialize high-performance client with HTTP compatibility
     client = ArrisModemStatusClient(password="YOUR_PASSWORD")
-    
+
     # Get complete status (concurrent requests for speed)
     status = client.get_status()
-    
+
     print(f"Model: {status['model_name']}")
-    print(f"Internet: {status['internet_status']}") 
+    print(f"Internet: {status['internet_status']}")
     print(f"Channels: {len(status['downstream_channels'])} down, {len(status['upstream_channels'])} up")
-    
+
     # Check for HTTP compatibility handling
     if '_error_analysis' in status:
         error_info = status['_error_analysis']
         print(f"HTTP compatibility issues handled: {error_info['http_compatibility_issues']}")
         print(f"Recovery rate: {error_info['recovery_rate'] * 100:.1f}%")
-    
+
     # Access individual channel data
     for channel in status['downstream_channels']:
         print(f"Ch {channel.channel_id}: {channel.frequency}, {channel.power}, SNR {channel.snr}")
-        
+
     # Validate data quality
     validation = client.validate_parsing()
     print(f"Data completeness: {validation['performance_metrics']['data_completeness_score']:.1f}%")
-    
+
     client.close()
 
 monitor_modem()
@@ -173,13 +179,13 @@ from arris_modem_status import ArrisModemStatusClient
 
 with ArrisModemStatusClient(password="YOUR_PASSWORD") as client:
     status = client.get_status()
-    
+
     # Check connection quality
     downstream_channels = status['downstream_channels']
     locked_channels = sum(1 for ch in downstream_channels if 'Locked' in ch.lock_status)
-    
+
     print(f"Channel health: {locked_channels}/{len(downstream_channels)} locked")
-    
+
     # Monitor signal quality
     if downstream_channels:
         avg_power = sum(float(ch.power.split()[0]) for ch in downstream_channels) / len(downstream_channels)
@@ -204,7 +210,7 @@ client = ArrisModemStatusClient(
 with client:
     # Get status with error analysis
     status = client.get_status()
-    
+
     # Get detailed compatibility analysis
     error_analysis = client.get_error_analysis()
     print(f"HTTP compatibility issues: {error_analysis.get('http_compatibility_issues', 0)}")
@@ -288,7 +294,7 @@ python raw_http_analyzer.py --password "PASSWORD" --debug
 ### Downstream Channels
 - **Channel ID**: Physical channel identifier (1-32)
 - **Frequency**: Operating frequency in Hz (typically 549-861 MHz)
-- **Power Level**: Signal strength in dBmV (ideal: -7 to +7 dBmV) 
+- **Power Level**: Signal strength in dBmV (ideal: -7 to +7 dBmV)
 - **SNR**: Signal-to-noise ratio in dB (ideal: >30 dB)
 - **Modulation**: Modulation type (256QAM, 1024QAM, OFDM)
 - **Lock Status**: Channel lock state (Locked/Unlocked)
@@ -331,7 +337,7 @@ from arris_modem_status import ArrisModemStatusClient
 # High-performance configuration
 client = ArrisModemStatusClient(
     password="your_password",
-    host="192.168.100.1", 
+    host="192.168.100.1",
     port=443,
     max_workers=3,      # Concurrent request workers (2-5 recommended)
     max_retries=3,      # Retry attempts for compatibility issues
@@ -479,7 +485,7 @@ Error Analysis: Track compatibility issues for monitoring
 # Unit tests
 pytest tests/
 
-# Integration tests  
+# Integration tests
 pytest tests/ -m integration
 
 # Performance benchmarks
@@ -547,14 +553,14 @@ http_compatibility_issues = Gauge('arris_http_compatibility_issues_total', 'HTTP
 def collect_metrics():
     with ArrisModemStatusClient(password="PASSWORD") as client:
         status = client.get_status()
-        
+
         for channel in status['downstream_channels']:
             power_val = float(channel.power.split()[0])
             snr_val = float(channel.snr.split()[0])
-            
+
             downstream_power.labels(channel_id=channel.channel_id).set(power_val)
             downstream_snr.labels(channel_id=channel.channel_id).set(snr_val)
-        
+
         # Monitor HTTP compatibility
         error_analysis = status.get('_error_analysis', {})
         http_compatibility_issues.set(error_analysis.get('http_compatibility_issues', 0))
@@ -638,7 +644,7 @@ MIT License - see `LICENSE` file for details.
 This library was developed through comprehensive reverse engineering and HTTP compatibility analysis including:
 
 - **Browser Session Capture** (400+ HTTP requests analyzed)
-- **JavaScript Algorithm Extraction** from Login.js and SOAPAction.js  
+- **JavaScript Algorithm Extraction** from Login.js and SOAPAction.js
 - **HMAC Computation Verification** with test vectors
 - **Performance Optimization** through concurrent request analysis
 - **HTTP Compatibility Discovery** via raw socket analysis and urllib3 investigation
