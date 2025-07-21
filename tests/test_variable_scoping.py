@@ -21,6 +21,7 @@ class TestVariableScoping:
     def test_client_authentication_error_scoping(self):
         """Test variable scoping in authentication error paths."""
         with patch('requests.Session.post') as mock_post:
+            from requests.exceptions import ConnectionError
             mock_post.side_effect = ConnectionError("Connection failed")
 
             client = ArrisModemStatusClient(password="test", host="test")
@@ -32,7 +33,7 @@ class TestVariableScoping:
         test_argv = ['arris-modem-status', '--password', 'test']
 
         with patch('sys.argv', test_argv):
-            with patch('arris_modem_status.cli.ArrisModemStatusClient') as mock_client:
+            with patch('arris_modem_status.cli.main.ArrisModemStatusClient') as mock_client:
                 mock_client.side_effect = Exception("Generic error")
 
                 stderr_capture = StringIO()
