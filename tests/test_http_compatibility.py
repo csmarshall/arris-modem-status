@@ -336,8 +336,8 @@ class TestRawSocketImplementation:
 
                 adapter._raw_socket_request(request)
 
-                # Should connect to custom port on the RAW socket (before SSL wrapping)
-                mock_socket_instance.connect.assert_called_with(('192.168.100.1', 8443))
+                # Should connect to custom port on the SSL-WRAPPED socket (not raw socket)
+                mock_wrapped_socket.connect.assert_called_with(('192.168.100.1', 8443))
 
 
 @pytest.mark.unit
@@ -854,30 +854,37 @@ class TestHTTPCompatibilityErrorPaths:
             with pytest.raises(Exception, match="Socket connection failed"):
                 adapter.send(request)
 
-    @patch('arris_modem_status.http_compatibility.socket.socket')
+    @patch('arris_modem_status.http_compatibility.socket.socket')  # Add this decorator
     def test_raw_socket_request_socket_close_on_error(self, mock_socket_class):
         """Test that socket is properly closed even when errors occur."""
         adapter = ArrisCompatibleHTTPAdapter()
 
-        # Create a mock socket
+        # Create a mock socket that's compatible with SSL wrapping
         mock_socket = MagicMock()
         mock_socket_class.return_value = mock_socket
 
-        # Make connect raise an exception BEFORE SSL wrapping
-        mock_socket.connect.side_effect = socket.error("Connection refused")
+        # Make the socket look like a stream socket for SSL
+        mock_socket.type = socket.SOCK_STREAM
+        mock_socket.fileno.return_value = 1  # SSL needs a file descriptor
 
-        request = Mock()
-        request.url = "https://192.168.100.1/HNAP1/"
-        request.method = "GET"
-        request.headers = {}
-        request.body = None
+        # Make SSL wrapping fail after socket is created
+        with patch('ssl.create_default_context') as mock_ssl_context_class:
+            mock_context = Mock()
+            mock_ssl_context_class.return_value = mock_context
+            # Make wrap_socket raise an exception
+            mock_context.wrap_socket.side_effect = ssl.SSLError("SSL handshake failed")
 
-        # The socket error should be raised before SSL wrapping
-        with pytest.raises(socket.error):
-            adapter._raw_socket_request(request)
+            request = Mock()
+            request.url = "https://192.168.100.1/HNAP1/"
+            request.method = "GET"
+            request.headers = {}
+            request.body = None
 
-        # Socket should still be closed
-        mock_socket.close.assert_called_once()
+            with pytest.raises(ssl.SSLError):
+                adapter._raw_socket_request(request)
+
+            # Socket should still be closed
+            mock_socket.close.assert_called_once()
 
     def test_ssl_context_no_verify_with_error(self):
         """Test SSL context when verify=False and socket operations fail."""
@@ -964,26 +971,36 @@ class TestHTTPCompatibilityErrorPaths:
         """Test socket timeout during connection."""
         adapter = ArrisCompatibleHTTPAdapter()
 
-        # Create a mock socket
+        # Create a mock socket that's compatible with SSL wrapping
         mock_socket = MagicMock()
         mock_socket_class.return_value = mock_socket
 
-        # Make connect raise timeout BEFORE SSL wrapping
-        mock_socket.connect.side_effect = socket.timeout("Connection timed out")
+        # Make the socket look like a stream socket for SSL
+        mock_socket.type = socket.SOCK_STREAM
+        mock_socket.fileno.return_value = 1
 
-        request = Mock()
-        request.url = "https://192.168.100.1/HNAP1/"
-        request.method = "GET"
-        request.headers = {}
-        request.body = None
+        with patch('ssl.create_default_context') as mock_ssl_context_class:
+            mock_context = Mock()
+            mock_ssl_context_class.return_value = mock_context
+            mock_wrapped_socket = Mock()
+            mock_context.wrap_socket.return_value = mock_wrapped_socket
 
-        with pytest.raises(socket.timeout):
-            adapter._raw_socket_request(request, timeout=5)
+            # Make connect raise timeout on the SSL-wrapped socket
+            mock_wrapped_socket.connect.side_effect = socket.timeout("Connection timed out")
 
-        # Should have set timeout
-        mock_socket.settimeout.assert_called_with(5)
-        # Socket should be closed
-        mock_socket.close.assert_called_once()
+            request = Mock()
+            request.url = "https://192.168.100.1/HNAP1/"
+            request.method = "GET"
+            request.headers = {}
+            request.body = None
+
+            with pytest.raises(socket.timeout):
+                adapter._raw_socket_request(request, timeout=5)
+
+            # Should have set timeout on the original socket
+            mock_socket.settimeout.assert_called_with(5)
+            # The WRAPPED socket should be closed (not the original)
+            mock_wrapped_socket.close.assert_called_once()
 
     def test_receive_response_tolerantly_content_length_parsing_error(self):
         """Test receive_response_tolerantly when content-length can't be parsed."""
