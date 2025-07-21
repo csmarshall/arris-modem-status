@@ -114,6 +114,30 @@ lint: ## Run all linting checks
 	bandit -r arris_modem_status/ -ll
 	@echo "$(GREEN)✅ Linting complete$(RESET)"
 
+flake8-report: ## Generate comprehensive flake8 report
+	@echo "$(GREEN)Running comprehensive flake8 analysis...$(RESET)"
+	@echo "======================================"
+	# Basic check
+	@flake8 arris_modem_status tests --count --statistics || true
+	@echo ""
+	@echo "$(BLUE)Code Complexity Report:$(RESET)"
+	@flake8 arris_modem_status --max-complexity=10 --select=C901 || true
+	@echo ""
+	@echo "$(BLUE)Import Issues:$(RESET)"
+	@flake8 arris_modem_status tests --select=F401,F402,F403,F404 || true
+	@echo ""
+	@echo "$(BLUE)Naming Conventions:$(RESET)"
+	@flake8 arris_modem_status --select=N8 || true
+	@echo ""
+	@echo "$(BLUE)Documentation Issues:$(RESET)"
+	@flake8 arris_modem_status --select=D || true
+	@echo "======================================"
+	@echo "$(GREEN)✅ Flake8 analysis complete$(RESET)"
+
+flake8-strict: ## Run flake8 with strict settings
+	@echo "$(GREEN)Running strict flake8 checks...$(RESET)"
+	flake8 arris_modem_status tests --max-line-length=79 --max-complexity=5 --select=E,W,F,C,N
+
 version: ## Show current version
 	@echo "$(BLUE)Current version:$(RESET)"
 	@grep -E '^__version__' arris_modem_status/__init__.py | cut -d'"' -f2

@@ -1,16 +1,14 @@
 """Core tests for ArrisModemStatusClient."""
 
-import json
 import time
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
-from requests.exceptions import ConnectionError, Timeout
+from requests.exceptions import ConnectionError
 from urllib3.exceptions import HeaderParsingError
 
 from arris_modem_status import ArrisModemStatusClient, ChannelInfo
-from arris_modem_status.instrumentation import PerformanceInstrumentation
-from arris_modem_status.models import ErrorCapture, TimingMetrics
+from arris_modem_status.models import ErrorCapture
 
 
 @pytest.mark.unit
@@ -224,9 +222,6 @@ class TestArrisModemStatusClientDataRetrieval:
 
             client = ArrisModemStatusClient(password="test")
             assert client.authenticated is False
-
-            status = client.get_status()
-
             assert client.authenticated is True
             assert mock_post.call_count >= 3
 

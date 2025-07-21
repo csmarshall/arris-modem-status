@@ -39,7 +39,7 @@ def quick_connectivity_check(host: str, port: int = 443, timeout: float = 2.0) -
 
         with socket.create_connection((host, port), timeout=timeout):
             logger.info("TCP connection successful")
-            print(f"✅ TCP connection successful", file=sys.stderr)
+            print("✅ TCP connection successful", file=sys.stderr)
             return True, None
 
     except socket.timeout:
@@ -104,30 +104,30 @@ def print_connectivity_troubleshooting(host: str, port: int, error_msg: str) -> 
     if "timeout" in error_msg.lower():
         print("Connection timeout suggests:", file=sys.stderr)
         print(f"  1. Device may be offline - verify {host} is powered on", file=sys.stderr)
-        print(f"  2. Wrong IP address - check your modem's current IP", file=sys.stderr)
+        print("  2. Wrong IP address - check your modem's current IP", file=sys.stderr)
         print(f"  3. Network issue - try: ping {host}", file=sys.stderr)
-        print(f"  4. Firewall blocking connection", file=sys.stderr)
+        print("  4. Firewall blocking connection", file=sys.stderr)
 
     elif "refused" in error_msg.lower():
         print("Connection refused suggests:", file=sys.stderr)
-        print(f"  1. Device is on but HTTPS service disabled", file=sys.stderr)
-        print(f"  2. Try HTTP instead: --port 80", file=sys.stderr)
-        print(f"  3. Web interface may be disabled", file=sys.stderr)
+        print("  1. Device is on but HTTPS service disabled", file=sys.stderr)
+        print("  2. Try HTTP instead: --port 80", file=sys.stderr)
+        print("  3. Web interface may be disabled", file=sys.stderr)
 
     elif "dns" in error_msg.lower() or "resolution" in error_msg.lower():
         print("DNS resolution failed suggests:", file=sys.stderr)
-        print(f"  1. Use IP address instead of hostname", file=sys.stderr)
-        print(f"  2. Check DNS settings", file=sys.stderr)
-        print(f"  3. Verify hostname spelling", file=sys.stderr)
+        print("  1. Use IP address instead of hostname", file=sys.stderr)
+        print("  2. Check DNS settings", file=sys.stderr)
+        print("  3. Verify hostname spelling", file=sys.stderr)
 
     else:
         print("Network connectivity issue:", file=sys.stderr)
         print(f"  1. Verify device IP: {host}", file=sys.stderr)
         print(f"  2. Check network connectivity: ping {host}", file=sys.stderr)
         print(f"  3. Try web interface: https://{host}/", file=sys.stderr)
-        print(f"  4. Check if device is on the same network", file=sys.stderr)
+        print("  4. Check if device is on the same network", file=sys.stderr)
 
-    print(f"\n🔧 Quick tests:", file=sys.stderr)
+    print("\n🔧 Quick tests:", file=sys.stderr)
     print(f"  ping {host}", file=sys.stderr)
     print(f"  curl -k https://{host}/ --connect-timeout 5", file=sys.stderr)
 

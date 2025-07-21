@@ -14,7 +14,6 @@ import socket
 import ssl
 import time
 import warnings
-from typing import List, Optional
 
 import requests
 import urllib3

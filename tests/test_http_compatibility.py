@@ -16,7 +16,6 @@ from urllib3.exceptions import HeaderParsingError
 from arris_modem_status import ArrisModemStatusClient
 from arris_modem_status.http_compatibility import ArrisCompatibleHTTPAdapter, create_arris_compatible_session
 from arris_modem_status.instrumentation import PerformanceInstrumentation
-from arris_modem_status.models import ErrorCapture
 
 
 @pytest.mark.unit
@@ -49,8 +48,6 @@ class TestHTTPCompatibilityBasics:
             ("Error: 2.100000 |Accept: application/json", ["2.100000"]),
             ("No artifacts here", []),
         ]
-
-        adapter = ArrisCompatibleHTTPAdapter()
 
         # The adapter no longer has this method since we use relaxed parsing
         # But we can test the pattern matching directly
@@ -295,14 +292,14 @@ class TestRawSocketImplementation:
                 request.body = None
 
                 # Test with tuple timeout
-                response = adapter._raw_socket_request(request, timeout=(5, 10))
+                adapter._raw_socket_request(request, timeout=(5, 10))
                 mock_socket_instance.settimeout.assert_called_with(5)  # Connect timeout
 
                 # Reset mock
                 mock_socket_instance.reset_mock()
 
                 # Test with single timeout value
-                response = adapter._raw_socket_request(request, timeout=15)
+                adapter._raw_socket_request(request, timeout=15)
                 mock_socket_instance.settimeout.assert_called_with(15)
 
     @patch("ssl.create_default_context")

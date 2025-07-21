@@ -1,6 +1,5 @@
 import json
 import time
-from typing import Any, Dict
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest

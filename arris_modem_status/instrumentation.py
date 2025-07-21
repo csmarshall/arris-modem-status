@@ -10,7 +10,6 @@ Version: 1.3.0
 """
 
 import logging
-import statistics
 import time
 from typing import Any, Dict, List, Optional
 

@@ -16,14 +16,13 @@ import logging
 import random
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import requests
-from urllib3.exceptions import HeaderParsingError
 
 from .http_compatibility import create_arris_compatible_session
 from .instrumentation import PerformanceInstrumentation
-from .models import ChannelInfo, ErrorCapture, TimingMetrics
+from .models import ChannelInfo, ErrorCapture
 
 logger = logging.getLogger("arris-modem-status")
 
@@ -105,7 +104,7 @@ class ArrisModemStatusClient:
         mode_str = "concurrent" if concurrent else "serial"
         logger.info(f"🛡️ ArrisModemStatusClient v1.3 initialized for {host}:{port}")
         logger.info(f"🔧 Mode: {mode_str}, Workers: {self.max_workers}, Retries: {max_retries}")
-        logger.info(f"🔧 Using relaxed HTTP parsing for HNAP endpoints")
+        logger.info("🔧 Using relaxed HTTP parsing for HNAP endpoints")
         if enable_instrumentation:
             logger.info("📊 Performance instrumentation enabled")
 
@@ -199,7 +198,6 @@ class ArrisModemStatusClient:
         self, soap_action: str, request_body: Dict[str, Any], extra_headers: Optional[Dict[str, str]] = None
     ) -> Optional[str]:
         """Make HNAP request with retry logic for network errors."""
-        last_error = None
         last_capture = None
 
         for attempt in range(self.max_retries + 1):
@@ -218,7 +216,6 @@ class ArrisModemStatusClient:
                     return response
 
             except requests.exceptions.RequestException as e:
-                last_error = e
                 response_obj = getattr(e, "response", None)
                 last_capture = self._analyze_error(e, soap_action, response_obj)
 
@@ -236,7 +233,6 @@ class ArrisModemStatusClient:
 
             except Exception as e:
                 logger.error(f"❌ Unexpected error in {soap_action}: {e}")
-                last_error = e
                 break
 
         logger.error(f"💥 All retry attempts exhausted for {soap_action}")

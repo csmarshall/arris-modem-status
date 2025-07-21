@@ -1,7 +1,5 @@
 """Tests for channel data parsing functionality."""
 
-from unittest.mock import Mock
-
 import pytest
 
 try:
@@ -263,7 +261,8 @@ class TestResponseParsing:
         client = ArrisModemStatusClient(password="test")
 
         responses = {
-            "startup_connection": '{"GetMultipleHNAPsResponse": {"GetCustomerStatusConnectionInfoResponse": {"StatusSoftwareModelName": "S34"}}}'
+            "startup_connection": '{"GetMultipleHNAPsResponse": {\
+            :q!:"GetCustomerStatusConnectionInfoResponse": {"StatusSoftwareModelName": "S34"}}}'
         }
 
         parsed_data = client._parse_responses(responses)
