@@ -10,7 +10,7 @@ License: MIT
 
 import logging
 import sys
-from typing import Optional, List
+from typing import List, Optional
 
 
 def setup_logging(debug: bool = False, log_file: Optional[str] = None) -> None:

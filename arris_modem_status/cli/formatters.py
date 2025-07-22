@@ -9,12 +9,12 @@ Author: Charles Marshall
 License: MIT
 """
 
+import argparse
 import json
 import logging
 import sys
 from datetime import datetime
-from typing import Dict, Any
-import argparse
+from typing import Any, Dict
 
 from arris_modem_status import __version__
 

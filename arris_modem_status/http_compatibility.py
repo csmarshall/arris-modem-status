@@ -12,7 +12,7 @@ import socket
 import ssl
 import time
 import warnings
-from typing import Optional, Any, Union, Tuple
+from typing import Any, Optional, Tuple, Union
 
 import requests
 import urllib3
