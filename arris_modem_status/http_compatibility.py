@@ -18,7 +18,7 @@ import requests
 import urllib3
 from requests.adapters import HTTPAdapter
 from requests.models import Response
-from urllib3.exceptions import HeaderParsingError, InsecureRequestWarning
+from urllib3.exceptions import InsecureRequestWarning
 from urllib3.util.retry import Retry
 
 # Configure HTTP compatibility warnings suppression

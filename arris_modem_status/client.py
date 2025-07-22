@@ -249,7 +249,7 @@ class ArrisModemStatusClient:
         if jitter:
             backoff_time += random.uniform(0, backoff_time * 0.1)
 
-        return min(backoff_time, 10.0)
+        return float(min(backoff_time, 10.0))
 
     def _make_hnap_request_raw(
         self,
@@ -320,7 +320,7 @@ class ArrisModemStatusClient:
                         response_size=len(response.text),
                     )
 
-                return response.text
+                return str(response.text)
             else:
                 error = requests.exceptions.RequestException(f"HTTP {response.status_code}")
                 error.response = response
