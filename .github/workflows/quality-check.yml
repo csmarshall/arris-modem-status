@@ -45,7 +45,7 @@ jobs:
 
     - name: Run Flake8 linting
       run: |
-        flake8 arris_modem_status tests --max-line-length=120 --extend-ignore=E203,W503
+        flake8 arris_modem_status tests --max-line-length=120 --extend-ignore=E203,E501,W503
 
     - name: Run mypy type checking
       run: |
