@@ -141,7 +141,7 @@ arris_modem_status = ["py.typed"]
 # BLACK CODE FORMATTER
 [tool.black]
 line-length = 120
-target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+target-version = ['py39', 'py310', 'py311', 'py312']
 include = '\.pyi?$'
 exclude = '''
 /(

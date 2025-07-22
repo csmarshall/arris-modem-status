@@ -419,7 +419,7 @@ print(f"HTTP compatibility issues: {error_analysis.get('http_compatibility_issue
 ## 📋 Requirements
 
 ### Core Dependencies
-- Python 3.8+
+- Python 3.9+
 - `requests>=2.25.1` - HTTP client with connection pooling
 - `urllib3>=1.26.0` - HTTP utilities and SSL handling
 

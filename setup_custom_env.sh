@@ -10,7 +10,7 @@ echo "================================================"
 
 PROJECT_NAME="arris-modem-status"
 ENV_NAME="arris_modem_venv"
-PYTHON_VERSION="3.8"  # Minimum supported version
+PYTHON_VERSION="3.9"  # Minimum supported version
 
 # Colors for output
 RED='\033[0;31m'
