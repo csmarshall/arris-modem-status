@@ -14,10 +14,7 @@ import requests
 from urllib3.exceptions import HeaderParsingError
 
 from arris_modem_status import ArrisModemStatusClient
-from arris_modem_status.http_compatibility import (
-    ArrisCompatibleHTTPAdapter,
-    create_arris_compatible_session,
-)
+from arris_modem_status.http_compatibility import ArrisCompatibleHTTPAdapter, create_arris_compatible_session
 from arris_modem_status.instrumentation import PerformanceInstrumentation
 
 

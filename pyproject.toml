@@ -68,7 +68,7 @@ dev = [
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
     "black>=22.0.0", 
-    "isort>=6.0.1",
+    "isort==5.10.0",
     "flake8>=5.0.0",
     "mypy>=0.980",
     "bump-my-version>=0.17.0",

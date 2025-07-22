@@ -17,17 +17,8 @@ from datetime import datetime
 from arris_modem_status import ArrisModemStatusClient, __version__
 
 from .args import parse_args
-from .connectivity import (
-    get_optimal_timeouts,
-    print_connectivity_troubleshooting,
-    quick_connectivity_check,
-)
-from .formatters import (
-    format_json_output,
-    print_error_suggestions,
-    print_json_output,
-    print_summary_to_stderr,
-)
+from .connectivity import get_optimal_timeouts, print_connectivity_troubleshooting, quick_connectivity_check
+from .formatters import format_json_output, print_error_suggestions, print_json_output, print_summary_to_stderr
 from .logging_setup import setup_logging
 
 logger = logging.getLogger(__name__)

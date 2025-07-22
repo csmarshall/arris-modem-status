@@ -12,11 +12,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from arris_modem_status.cli import main
-from arris_modem_status.cli.args import (
-    create_parser,
-    parse_args,
-    validate_args,
-)
+from arris_modem_status.cli.args import create_parser, parse_args, validate_args
 from arris_modem_status.cli.connectivity import (
     get_optimal_timeouts,
     print_connectivity_troubleshooting,
