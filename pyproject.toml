@@ -24,20 +24,20 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "Intended Audience :: System Administrators", 
+    "Intended Audience :: System Administrators",
     "Intended Audience :: Telecommunications Industry",
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10", 
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Internet",
     "Topic :: System :: Hardware",
-    "Topic :: System :: Monitoring", 
+    "Topic :: System :: Monitoring",
     "Topic :: System :: Networking :: Monitoring",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Utilities",
@@ -46,7 +46,7 @@ classifiers = [
 
 # FOCUSED KEYWORDS for better search results
 keywords = [
-    "arris", "modem", "cable", "router", "DOCSIS", "networking", 
+    "arris", "modem", "cable", "router", "DOCSIS", "networking",
     "monitoring", "HNAP", "status", "diagnostics", "internet"
 ]
 
@@ -66,7 +66,7 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
-    "black>=22.0.0", 
+    "black>=22.0.0",
     "isort>=5.10.0",
     "flake8>=5.0.0",
     "mypy>=1.14.1",
@@ -79,7 +79,7 @@ dev = [
 # REVERSE ENGINEERING / DEBUG TOOLS (kept in repo, not shipped by default)
 debug = [
     "playwright>=1.40.0",
-    "selenium>=4.0.0", 
+    "selenium>=4.0.0",
     "beautifulsoup4>=4.9.0",
     "aiohttp>=3.8.0"  # For async debugging
 ]
@@ -102,7 +102,7 @@ test = [
 # BUILD AND RELEASE (for maintainers)
 build = [
     "build>=0.10.0",
-    "twine>=4.0.0", 
+    "twine>=4.0.0",
     "wheel>=0.40.0"
 ]
 
@@ -119,10 +119,10 @@ where = ["."]
 include = ["arris_modem_status*"]
 exclude = [
     "debug_tools*",
-    "scripts*", 
+    "scripts*",
     "tests*",
     "concurrent_vs_serial_test*",
-    "error_analysis_test*", 
+    "error_analysis_test*",
     "production_test*"
 ]
 
@@ -192,7 +192,7 @@ show_error_codes = true
 module = [
     "urllib3.*",
     "requests.*",
-    "selenium.*", 
+    "selenium.*",
     "playwright.*"
 ]
 ignore_missing_imports = true
@@ -204,7 +204,7 @@ addopts = [
     "-ra",
     "-q",
     "--strict-markers",
-    "--strict-config", 
+    "--strict-config",
     "--tb=short",
     "--cov=arris_modem_status",
     "--cov-report=term-missing",
@@ -215,7 +215,7 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests", 
+    "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
     "http_compatibility: marks tests for HTTP compatibility",
     "connection: marks tests for connection handling",
@@ -249,7 +249,7 @@ exclude_lines = [
     "def __repr__",
     "if self.debug:",
     "if settings.DEBUG",
-    "raise AssertionError", 
+    "raise AssertionError",
     "raise NotImplementedError",
     "if 0:",
     "if __name__ == .__main__.:",

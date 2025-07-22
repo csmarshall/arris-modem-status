@@ -132,7 +132,7 @@ call arris_modem_venv\Scripts\activate.bat
 echo 🚀 Arris Modem Status development environment activated!
 echo 📦 Available commands:
 echo    python -m arris_modem_status.cli --password "YOUR_PASSWORD"
-echo    python working_capture_test.py --password "YOUR_PASSWORD" 
+echo    python working_capture_test.py --password "YOUR_PASSWORD"
 echo    python arris_playwright_monitor.py --password "YOUR_PASSWORD"
 echo.
 echo 💡 To deactivate: deactivate
@@ -156,7 +156,7 @@ def test_import(module_name, description):
         if spec is None:
             print(f"❌ {description}: Module '{module_name}' not found")
             return False
-        
+
         module = importlib.import_module(module_name)
         print(f"✅ {description}: OK")
         return True
@@ -167,10 +167,10 @@ def test_import(module_name, description):
 def main():
     print("🧪 TESTING ARRIS MODEM STATUS INSTALLATION")
     print("=" * 50)
-    
+
     success_count = 0
     total_tests = 0
-    
+
     # Core dependencies
     tests = [
         ("aiohttp", "Async HTTP client"),
@@ -179,28 +179,28 @@ def main():
         ("arris_modem_status.cli", "CLI module"),
         ("arris_modem_status.arris_status_client", "Status client"),
     ]
-    
+
     # Optional dependencies
     optional_tests = [
         ("playwright", "Playwright (for monitoring)"),
         ("selenium", "Selenium (for debugging)"),
         ("bs4", "BeautifulSoup (for parsing)"),
     ]
-    
+
     print("📦 Core Dependencies:")
     for module, desc in tests:
         if test_import(module, desc):
             success_count += 1
         total_tests += 1
-    
+
     print(f"\n📦 Optional Dependencies:")
     for module, desc in optional_tests:
         if test_import(module, desc):
             success_count += 1
         total_tests += 1
-    
+
     print(f"\n📊 RESULTS: {success_count}/{total_tests} tests passed")
-    
+
     if success_count == total_tests:
         print("🎉 All tests passed! Installation is complete.")
         print("\n🚀 Next steps:")
@@ -229,31 +229,31 @@ from pathlib import Path
 def main():
     print("📊 ARRIS MODEM STATUS - ENVIRONMENT INFO")
     print("=" * 50)
-    
+
     # Python info
     print(f"🐍 Python Version: {sys.version}")
     print(f"📂 Python Executable: {sys.executable}")
     print(f"🏠 Virtual Environment: {os.environ.get('VIRTUAL_ENV', 'Not detected')}")
-    
+
     # System info
     print(f"💻 Platform: {platform.platform()}")
     print(f"🏛️  Architecture: {platform.architecture()[0]}")
-    
+
     # Project info
     cwd = Path.cwd()
     print(f"📁 Current Directory: {cwd}")
     print(f"📦 Project Files:")
-    
+
     important_files = [
         "pyproject.toml",
-        "README.md", 
+        "README.md",
         "arris_modem_status/",
         "working_capture_test.py",
         "arris_playwright_monitor.py",
         "requirements.txt",
         "requirements-dev.txt"
     ]
-    
+
     for file in important_files:
         path = cwd / file
         if path.exists():
@@ -264,14 +264,14 @@ def main():
                 print(f"   ✅ {file} ({size} bytes)")
         else:
             print(f"   ❌ {file} (missing)")
-    
+
     # Virtual environment check
     if 'VIRTUAL_ENV' in os.environ:
         venv_path = Path(os.environ['VIRTUAL_ENV'])
         print(f"\n🌐 Virtual Environment Details:")
         print(f"   Path: {venv_path}")
         print(f"   Python: {venv_path / 'bin' / 'python' if os.name != 'nt' else venv_path / 'Scripts' / 'python.exe'}")
-    
+
     # Import test
     try:
         import arris_modem_status

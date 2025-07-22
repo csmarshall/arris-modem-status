@@ -1,6 +1,6 @@
 [run]
 source = arris_modem_status
-omit = 
+omit =
     */tests/*
     */test_*
     setup.py
