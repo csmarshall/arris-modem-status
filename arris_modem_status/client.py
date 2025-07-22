@@ -203,6 +203,8 @@ class ArrisModemStatusClient:
     ) -> Optional[str]:
         """Make HNAP request with retry logic for network errors."""
         last_capture = None
+        result = None
+        exhausted = False
 
         for attempt in range(self.max_retries + 1):
             try:
@@ -217,7 +219,8 @@ class ArrisModemStatusClient:
                     if last_capture:
                         last_capture.recovery_successful = True
                         logger.info(f"✅ Recovery successful for {soap_action} on attempt {attempt + 1}")
-                    return response
+                    result = response
+                    break
 
             except requests.exceptions.RequestException as e:
                 response_obj = getattr(e, "response", None)
@@ -231,6 +234,8 @@ class ArrisModemStatusClient:
 
                     if attempt < self.max_retries:
                         continue
+                    else:
+                        exhausted = True
                 else:
                     logger.error(f"❌ Non-retryable error for {soap_action}: {e}")
                     break
@@ -238,9 +243,14 @@ class ArrisModemStatusClient:
             except Exception as e:
                 logger.error(f"❌ Unexpected error in {soap_action}: {e}")
                 break
+        else:
+            # Loop completed without break
+            exhausted = True
 
-        logger.error(f"💥 All retry attempts exhausted for {soap_action}")
-        return None
+        if exhausted and result is None:
+            logger.error(f"💥 All retry attempts exhausted for {soap_action}")
+
+        return result
 
     def _exponential_backoff(self, attempt: int, jitter: bool = True) -> float:
         """Calculate exponential backoff time with optional jitter."""
