@@ -40,8 +40,7 @@ class ArrisTestRunner:
             cmd.append("-q")
 
         if coverage:
-            cmd.extend(["--cov=arris_modem_status",
-                       "--cov-report=term-missing"])
+            cmd.extend(["--cov=arris_modem_status", "--cov-report=term-missing"])
 
         cmd.extend(["--tb=short", "-ra"])
 
@@ -74,11 +73,13 @@ class ArrisTestRunner:
 
 def main():
     """Main entry point for test runner."""
-    parser = argparse.ArgumentParser(
-        description="Arris Modem Status Client Test Runner")
+    parser = argparse.ArgumentParser(description="Arris Modem Status Client Test Runner")
 
     parser.add_argument(
-        "--category", "-c", choices=list(ArrisTestRunner().test_categories.keys()), help="Run specific test category"
+        "--category",
+        "-c",
+        choices=list(ArrisTestRunner().test_categories.keys()),
+        help="Run specific test category",
     )
     parser.add_argument("--verbose", "-v", action="store_true")
     parser.add_argument("--coverage", action="store_true")
@@ -94,7 +95,10 @@ def main():
 
     try:
         success = runner.run_tests(
-            category=args.category, verbose=args.verbose, coverage=args.coverage)
+            category=args.category,
+            verbose=args.verbose,
+            coverage=args.coverage,
+        )
         return 0 if success else 1
     except Exception as e:
         print(f"❌ Test runner error: {e}")

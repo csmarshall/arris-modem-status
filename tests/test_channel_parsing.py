@@ -8,8 +8,7 @@ try:
     CLIENT_AVAILABLE = True
 except ImportError:
     CLIENT_AVAILABLE = False
-    pytest.skip("ArrisModemStatusClient not available",
-                allow_module_level=True)
+    pytest.skip("ArrisModemStatusClient not available", allow_module_level=True)
 
 
 @pytest.mark.unit
@@ -20,7 +19,12 @@ class TestChannelInfoModel:
     def test_channel_info_basic_creation(self):
         """Test basic ChannelInfo creation."""
         channel = ChannelInfo(
-            channel_id="1", frequency="549000000", power="0.6", snr="39.0", modulation="256QAM", lock_status="Locked"
+            channel_id="1",
+            frequency="549000000",
+            power="0.6",
+            snr="39.0",
+            modulation="256QAM",
+            lock_status="Locked",
         )
 
         assert channel.channel_id == "1"
@@ -104,8 +108,7 @@ class TestChannelDataParsing:
         """Test parsing downstream channel string."""
         client = ArrisModemStatusClient(password="test")
 
-        channels = client._parse_channel_string(
-            sample_channel_data["downstream"], "downstream")
+        channels = client._parse_channel_string(sample_channel_data["downstream"], "downstream")
 
         assert len(channels) == 1
         channel = channels[0]
@@ -123,8 +126,7 @@ class TestChannelDataParsing:
         """Test parsing upstream channel string."""
         client = ArrisModemStatusClient(password="test")
 
-        channels = client._parse_channel_string(
-            sample_channel_data["upstream"], "upstream")
+        channels = client._parse_channel_string(sample_channel_data["upstream"], "upstream")
 
         assert len(channels) == 1
         channel = channels[0]
@@ -145,8 +147,7 @@ class TestChannelDataParsing:
             "3^Unlocked^256QAM^^561000000^-0.2^37.8^25^2"
         )
 
-        channels = client._parse_channel_string(
-            multi_channel_data, "downstream")
+        channels = client._parse_channel_string(multi_channel_data, "downstream")
 
         assert len(channels) == 3
 
@@ -169,8 +170,7 @@ class TestChannelDataParsing:
         """Test parsing malformed channel string."""
         client = ArrisModemStatusClient(password="test")
 
-        channels = client._parse_channel_string(
-            sample_channel_data["malformed"], "downstream")
+        channels = client._parse_channel_string(sample_channel_data["malformed"], "downstream")
 
         # Should handle gracefully and return empty list
         assert len(channels) == 0
@@ -179,8 +179,7 @@ class TestChannelDataParsing:
         """Test parsing empty channel string."""
         client = ArrisModemStatusClient(password="test")
 
-        channels = client._parse_channel_string(
-            sample_channel_data["empty"], "downstream")
+        channels = client._parse_channel_string(sample_channel_data["empty"], "downstream")
 
         assert len(channels) == 0
 

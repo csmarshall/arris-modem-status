@@ -41,7 +41,8 @@ def setup_logging(debug: bool = False, log_file: Optional[str] = None) -> None:
     else:
         # Simpler format for normal mode
         formatter = logging.Formatter(
-            "%(asctime)s - %(levelname)s - %(name)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+            "%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
 
     console_handler.setFormatter(formatter)
@@ -72,8 +73,7 @@ def setup_logging(debug: bool = False, log_file: Optional[str] = None) -> None:
 
     # Log initial setup
     logger = logging.getLogger(__name__)
-    logger.debug(
-        f"Logging configured: level={logging.getLevelName(level)}, debug={debug}")
+    logger.debug(f"Logging configured: level={logging.getLevelName(level)}, debug={debug}")
     if log_file:
         logger.debug(f"Logging to file: {log_file}")
 

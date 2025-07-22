@@ -73,8 +73,7 @@ class PerformanceInstrumentation:
             self.request_metrics[operation] = []
         self.request_metrics[operation].append(duration)
 
-        logger.debug(
-            f"📊 {operation}: {duration * 1000:.1f}ms (success: {success})")
+        logger.debug(f"📊 {operation}: {duration * 1000:.1f}ms (success: {success})")
         return metric
 
     def get_performance_summary(self) -> Dict[str, Any]:
@@ -136,8 +135,7 @@ class PerformanceInstrumentation:
         insights = []
 
         # Authentication performance
-        auth_ops = [op for op in operation_stats.keys()
-                    if "auth" in op.lower()]
+        auth_ops = [op for op in operation_stats.keys() if "auth" in op.lower()]
         if auth_ops:
             # Calculate total auth time across all auth operations
             total_auth_time = 0
@@ -146,21 +144,17 @@ class PerformanceInstrumentation:
                 total_auth_time += avg_time
 
             if total_auth_time > 2.0:
-                insights.append(
-                    f"Authentication taking {total_auth_time:.2f}s - consider network optimization")
+                insights.append(f"Authentication taking {total_auth_time:.2f}s - consider network optimization")
             elif total_auth_time < 1.0:
-                insights.append(
-                    f"Excellent authentication performance: {total_auth_time:.2f}s")
+                insights.append(f"Excellent authentication performance: {total_auth_time:.2f}s")
 
         # Overall throughput
         if total_time > 0:
             ops_per_sec = len(self.timing_metrics) / total_time
             if ops_per_sec > 2:
-                insights.append(
-                    f"High throughput: {ops_per_sec:.1f} operations/sec")
+                insights.append(f"High throughput: {ops_per_sec:.1f} operations/sec")
             elif ops_per_sec < 0.5:
-                insights.append(
-                    f"Low throughput: {ops_per_sec:.1f} operations/sec - check for bottlenecks")
+                insights.append(f"Low throughput: {ops_per_sec:.1f} operations/sec - check for bottlenecks")
 
         # Error rates
         total_ops = len(self.timing_metrics)
@@ -168,8 +162,7 @@ class PerformanceInstrumentation:
         if total_ops > 0:
             error_rate = failed_ops / total_ops
             if error_rate > 0.1:
-                insights.append(
-                    f"High error rate: {error_rate * 100:.1f}% - investigate HTTP compatibility")
+                insights.append(f"High error rate: {error_rate * 100:.1f}% - investigate HTTP compatibility")
             elif error_rate == 0:
                 insights.append("Perfect reliability: 0% error rate")
 

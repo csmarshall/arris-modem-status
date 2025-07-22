@@ -28,7 +28,10 @@ urllib3.disable_warnings(HeaderParsingError)
 
 # Suppress specific HTTP compatibility warnings using warnings module
 warnings.filterwarnings(
-    "ignore", message=".*Failed to parse headers.*HeaderParsingError.*", category=UserWarning, module="urllib3"
+    "ignore",
+    message=".*Failed to parse headers.*HeaderParsingError.*",
+    category=UserWarning,
+    module="urllib3",
 )
 
 # Reduce urllib3 logging noise for HTTP compatibility issues we handle
@@ -55,10 +58,17 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
         """Initialize the Arris-compatible HTTP adapter."""
         super().__init__(*args, **kwargs)
         self.instrumentation = instrumentation
-        logger.debug(
-            "🔧 Initialized ArrisCompatibleHTTPAdapter with relaxed HTTP parsing")
+        logger.debug("🔧 Initialized ArrisCompatibleHTTPAdapter with relaxed HTTP parsing")
 
-    def send(self, request, stream=False, timeout=None, verify=None, cert=None, proxies=None):
+    def send(
+        self,
+        request,
+        stream=False,
+        timeout=None,
+        verify=None,
+        cert=None,
+        proxies=None,
+    ):
         """
         Send HTTP request using relaxed parsing for HNAP endpoints.
 
@@ -76,8 +86,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
 
                 # Record successful timing
                 if self.instrumentation:
-                    response_size = len(response.content) if hasattr(
-                        response, "content") else 0
+                    response_size = len(response.content) if hasattr(response, "content") else 0
                     self.instrumentation.record_timing(
                         "http_request_relaxed",
                         start_time,
@@ -94,7 +103,10 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
                 # Record failed timing
                 if self.instrumentation:
                     self.instrumentation.record_timing(
-                        "http_request_relaxed", start_time, success=False, error_type=str(type(e).__name__)
+                        "http_request_relaxed",
+                        start_time,
+                        success=False,
+                        error_type=str(type(e).__name__),
                     )
 
                 raise
@@ -104,8 +116,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
             response = super().send(request, stream, timeout, verify, cert, proxies)
 
             if self.instrumentation:
-                response_size = len(response.content) if hasattr(
-                    response, "content") else 0
+                response_size = len(response.content) if hasattr(response, "content") else 0
                 self.instrumentation.record_timing(
                     "http_request_standard",
                     start_time,
@@ -119,7 +130,10 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
         except Exception as e:
             if self.instrumentation:
                 self.instrumentation.record_timing(
-                    "http_request_standard", start_time, success=False, error_type=str(type(e).__name__)
+                    "http_request_standard",
+                    start_time,
+                    success=False,
+                    error_type=str(type(e).__name__),
                 )
             raise
 
@@ -194,8 +208,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
 
         # Add body length if present
         if request.body:
-            body_bytes = request.body.encode(
-                "utf-8") if isinstance(request.body, str) else request.body
+            body_bytes = request.body.encode("utf-8") if isinstance(request.body, str) else request.body
             lines.append(f"Content-Length: {len(body_bytes)}")
 
         lines.append("")  # End headers
@@ -210,8 +223,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
                 except UnicodeDecodeError:
                     # For binary data that can't be decoded, we shouldn't include it in the request
                     # This is a limitation of our text-based HTTP request building
-                    logger.warning(
-                        "Binary body data cannot be included in raw HTTP request")
+                    logger.warning("Binary body data cannot be included in raw HTTP request")
                     lines.append("")  # Empty body
 
         return "\r\n".join(lines)
@@ -243,8 +255,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
 
                     # Extract content-length with tolerance for formatting variations
                     try:
-                        headers_str = headers_part.decode(
-                            "utf-8", errors="replace")
+                        headers_str = headers_part.decode("utf-8", errors="replace")
                         for line in headers_str.split("\r\n"):
                             # More tolerant header parsing than urllib3
                             if line.lower().startswith("content-length"):
@@ -266,8 +277,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
 
             except socket.timeout:
                 # Timeout reached, assume response is complete
-                logger.debug(
-                    "🕐 Socket timeout during response, assuming complete")
+                logger.debug("🕐 Socket timeout during response, assuming complete")
                 break
             except Exception as e:
                 logger.debug(f"🔍 Socket receive error: {e}")
@@ -309,8 +319,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
                     if len(parts) >= 2:
                         status_code = int(parts[1])
                 except (ValueError, IndexError):
-                    logger.debug(
-                        f"🔍 Tolerant parsing: Using default status 200 for: {status_line}")
+                    logger.debug(f"🔍 Tolerant parsing: Using default status 200 for: {status_line}")
 
             # Parse headers with tolerance for formatting variations
             headers = {}
@@ -325,8 +334,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
                     headers[key] = value
                 elif line.strip():
                     # Non-standard header line, log but continue
-                    logger.debug(
-                        f"🔍 Tolerant parsing: Skipping non-standard header: {line}")
+                    logger.debug(f"🔍 Tolerant parsing: Skipping non-standard header: {line}")
 
             # Create Response object
             response = Response()
@@ -344,8 +352,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
             # Mark as successful (anything that parses is considered success)
             response.reason = "OK"
 
-            logger.debug(
-                f"✅ Browser-compatible parsing successful: {status_code} ({len(body_part)} bytes)")
+            logger.debug(f"✅ Browser-compatible parsing successful: {status_code} ({len(body_part)} bytes)")
             return response
 
         except Exception as e:
@@ -404,8 +411,7 @@ def create_arris_compatible_session(instrumentation=None) -> requests.Session:
         }
     )
 
-    logger.debug(
-        "🔧 Created Arris-compatible session with relaxed HTTP parsing for HNAP endpoints")
+    logger.debug("🔧 Created Arris-compatible session with relaxed HTTP parsing for HNAP endpoints")
     return session
 
 
