@@ -7,10 +7,9 @@ from unittest.mock import patch
 import pytest
 
 try:
-    from arris_modem_status import ArrisModemStatusClient
-
     # Import the module to ensure proper patching
     import arris_modem_status.cli.main
+    from arris_modem_status import ArrisModemStatusClient
     from arris_modem_status.cli import main
 
     CLIENT_AVAILABLE = True
