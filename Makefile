@@ -34,7 +34,11 @@ help: ## Show this help message
 	@echo "  $(BLUE)make dev-check$(RESET)     # Run complete development check"
 	@echo ""
 	@echo "$(YELLOW)All Commands:$(RESET)"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "$(BLUE)%-20s$(RESET) %s\n", $1, $2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | while read -r line; do \
+		target=$$(echo "$$line" | cut -d':' -f1); \
+		desc=$$(echo "$$line" | sed 's/^[^:]*:.*## //'); \
+		printf "$(BLUE)%-20s$(RESET) %s\n" "$$target" "$$desc"; \
+	done
 
 install: ## Install package in development mode
 	@echo "$(GREEN)Installing arris-modem-status in development mode...$(RESET)"
