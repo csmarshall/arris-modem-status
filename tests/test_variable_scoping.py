@@ -8,7 +8,7 @@ import pytest
 
 try:
     # Import the module to ensure proper patching
-    import arris_modem_status.cli.main
+    import arris_modem_status.cli.main  # noqa: F401
     from arris_modem_status import ArrisModemStatusClient
     from arris_modem_status.cli import main
 

@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 # Import the module to ensure proper patching
-import arris_modem_status.cli.main
+import arris_modem_status.cli.main  # noqa: F401
 from arris_modem_status.cli.args import create_parser, parse_args, validate_args
 from arris_modem_status.cli.connectivity import (
     get_optimal_timeouts,
