@@ -136,10 +136,7 @@ def print_summary_to_stderr(status: dict) -> None:
 
 
 def format_json_output(
-    status: Dict[str, Any],
-    args: argparse.Namespace,
-    elapsed_time: float,
-    connectivity_checked: bool
+    status: Dict[str, Any], args: argparse.Namespace, elapsed_time: float, connectivity_checked: bool
 ) -> dict:
     """
     Format the complete JSON output with metadata.

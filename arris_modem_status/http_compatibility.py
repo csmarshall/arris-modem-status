@@ -141,7 +141,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
         self,
         request: requests.PreparedRequest,
         timeout: Optional[Union[float, Tuple[float, float]]] = None,
-        verify: Union[bool, str] = True
+        verify: Union[bool, str] = True,
     ) -> Response:
         """
         Make HTTP request using raw socket with browser-like tolerance.
@@ -291,11 +291,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
         logger.debug(f"📥 Raw response received: {len(response_data)} bytes")
         return response_data
 
-    def _parse_response_tolerantly(
-        self,
-        raw_response: bytes,
-        original_request: requests.PreparedRequest
-    ) -> Response:
+    def _parse_response_tolerantly(self, raw_response: bytes, original_request: requests.PreparedRequest) -> Response:
         """
         Parse raw HTTP response with browser-like tolerance.
 
