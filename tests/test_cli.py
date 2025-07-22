@@ -13,7 +13,6 @@ import pytest
 
 # Import the module to ensure proper patching
 import arris_modem_status.cli.main
-from arris_modem_status.cli.main import main
 from arris_modem_status.cli.args import create_parser, parse_args, validate_args
 from arris_modem_status.cli.connectivity import (
     get_optimal_timeouts,
@@ -28,6 +27,7 @@ from arris_modem_status.cli.formatters import (
     print_summary_to_stderr,
 )
 from arris_modem_status.cli.logging_setup import get_logger, setup_logging
+from arris_modem_status.cli.main import main
 
 
 @pytest.mark.unit

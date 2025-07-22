@@ -8,8 +8,8 @@ import pytest
 
 try:
     # Import the module to ensure proper patching
-    from arris_modem_status import ArrisModemStatusClient
     import arris_modem_status.cli.main
+    from arris_modem_status import ArrisModemStatusClient
     from arris_modem_status.cli import main
 
     CLIENT_AVAILABLE = True
