@@ -17,10 +17,6 @@ Arris modem client, including:
 Usage:
     python comprehensive_test.py --password "your_password" [options]
 
-Author: Charles Marshall
-
-Version: 1.3.0
-License: MIT
 """
 
 import argparse

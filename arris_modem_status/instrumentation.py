@@ -5,8 +5,6 @@ Performance Instrumentation for Arris Modem Status Client
 This module provides comprehensive performance instrumentation for monitoring
 and analyzing the performance characteristics of the Arris client.
 
-Author: Charles Marshall
-Version: 1.3.0
 """
 
 import logging

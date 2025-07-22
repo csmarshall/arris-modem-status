@@ -27,7 +27,6 @@ Example Usage:
 
 Author: Charles Marshall
 License: MIT
-Version: 1.3.0
 """
 
 from .client import ArrisModemStatusClient

@@ -5,8 +5,6 @@ Data Models for Arris Modem Status Client
 This module contains all dataclasses and data models used by the
 Arris Modem Status Client.
 
-Author: Charles Marshall
-Version: 1.3.0
 """
 
 from dataclasses import dataclass

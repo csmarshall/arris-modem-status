@@ -5,8 +5,6 @@ HTTP Compatibility Layer for Arris Modem Status Client
 This module provides HTTP compatibility handling for Arris modem responses
 by using relaxed parsing by default, avoiding urllib3's strict standards.
 
-Author: Charles Marshall
-Version: 1.3.0
 """
 
 import logging

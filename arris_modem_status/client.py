@@ -5,8 +5,6 @@ Main Arris Modem Status Client
 This module contains the main client implementation for querying Arris cable
 modem status via HNAP with HTTP compatibility.
 
-Author: Charles Marshall
-Version: 1.3.0
 """
 
 import hashlib
