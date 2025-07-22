@@ -55,7 +55,8 @@ def setup_logging(debug: bool = False, log_file: Optional[str] = None) -> None:
         handlers.append(file_handler)
 
     # Configure the root logger
-    logging.basicConfig(level=level, handlers=handlers, force=True)  # Replace any existing handlers
+    # Replace any existing handlers
+    logging.basicConfig(level=level, handlers=handlers, force=True)
 
     # Configure third-party libraries to be less verbose unless debug is enabled
     if not debug:
@@ -71,7 +72,8 @@ def setup_logging(debug: bool = False, log_file: Optional[str] = None) -> None:
 
     # Log initial setup
     logger = logging.getLogger(__name__)
-    logger.debug(f"Logging configured: level={logging.getLevelName(level)}, debug={debug}")
+    logger.debug(
+        f"Logging configured: level={logging.getLevelName(level)}, debug={debug}")
     if log_file:
         logger.debug(f"Logging to file: {log_file}")
 

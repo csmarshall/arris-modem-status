@@ -135,21 +135,25 @@ class TestCLIConnectivity:
         mock_socket = MagicMock()
         mock_create_connection.return_value.__enter__.return_value = mock_socket
 
-        is_reachable, error_msg = quick_connectivity_check("192.168.100.1", 443, 2.0)
+        is_reachable, error_msg = quick_connectivity_check(
+            "192.168.100.1", 443, 2.0)
 
         assert is_reachable is True
         assert error_msg is None
         # socket.create_connection is called with timeout as keyword argument
-        mock_create_connection.assert_called_once_with(("192.168.100.1", 443), timeout=2.0)
+        mock_create_connection.assert_called_once_with(
+            ("192.168.100.1", 443), timeout=2.0)
 
     @patch("socket.create_connection")
     def test_quick_connectivity_check_timeout(self, mock_create_connection):
         """Test connectivity check with timeout."""
         import socket
 
-        mock_create_connection.side_effect = socket.timeout("Connection timeout")
+        mock_create_connection.side_effect = socket.timeout(
+            "Connection timeout")
 
-        is_reachable, error_msg = quick_connectivity_check("192.168.100.1", 443, 2.0)
+        is_reachable, error_msg = quick_connectivity_check(
+            "192.168.100.1", 443, 2.0)
 
         assert is_reachable is False
         assert "timeout" in error_msg
@@ -158,9 +162,11 @@ class TestCLIConnectivity:
     @patch("socket.create_connection")
     def test_quick_connectivity_check_refused(self, mock_create_connection):
         """Test connectivity check with connection refused."""
-        mock_create_connection.side_effect = ConnectionRefusedError("Connection refused")
+        mock_create_connection.side_effect = ConnectionRefusedError(
+            "Connection refused")
 
-        is_reachable, error_msg = quick_connectivity_check("192.168.100.1", 443, 2.0)
+        is_reachable, error_msg = quick_connectivity_check(
+            "192.168.100.1", 443, 2.0)
 
         assert is_reachable is False
         assert "refused" in error_msg
@@ -170,16 +176,19 @@ class TestCLIConnectivity:
         """Test connectivity check with DNS error."""
         import socket
 
-        mock_create_connection.side_effect = socket.gaierror("Name or service not known")
+        mock_create_connection.side_effect = socket.gaierror(
+            "Name or service not known")
 
-        is_reachable, error_msg = quick_connectivity_check("invalid.host", 443, 2.0)
+        is_reachable, error_msg = quick_connectivity_check(
+            "invalid.host", 443, 2.0)
 
         assert is_reachable is False
         assert "DNS" in error_msg
 
     def test_get_optimal_timeouts_local(self):
         """Test optimal timeout calculation for local addresses."""
-        local_addresses = ["192.168.1.1", "10.0.0.1", "172.16.0.1", "localhost", "127.0.0.1"]
+        local_addresses = ["192.168.1.1", "10.0.0.1",
+                           "172.16.0.1", "localhost", "127.0.0.1"]
 
         for addr in local_addresses:
             connect_timeout, read_timeout = get_optimal_timeouts(addr)
@@ -197,7 +206,8 @@ class TestCLIConnectivity:
 
     def test_print_connectivity_troubleshooting(self, capsys):
         """Test troubleshooting suggestions output."""
-        print_connectivity_troubleshooting("192.168.100.1", 443, "Connection timeout")
+        print_connectivity_troubleshooting(
+            "192.168.100.1", 443, "Connection timeout")
 
         captured = capsys.readouterr()
         assert "TROUBLESHOOTING" in captured.err
@@ -224,7 +234,8 @@ class TestCLIFormatters:
         mock_channel.uncorrected_errors = "0"
         mock_channel.channel_type = "downstream"
 
-        status = {"downstream_channels": [mock_channel], "upstream_channels": []}
+        status = {"downstream_channels": [
+            mock_channel], "upstream_channels": []}
 
         formatted = format_channel_data_for_display(status)
 
@@ -238,7 +249,8 @@ class TestCLIFormatters:
         """Test JSON output formatting."""
         status = {"model_name": "S34", "internet_status": "Connected"}
 
-        args = argparse.Namespace(host="192.168.100.1", workers=2, retries=3, timeout=30, serial=False)
+        args = argparse.Namespace(
+            host="192.168.100.1", workers=2, retries=3, timeout=30, serial=False)
 
         json_output = format_json_output(status, args, 1.5, True)
 

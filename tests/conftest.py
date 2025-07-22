@@ -75,7 +75,8 @@ def mock_successful_auth_flow(mock_modem_responses):
     """Mock successful authentication flow."""
     with patch("requests.Session.post") as mock_post:
         mock_post.side_effect = [
-            Mock(status_code=200, text=mock_modem_responses["challenge_response"]),
+            Mock(status_code=200,
+                 text=mock_modem_responses["challenge_response"]),
             Mock(status_code=200, text=mock_modem_responses["login_success"]),
         ]
         yield mock_post
@@ -87,11 +88,15 @@ def mock_successful_status_flow(mock_modem_responses):
     with patch("requests.Session.post") as mock_post:
         # Auth flow + 3 status requests
         mock_post.side_effect = [
-            Mock(status_code=200, text=mock_modem_responses["challenge_response"]),
+            Mock(status_code=200,
+                 text=mock_modem_responses["challenge_response"]),
             Mock(status_code=200, text=mock_modem_responses["login_success"]),
-            Mock(status_code=200, text=mock_modem_responses["complete_status"]),
-            Mock(status_code=200, text=mock_modem_responses["complete_status"]),
-            Mock(status_code=200, text=mock_modem_responses["complete_status"]),
+            Mock(status_code=200,
+                 text=mock_modem_responses["complete_status"]),
+            Mock(status_code=200,
+                 text=mock_modem_responses["complete_status"]),
+            Mock(status_code=200,
+                 text=mock_modem_responses["complete_status"]),
         ]
         yield mock_post
 
@@ -133,5 +138,6 @@ def mock_performance_instrumentation():
     with patch.object(PerformanceInstrumentation, "start_timer") as mock_start:
         with patch.object(PerformanceInstrumentation, "record_timing") as mock_record:
             mock_start.return_value = time.time()
-            mock_record.return_value = Mock(operation="test", duration=0.1, success=True, duration_ms=100)
+            mock_record.return_value = Mock(
+                operation="test", duration=0.1, success=True, duration_ms=100)
             yield mock_start, mock_record

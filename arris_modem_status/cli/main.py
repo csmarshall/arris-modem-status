@@ -40,21 +40,26 @@ def main():
         if not args.quiet:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             mode_str = "serial" if args.serial else "concurrent"
-            print(f"Arris Modem Status Client v{__version__} - {timestamp}", file=sys.stderr)
-            print(f"Connecting to {args.host}:{args.port} as {args.username} ({mode_str} mode)", file=sys.stderr)
+            print(
+                f"Arris Modem Status Client v{__version__} - {timestamp}", file=sys.stderr)
+            print(
+                f"Connecting to {args.host}:{args.port} as {args.username} ({mode_str} mode)", file=sys.stderr)
 
         # Perform connectivity check if requested
         connectivity_checked = False
         if args.quick_check:
-            is_reachable, error_msg = quick_connectivity_check(args.host, args.port, timeout=2.0)
+            is_reachable, error_msg = quick_connectivity_check(
+                args.host, args.port, timeout=2.0)
             connectivity_checked = True
 
             if not is_reachable:
                 elapsed = time.time() - start_time
                 print(f"❌ {error_msg}", file=sys.stderr)
-                print(f"⏱️  Failed connectivity check after {elapsed:.1f}s", file=sys.stderr)
+                print(
+                    f"⏱️  Failed connectivity check after {elapsed:.1f}s", file=sys.stderr)
 
-                print_connectivity_troubleshooting(args.host, args.port, error_msg)
+                print_connectivity_troubleshooting(
+                    args.host, args.port, error_msg)
                 sys.exit(1)
 
         # Get optimal timeouts based on host type
@@ -62,7 +67,8 @@ def main():
         final_timeout = (connect_timeout, min(args.timeout, read_timeout))
 
         # Initialize the client with HTTP compatibility and optimal settings
-        logger.info(f"Initializing ArrisModemStatusClient for {args.host}:{args.port}")
+        logger.info(
+            f"Initializing ArrisModemStatusClient for {args.host}:{args.port}")
         client = ArrisModemStatusClient(
             host=args.host,
             port=args.port,
@@ -88,7 +94,8 @@ def main():
             print_summary_to_stderr(status)
 
         # Format and output JSON
-        json_output = format_json_output(status, args, elapsed, connectivity_checked)
+        json_output = format_json_output(
+            status, args, elapsed, connectivity_checked)
         print_json_output(json_output)
 
         logger.info(f"Modem status retrieved successfully in {elapsed:.2f}s")
@@ -96,7 +103,8 @@ def main():
     except KeyboardInterrupt:
         elapsed = time.time() - start_time
         logger.error(f"Operation cancelled by user after {elapsed:.2f}s")
-        print(f"Operation cancelled by user after {elapsed:.2f}s", file=sys.stderr)
+        print(
+            f"Operation cancelled by user after {elapsed:.2f}s", file=sys.stderr)
         sys.exit(1)
 
     except Exception as e:

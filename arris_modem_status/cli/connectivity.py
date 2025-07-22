@@ -82,10 +82,12 @@ def get_optimal_timeouts(host: str) -> Tuple[float, float]:
     )
 
     if is_local:
-        logger.debug(f"Host {host} appears to be local, using shorter timeouts")
+        logger.debug(
+            f"Host {host} appears to be local, using shorter timeouts")
         return (2, 8)  # Shorter timeouts for local devices
     else:
-        logger.debug(f"Host {host} appears to be remote, using longer timeouts")
+        logger.debug(
+            f"Host {host} appears to be remote, using longer timeouts")
         return (5, 15)  # Longer timeouts for remote access
 
 
@@ -103,7 +105,8 @@ def print_connectivity_troubleshooting(host: str, port: int, error_msg: str) -> 
 
     if "timeout" in error_msg.lower():
         print("Connection timeout suggests:", file=sys.stderr)
-        print(f"  1. Device may be offline - verify {host} is powered on", file=sys.stderr)
+        print(
+            f"  1. Device may be offline - verify {host} is powered on", file=sys.stderr)
         print("  2. Wrong IP address - check your modem's current IP", file=sys.stderr)
         print(f"  3. Network issue - try: ping {host}", file=sys.stderr)
         print("  4. Firewall blocking connection", file=sys.stderr)

@@ -35,7 +35,8 @@ class MockArrisModem:
             # Simulate urllib3 parsing strictness issues
             from urllib3.exceptions import HeaderParsingError
 
-            raise HeaderParsingError("3.500000 |Content-type: text/html", b"unparsed_data")
+            raise HeaderParsingError(
+                "3.500000 |Content-type: text/html", b"unparsed_data")
 
         return response
 
@@ -46,7 +47,8 @@ def mock_http_compatibility_error():
     from urllib3.exceptions import HeaderParsingError
 
     with patch("requests.Session.post") as mock_post:
-        mock_post.side_effect = HeaderParsingError("3.500000 |Content-type: text/html")
+        mock_post.side_effect = HeaderParsingError(
+            "3.500000 |Content-type: text/html")
         yield mock_post
 
 

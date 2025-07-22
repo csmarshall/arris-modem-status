@@ -51,7 +51,8 @@ def format_channel_data_for_display(status: dict) -> dict:
             }
             for ch in output["downstream_channels"]
         ]
-        logger.debug(f"Converted {len(output['downstream_channels'])} downstream channels")
+        logger.debug(
+            f"Converted {len(output['downstream_channels'])} downstream channels")
 
     # Convert upstream channels
     if "upstream_channels" in output:
@@ -67,7 +68,8 @@ def format_channel_data_for_display(status: dict) -> dict:
             }
             for ch in output["upstream_channels"]
         ]
-        logger.debug(f"Converted {len(output['upstream_channels'])} upstream channels")
+        logger.debug(
+            f"Converted {len(output['upstream_channels'])} upstream channels")
 
     return output
 
@@ -85,8 +87,10 @@ def print_summary_to_stderr(status: dict) -> None:
     print("ARRIS MODEM STATUS SUMMARY", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
     print(f"Model: {status.get('model_name', 'Unknown')}", file=sys.stderr)
-    print(f"Internet Status: {status.get('internet_status', 'Unknown')}", file=sys.stderr)
-    print(f"Connection Status: {status.get('connection_status', 'Unknown')}", file=sys.stderr)
+    print(
+        f"Internet Status: {status.get('internet_status', 'Unknown')}", file=sys.stderr)
+    print(
+        f"Connection Status: {status.get('connection_status', 'Unknown')}", file=sys.stderr)
 
     if status.get("mac_address", "Unknown") != "Unknown":
         print(f"MAC Address: {status.get('mac_address')}", file=sys.stderr)
@@ -96,7 +100,8 @@ def print_summary_to_stderr(status: dict) -> None:
 
     print(f"Downstream Channels: {downstream_count}", file=sys.stderr)
     print(f"Upstream Channels: {upstream_count}", file=sys.stderr)
-    print(f"Channel Data Available: {status.get('channel_data_available', False)}", file=sys.stderr)
+    print(
+        f"Channel Data Available: {status.get('channel_data_available', False)}", file=sys.stderr)
 
     # Show sample channel if available
     if downstream_count > 0:
@@ -109,11 +114,14 @@ def print_summary_to_stderr(status: dict) -> None:
     if error_analysis:
         total_errors = error_analysis.get("total_errors", 0)
         recovery_rate = error_analysis.get("recovery_rate", 0) * 100
-        compatibility_issues = error_analysis.get("http_compatibility_issues", 0)
+        compatibility_issues = error_analysis.get(
+            "http_compatibility_issues", 0)
 
-        print(f"Error Analysis: {total_errors} errors, {recovery_rate:.1f}% recovery", file=sys.stderr)
+        print(
+            f"Error Analysis: {total_errors} errors, {recovery_rate:.1f}% recovery", file=sys.stderr)
         if compatibility_issues > 0:
-            print(f"HTTP Compatibility Issues Handled: {compatibility_issues}", file=sys.stderr)
+            print(
+                f"HTTP Compatibility Issues Handled: {compatibility_issues}", file=sys.stderr)
 
     print("=" * 60, file=sys.stderr)
 
@@ -188,7 +196,8 @@ def print_error_suggestions(debug: bool = False) -> None:
         print("1. Verify the modem password is correct", file=sys.stderr)
         print("2. Check that the modem IP address is reachable", file=sys.stderr)
         print("3. Ensure the modem web interface is enabled", file=sys.stderr)
-        print("4. Try with --debug for more detailed error information", file=sys.stderr)
+        print("4. Try with --debug for more detailed error information",
+              file=sys.stderr)
         print("5. Try --serial mode for maximum compatibility", file=sys.stderr)
         print("6. Try --quick-check to test connectivity first", file=sys.stderr)
         print("7. HTTP compatibility issues are automatically handled", file=sys.stderr)

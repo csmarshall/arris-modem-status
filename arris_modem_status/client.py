@@ -102,8 +102,10 @@ class ArrisModemStatusClient:
         self.session = self._create_session()
 
         mode_str = "concurrent" if concurrent else "serial"
-        logger.info(f"🛡️ ArrisModemStatusClient v1.3 initialized for {host}:{port}")
-        logger.info(f"🔧 Mode: {mode_str}, Workers: {self.max_workers}, Retries: {max_retries}")
+        logger.info(
+            f"🛡️ ArrisModemStatusClient v1.3 initialized for {host}:{port}")
+        logger.info(
+            f"🔧 Mode: {mode_str}, Workers: {self.max_workers}, Retries: {max_retries}")
         logger.info("🔧 Using relaxed HTTP parsing for HNAP endpoints")
         if enable_instrumentation:
             logger.info("📊 Performance instrumentation enabled")
@@ -126,7 +128,8 @@ class ArrisModemStatusClient:
 
             if response is not None:
                 try:
-                    partial_content = response.text[:500] if hasattr(response, "text") else ""
+                    partial_content = response.text[:500] if hasattr(
+                        response, "text") else ""
                 except Exception:
                     try:
                         partial_content = str(response.content[:500])
@@ -134,7 +137,8 @@ class ArrisModemStatusClient:
                         partial_content = "Unable to extract content"
 
                 try:
-                    headers = dict(response.headers) if hasattr(response, "headers") else {}
+                    headers = dict(response.headers) if hasattr(
+                        response, "headers") else {}
                     http_status = getattr(response, "status_code", 0)
                 except Exception:
                     pass
@@ -204,31 +208,37 @@ class ArrisModemStatusClient:
             try:
                 if attempt > 0:
                     backoff_time = self._exponential_backoff(attempt - 1)
-                    logger.info(f"🔄 Retry {attempt}/{self.max_retries} for {soap_action} after {backoff_time:.2f}s")
+                    logger.info(
+                        f"🔄 Retry {attempt}/{self.max_retries} for {soap_action} after {backoff_time:.2f}s")
                     time.sleep(backoff_time)
 
-                response = self._make_hnap_request_raw(soap_action, request_body, extra_headers)
+                response = self._make_hnap_request_raw(
+                    soap_action, request_body, extra_headers)
 
                 if response is not None:
                     if last_capture:
                         last_capture.recovery_successful = True
-                        logger.info(f"✅ Recovery successful for {soap_action} on attempt {attempt + 1}")
+                        logger.info(
+                            f"✅ Recovery successful for {soap_action} on attempt {attempt + 1}")
                     return response
 
             except requests.exceptions.RequestException as e:
                 response_obj = getattr(e, "response", None)
-                last_capture = self._analyze_error(e, soap_action, response_obj)
+                last_capture = self._analyze_error(
+                    e, soap_action, response_obj)
 
                 # Only retry for network/timeout errors, not HTTP errors
                 error_str = str(e).lower()
                 if any(term in error_str for term in ["timeout", "connection", "network"]):
                     mode_str = "concurrent" if self.concurrent else "serial"
-                    logger.debug(f"🔧 Network error in {mode_str} mode, attempt {attempt + 1}")
+                    logger.debug(
+                        f"🔧 Network error in {mode_str} mode, attempt {attempt + 1}")
 
                     if attempt < self.max_retries:
                         continue
                 else:
-                    logger.error(f"❌ Non-retryable error for {soap_action}: {e}")
+                    logger.error(
+                        f"❌ Non-retryable error for {soap_action}: {e}")
                     break
 
             except Exception as e:
@@ -252,7 +262,8 @@ class ArrisModemStatusClient:
     ) -> Optional[str]:
         """Make raw HNAP request using HTTP session with relaxed parsing."""
         start_time = (
-            self.instrumentation.start_timer(f"hnap_request_{soap_action}") if self.instrumentation else time.time()
+            self.instrumentation.start_timer(
+                f"hnap_request_{soap_action}") if self.instrumentation else time.time()
         )
 
         # Build headers
@@ -312,7 +323,8 @@ class ArrisModemStatusClient:
 
                 return response.text
             else:
-                error = requests.exceptions.RequestException(f"HTTP {response.status_code}")
+                error = requests.exceptions.RequestException(
+                    f"HTTP {response.status_code}")
                 error.response = response
 
                 # Record failed timing
@@ -343,7 +355,8 @@ class ArrisModemStatusClient:
         hmac_key = self.private_key or "withoutloginkey"
         message = f'{timestamp}"http://purenetworks.com/HNAP1/{soap_action}"'
 
-        auth_hash = hmac.new(hmac_key.encode("utf-8"), message.encode("utf-8"), hashlib.sha256).hexdigest().upper()
+        auth_hash = hmac.new(hmac_key.encode(
+            "utf-8"), message.encode("utf-8"), hashlib.sha256).hexdigest().upper()
 
         return f"{auth_hash} {timestamp}"
 
@@ -352,12 +365,14 @@ class ArrisModemStatusClient:
         try:
             logger.info("🔐 Starting authentication...")
             start_time = (
-                self.instrumentation.start_timer("authentication_complete") if self.instrumentation else time.time()
+                self.instrumentation.start_timer(
+                    "authentication_complete") if self.instrumentation else time.time()
             )
 
             # Step 1: Request challenge
             challenge_start = (
-                self.instrumentation.start_timer("authentication_challenge") if self.instrumentation else time.time()
+                self.instrumentation.start_timer(
+                    "authentication_challenge") if self.instrumentation else time.time()
             )
 
             challenge_request = {
@@ -370,9 +385,11 @@ class ArrisModemStatusClient:
                 }
             }
 
-            challenge_response = self._make_hnap_request_with_retry("Login", challenge_request)
+            challenge_response = self._make_hnap_request_with_retry(
+                "Login", challenge_request)
             if not challenge_response:
-                logger.error("Failed to get authentication challenge after retries")
+                logger.error(
+                    "Failed to get authentication challenge after retries")
 
                 if self.instrumentation:
                     self.instrumentation.record_timing(
@@ -381,7 +398,8 @@ class ArrisModemStatusClient:
                 return False
 
             if self.instrumentation:
-                self.instrumentation.record_timing("authentication_challenge", challenge_start, success=True)
+                self.instrumentation.record_timing(
+                    "authentication_challenge", challenge_start, success=True)
 
             # Parse challenge response
             try:
@@ -401,18 +419,21 @@ class ArrisModemStatusClient:
 
             # Step 2: Compute private key and login password
             key_computation_start = (
-                self.instrumentation.start_timer("authentication_key_computation")
+                self.instrumentation.start_timer(
+                    "authentication_key_computation")
                 if self.instrumentation
                 else time.time()
             )
 
             key_material = public_key + self.password
             self.private_key = (
-                hmac.new(key_material.encode("utf-8"), challenge.encode("utf-8"), hashlib.sha256).hexdigest().upper()
+                hmac.new(key_material.encode(
+                    "utf-8"), challenge.encode("utf-8"), hashlib.sha256).hexdigest().upper()
             )
 
             login_password = (
-                hmac.new(self.private_key.encode("utf-8"), challenge.encode("utf-8"), hashlib.sha256)
+                hmac.new(self.private_key.encode("utf-8"),
+                         challenge.encode("utf-8"), hashlib.sha256)
                 .hexdigest()
                 .upper()
             )
@@ -424,7 +445,8 @@ class ArrisModemStatusClient:
 
             # Step 3: Send login request
             login_start = (
-                self.instrumentation.start_timer("authentication_login") if self.instrumentation else time.time()
+                self.instrumentation.start_timer(
+                    "authentication_login") if self.instrumentation else time.time()
             )
 
             login_request = {
@@ -437,18 +459,23 @@ class ArrisModemStatusClient:
                 }
             }
 
-            login_headers = {"Cookie": f"uid={self.uid_cookie}"} if self.uid_cookie else {}
-            login_response = self._make_hnap_request_with_retry("Login", login_request, login_headers)
+            login_headers = {
+                "Cookie": f"uid={self.uid_cookie}"} if self.uid_cookie else {}
+            login_response = self._make_hnap_request_with_retry(
+                "Login", login_request, login_headers)
 
             if login_response and any(term in login_response.lower() for term in ["success", "ok", "true"]):
                 self.authenticated = True
                 auth_time = time.time() - start_time
                 mode_str = "concurrent" if self.concurrent else "serial"
-                logger.info(f"🎉 Authentication successful ({mode_str} mode)! ({auth_time:.2f}s)")
+                logger.info(
+                    f"🎉 Authentication successful ({mode_str} mode)! ({auth_time:.2f}s)")
 
                 if self.instrumentation:
-                    self.instrumentation.record_timing("authentication_login", login_start, success=True)
-                    self.instrumentation.record_timing("authentication_complete", start_time, success=True)
+                    self.instrumentation.record_timing(
+                        "authentication_login", login_start, success=True)
+                    self.instrumentation.record_timing(
+                        "authentication_complete", start_time, success=True)
 
                 return True
             else:
@@ -482,7 +509,8 @@ class ArrisModemStatusClient:
         relaxed HTTP parsing for compatibility with Arris modems.
         """
         # Initialize start_time at the beginning to fix variable scoping
-        start_time = self.instrumentation.start_timer("get_status_complete") if self.instrumentation else time.time()
+        start_time = self.instrumentation.start_timer(
+            "get_status_complete") if self.instrumentation else time.time()
 
         try:
             if not self.authenticated:
@@ -490,7 +518,8 @@ class ArrisModemStatusClient:
                     raise RuntimeError("Authentication failed")
 
             mode_str = "concurrent" if self.concurrent else "serial"
-            logger.info(f"📊 Retrieving modem status with {mode_str} processing...")
+            logger.info(
+                f"📊 Retrieving modem status with {mode_str} processing...")
 
             # Define the requests
             request_definitions = [
@@ -529,9 +558,11 @@ class ArrisModemStatusClient:
 
             if self.concurrent:
                 # Concurrent mode: Use ThreadPoolExecutor
-                logger.debug("🚀 Using concurrent request processing with relaxed HTTP parsing")
+                logger.debug(
+                    "🚀 Using concurrent request processing with relaxed HTTP parsing")
                 concurrent_start = (
-                    self.instrumentation.start_timer("concurrent_request_processing")
+                    self.instrumentation.start_timer(
+                        "concurrent_request_processing")
                     if self.instrumentation
                     else time.time()
                 )
@@ -549,20 +580,26 @@ class ArrisModemStatusClient:
                             if response:
                                 responses[req_name] = response
                                 successful_requests += 1
-                                logger.debug(f"✅ {req_name} completed successfully")
+                                logger.debug(
+                                    f"✅ {req_name} completed successfully")
                             else:
-                                logger.warning(f"⚠️ {req_name} failed after retries")
+                                logger.warning(
+                                    f"⚠️ {req_name} failed after retries")
                         except Exception as e:
-                            logger.error(f"❌ {req_name} failed with exception: {e}")
+                            logger.error(
+                                f"❌ {req_name} failed with exception: {e}")
 
                 if self.instrumentation:
-                    self.instrumentation.record_timing("concurrent_request_processing", concurrent_start, success=True)
+                    self.instrumentation.record_timing(
+                        "concurrent_request_processing", concurrent_start, success=True)
 
             else:
                 # Serial mode: Process requests one by one
-                logger.debug("🔄 Using serial request processing with relaxed HTTP parsing")
+                logger.debug(
+                    "🔄 Using serial request processing with relaxed HTTP parsing")
                 serial_start = (
-                    self.instrumentation.start_timer("serial_request_processing")
+                    self.instrumentation.start_timer(
+                        "serial_request_processing")
                     if self.instrumentation
                     else time.time()
                 )
@@ -570,44 +607,55 @@ class ArrisModemStatusClient:
                 for req_name, req_body in request_definitions:
                     try:
                         logger.debug(f"📤 Processing {req_name} serially...")
-                        response = self._make_hnap_request_with_retry("GetMultipleHNAPs", req_body)
+                        response = self._make_hnap_request_with_retry(
+                            "GetMultipleHNAPs", req_body)
                         if response:
                             responses[req_name] = response
                             successful_requests += 1
-                            logger.debug(f"✅ {req_name} completed successfully")
+                            logger.debug(
+                                f"✅ {req_name} completed successfully")
                         else:
-                            logger.warning(f"⚠️ {req_name} failed after retries")
+                            logger.warning(
+                                f"⚠️ {req_name} failed after retries")
 
                         # Small delay between serial requests to avoid overwhelming the modem
                         time.sleep(0.1)
 
                     except Exception as e:
-                        logger.error(f"❌ {req_name} failed with exception: {e}")
+                        logger.error(
+                            f"❌ {req_name} failed with exception: {e}")
 
                 if self.instrumentation:
-                    self.instrumentation.record_timing("serial_request_processing", serial_start, success=True)
+                    self.instrumentation.record_timing(
+                        "serial_request_processing", serial_start, success=True)
 
             # Parse responses
             parsing_start = (
-                self.instrumentation.start_timer("response_parsing") if self.instrumentation else time.time()
+                self.instrumentation.start_timer(
+                    "response_parsing") if self.instrumentation else time.time()
             )
             parsed_data = self._parse_responses(responses)
             if self.instrumentation:
-                self.instrumentation.record_timing("response_parsing", parsing_start, success=True)
+                self.instrumentation.record_timing(
+                    "response_parsing", parsing_start, success=True)
 
             total_time = time.time() - start_time
             downstream_count = len(parsed_data.get("downstream_channels", []))
             upstream_count = len(parsed_data.get("upstream_channels", []))
             channel_count = downstream_count + upstream_count
 
-            logger.info(f"✅ Status retrieved! {channel_count} channels in {total_time:.2f}s ({mode_str} mode)")
-            logger.info(f"📊 Success rate: {successful_requests}/{len(request_definitions)} requests")
+            logger.info(
+                f"✅ Status retrieved! {channel_count} channels in {total_time:.2f}s ({mode_str} mode)")
+            logger.info(
+                f"📊 Success rate: {successful_requests}/{len(request_definitions)} requests")
 
             # Enhanced error analysis
             if self.capture_errors and self.error_captures:
                 error_count = len(self.error_captures)
-                recovery_count = len([e for e in self.error_captures if e.recovery_successful])
-                compatibility_issues = len([e for e in self.error_captures if e.compatibility_issue])
+                recovery_count = len(
+                    [e for e in self.error_captures if e.recovery_successful])
+                compatibility_issues = len(
+                    [e for e in self.error_captures if e.compatibility_issue])
 
                 parsed_data["_error_analysis"] = {
                     "total_errors": error_count,
@@ -617,7 +665,8 @@ class ArrisModemStatusClient:
                     "current_mode": "concurrent" if self.concurrent else "serial",
                 }
 
-                logger.info(f"🔍 Error analysis: {error_count} errors, {recovery_count} recovered")
+                logger.info(
+                    f"🔍 Error analysis: {error_count} errors, {recovery_count} recovered")
 
             # Add mode and performance information
             parsed_data["_request_mode"] = "concurrent" if self.concurrent else "serial"
@@ -632,7 +681,8 @@ class ArrisModemStatusClient:
             if self.instrumentation:
                 performance_summary = self.instrumentation.get_performance_summary()
                 parsed_data["_instrumentation"] = performance_summary
-                self.instrumentation.record_timing("get_status_complete", start_time, success=True)
+                self.instrumentation.record_timing(
+                    "get_status_complete", start_time, success=True)
 
             return parsed_data
 
@@ -698,7 +748,8 @@ class ArrisModemStatusClient:
         # Calculate recovery rate
         if analysis["total_errors"] > 0:
             analysis["recovery_stats"]["recovery_rate"] = (
-                analysis["recovery_stats"]["total_recoveries"] / analysis["total_errors"]
+                analysis["recovery_stats"]["total_recoveries"] /
+                analysis["total_errors"]
             )
 
         # Generate pattern analysis
@@ -711,7 +762,8 @@ class ArrisModemStatusClient:
             )
 
         if other_errors > 0:
-            analysis["patterns"].append(f"Other errors: {other_errors} (network/timeout issues)")
+            analysis["patterns"].append(
+                f"Other errors: {other_errors} (network/timeout issues)")
 
         return analysis
 
@@ -731,12 +783,14 @@ class ArrisModemStatusClient:
                 downstream_count > 0,
                 upstream_count > 0,
             ]
-            completeness_score = (sum(completeness_factors) / len(completeness_factors)) * 100
+            completeness_score = (
+                sum(completeness_factors) / len(completeness_factors)) * 100
 
             # Enhanced validation
             channel_quality = {}
             if downstream_count > 0:
-                downstream_locked = sum(1 for ch in status["downstream_channels"] if "Locked" in ch.lock_status)
+                downstream_locked = sum(
+                    1 for ch in status["downstream_channels"] if "Locked" in ch.lock_status)
                 downstream_modulations = set(
                     ch.modulation for ch in status["downstream_channels"] if ch.modulation != "Unknown"
                 )
@@ -749,7 +803,8 @@ class ArrisModemStatusClient:
                 }
 
             if upstream_count > 0:
-                upstream_locked = sum(1 for ch in status["upstream_channels"] if "Locked" in ch.lock_status)
+                upstream_locked = sum(
+                    1 for ch in status["upstream_channels"] if "Locked" in ch.lock_status)
                 upstream_modulations = set(
                     ch.modulation for ch in status["upstream_channels"] if ch.modulation != "Unknown"
                 )
@@ -826,7 +881,8 @@ class ArrisModemStatusClient:
                     parsed_data["upstream_channels"] = channels["upstream"]
 
                 elif response_type == "startup_connection":
-                    conn_info = hnaps_response.get("GetCustomerStatusConnectionInfoResponse", {})
+                    conn_info = hnaps_response.get(
+                        "GetCustomerStatusConnectionInfoResponse", {})
                     parsed_data.update(
                         {
                             "system_uptime": conn_info.get("CustomerCurSystemTime", "Unknown"),
@@ -836,8 +892,10 @@ class ArrisModemStatusClient:
                     )
 
                 elif response_type == "internet_register":
-                    internet_info = hnaps_response.get("GetInternetConnectionStatusResponse", {})
-                    register_info = hnaps_response.get("GetArrisRegisterInfoResponse", {})
+                    internet_info = hnaps_response.get(
+                        "GetInternetConnectionStatusResponse", {})
+                    register_info = hnaps_response.get(
+                        "GetArrisRegisterInfoResponse", {})
 
                     parsed_data.update(
                         {
@@ -860,17 +918,22 @@ class ArrisModemStatusClient:
         channels = {"downstream": [], "upstream": []}
 
         try:
-            downstream_resp = hnaps_response.get("GetCustomerStatusDownstreamChannelInfoResponse", {})
-            downstream_raw = downstream_resp.get("CustomerConnDownstreamChannel", "")
+            downstream_resp = hnaps_response.get(
+                "GetCustomerStatusDownstreamChannelInfoResponse", {})
+            downstream_raw = downstream_resp.get(
+                "CustomerConnDownstreamChannel", "")
 
             if downstream_raw:
-                channels["downstream"] = self._parse_channel_string(downstream_raw, "downstream")
+                channels["downstream"] = self._parse_channel_string(
+                    downstream_raw, "downstream")
 
-            upstream_resp = hnaps_response.get("GetCustomerStatusUpstreamChannelInfoResponse", {})
+            upstream_resp = hnaps_response.get(
+                "GetCustomerStatusUpstreamChannelInfoResponse", {})
             upstream_raw = upstream_resp.get("CustomerConnUpstreamChannel", "")
 
             if upstream_raw:
-                channels["upstream"] = self._parse_channel_string(upstream_raw, "upstream")
+                channels["upstream"] = self._parse_channel_string(
+                    upstream_raw, "upstream")
 
         except Exception as e:
             logger.error(f"Channel parsing error: {e}")
@@ -898,8 +961,10 @@ class ArrisModemStatusClient:
                         frequency=fields[4] if len(fields) > 4 else "Unknown",
                         power=fields[5] if len(fields) > 5 else "Unknown",
                         snr=fields[6] if len(fields) > 6 else "Unknown",
-                        corrected_errors=fields[7] if len(fields) > 7 else None,
-                        uncorrected_errors=fields[8] if len(fields) > 8 else None,
+                        corrected_errors=fields[7] if len(
+                            fields) > 7 else None,
+                        uncorrected_errors=fields[8] if len(
+                            fields) > 8 else None,
                         channel_type=channel_type,
                     )
                     channels.append(channel)
@@ -925,10 +990,12 @@ class ArrisModemStatusClient:
         """Clean up resources."""
         if self.capture_errors and self.error_captures:
             mode_str = "concurrent" if self.concurrent else "serial"
-            compatibility_issues = len([e for e in self.error_captures if e.compatibility_issue])
+            compatibility_issues = len(
+                [e for e in self.error_captures if e.compatibility_issue])
             total_errors = len(self.error_captures)
 
-            logger.info(f"📊 Session captured {total_errors} errors for analysis ({mode_str} mode)")
+            logger.info(
+                f"📊 Session captured {total_errors} errors for analysis ({mode_str} mode)")
             if compatibility_issues > 0:
                 logger.debug(
                     f"🔧 HTTP compatibility issues: {compatibility_issues} (should be rare with relaxed parsing)"
@@ -936,9 +1003,12 @@ class ArrisModemStatusClient:
 
         if self.instrumentation:
             performance_summary = self.instrumentation.get_performance_summary()
-            session_time = performance_summary.get("session_metrics", {}).get("total_session_time", 0)
-            total_ops = performance_summary.get("session_metrics", {}).get("total_operations", 0)
-            logger.info(f"📊 Session performance: {total_ops} operations in {session_time:.2f}s")
+            session_time = performance_summary.get(
+                "session_metrics", {}).get("total_session_time", 0)
+            total_ops = performance_summary.get(
+                "session_metrics", {}).get("total_operations", 0)
+            logger.info(
+                f"📊 Session performance: {total_ops} operations in {session_time:.2f}s")
 
         if self.session:
             self.session.close()

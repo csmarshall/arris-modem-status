@@ -113,11 +113,13 @@ class TestPerformanceInstrumentation:
 
         # Record multiple metrics
         instrumentation.record_timing("auth", start_time, success=True)
-        instrumentation.record_timing("data_retrieval", start_time, success=True)
+        instrumentation.record_timing(
+            "data_retrieval", start_time, success=True)
         instrumentation.record_timing("auth", start_time, success=True)
 
         assert len(instrumentation.timing_metrics) == 3
-        assert len(instrumentation.request_metrics) == 2  # Two distinct operations
+        # Two distinct operations
+        assert len(instrumentation.request_metrics) == 2
         assert len(instrumentation.request_metrics["auth"]) == 2
         assert len(instrumentation.request_metrics["data_retrieval"]) == 1
 
@@ -135,9 +137,12 @@ class TestPerformanceInstrumentation:
         start_time = time.time()
 
         # Record some test metrics
-        instrumentation.record_timing("auth", start_time, success=True, http_status=200)
-        instrumentation.record_timing("data", start_time, success=True, http_status=200)
-        instrumentation.record_timing("auth", start_time, success=False, error_type="TimeoutError")
+        instrumentation.record_timing(
+            "auth", start_time, success=True, http_status=200)
+        instrumentation.record_timing(
+            "data", start_time, success=True, http_status=200)
+        instrumentation.record_timing(
+            "auth", start_time, success=False, error_type="TimeoutError")
 
         summary = instrumentation.get_performance_summary()
 
@@ -203,10 +208,12 @@ class TestPerformanceInstrumentation:
         start_time = time.time()
 
         # Record normal operation
-        instrumentation.record_timing("normal_request", start_time, success=True)
+        instrumentation.record_timing(
+            "normal_request", start_time, success=True)
 
         # Record operation with compatibility handling
-        instrumentation.record_timing("http_compatibility_fallback", start_time, success=True, retry_count=1)
+        instrumentation.record_timing(
+            "http_compatibility_fallback", start_time, success=True, retry_count=1)
 
         summary = instrumentation.get_performance_summary()
         session_metrics = summary["session_metrics"]
@@ -252,8 +259,10 @@ class TestPerformanceInstrumentation:
         # This should trigger the low throughput insight
         instrumentation.session_start_time = time.time() - 10  # 10 seconds ago
 
-        instrumentation.record_timing("slow_op1", time.time() - 5, success=True)
-        instrumentation.record_timing("slow_op2", time.time() - 2, success=True)
+        instrumentation.record_timing(
+            "slow_op1", time.time() - 5, success=True)
+        instrumentation.record_timing(
+            "slow_op2", time.time() - 2, success=True)
 
         summary = instrumentation.get_performance_summary()
         insights = summary["performance_insights"]
@@ -267,30 +276,35 @@ class TestPerformanceInstrumentation:
 
         # Record only successful operations
         for i in range(5):
-            instrumentation.record_timing(f"success_{i}", time.time() - i, success=True)
+            instrumentation.record_timing(
+                f"success_{i}", time.time() - i, success=True)
 
         summary = instrumentation.get_performance_summary()
         insights = summary["performance_insights"]
 
         # Should have insight about perfect reliability
-        assert any("perfect reliability" in insight.lower() or "0% error" in insight.lower() for insight in insights)
+        assert any("perfect reliability" in insight.lower()
+                   or "0% error" in insight.lower() for insight in insights)
 
     def test_performance_insights_slow_auth(self):
         """Test performance insights for slow authentication."""
         instrumentation = PerformanceInstrumentation()
 
         # Record slow auth operations (manually set durations)
-        metric1 = instrumentation.record_timing("authentication_complete", time.time() - 10, success=True)
+        metric1 = instrumentation.record_timing(
+            "authentication_complete", time.time() - 10, success=True)
         metric1.duration = 3.5  # Manually set to trigger slow auth insight
 
-        metric2 = instrumentation.record_timing("authentication_challenge", time.time() - 5, success=True)
+        metric2 = instrumentation.record_timing(
+            "authentication_challenge", time.time() - 5, success=True)
         metric2.duration = 2.5
 
         summary = instrumentation.get_performance_summary()
         insights = summary["performance_insights"]
 
         # Should have insight about slow authentication
-        assert any("authentication" in insight.lower() and "consider" in insight.lower() for insight in insights)
+        assert any("authentication" in insight.lower()
+                   and "consider" in insight.lower() for insight in insights)
 
     def test_performance_insights_fast_auth(self):
         """Test performance insights for fast authentication."""
@@ -331,14 +345,16 @@ class TestPerformanceInstrumentation:
 
         # The total auth time is 0.5 + 0.3 = 0.8, which is < 1.0
         # So it should generate the "excellent" message
-        assert any("excellent" in insight.lower() and "authentication" in insight.lower() for insight in insights)
+        assert any("excellent" in insight.lower(
+        ) and "authentication" in insight.lower() for insight in insights)
 
     def test_percentiles_with_single_value(self):
         """Test percentile calculation with only one value."""
         instrumentation = PerformanceInstrumentation()
 
         # Record single metric
-        metric = instrumentation.record_timing("single_op", time.time() - 1.0, success=True)
+        metric = instrumentation.record_timing(
+            "single_op", time.time() - 1.0, success=True)
         metric.duration = 1.0  # Set specific duration
 
         summary = instrumentation.get_performance_summary()
@@ -355,8 +371,10 @@ class TestPerformanceInstrumentation:
         instrumentation = PerformanceInstrumentation()
 
         # Record only failed operations
-        instrumentation.record_timing("fail1", time.time() - 1.0, success=False, error_type="TestError")
-        instrumentation.record_timing("fail2", time.time() - 0.5, success=False, error_type="TestError")
+        instrumentation.record_timing(
+            "fail1", time.time() - 1.0, success=False, error_type="TestError")
+        instrumentation.record_timing(
+            "fail2", time.time() - 0.5, success=False, error_type="TestError")
 
         summary = instrumentation.get_performance_summary()
         percentiles = summary["response_time_percentiles"]
@@ -373,24 +391,29 @@ class TestPerformanceInstrumentation:
 
         # Record mostly failed operations
         for i in range(8):
-            instrumentation.record_timing(f"fail_{i}", time.time() - i, success=False, error_type="NetworkError")
+            instrumentation.record_timing(
+                f"fail_{i}", time.time() - i, success=False, error_type="NetworkError")
 
         # Only 2 successful
-        instrumentation.record_timing("success_1", time.time() - 1, success=True)
-        instrumentation.record_timing("success_2", time.time() - 0.5, success=True)
+        instrumentation.record_timing(
+            "success_1", time.time() - 1, success=True)
+        instrumentation.record_timing(
+            "success_2", time.time() - 0.5, success=True)
 
         summary = instrumentation.get_performance_summary()
         insights = summary["performance_insights"]
 
         # Should have insight about high error rate
-        assert any("high error rate" in insight.lower() for insight in insights)
+        assert any("high error rate" in insight.lower()
+                   for insight in insights)
 
     def test_http_compatibility_overhead_calculation(self):
         """Test calculation of HTTP compatibility overhead."""
         instrumentation = PerformanceInstrumentation()
 
         # Record normal operation
-        normal = instrumentation.record_timing("normal_request", time.time() - 1, success=True)
+        normal = instrumentation.record_timing(
+            "normal_request", time.time() - 1, success=True)
         normal.duration = 0.5
 
         # Record operation with compatibility handling (has retry)
@@ -403,7 +426,8 @@ class TestPerformanceInstrumentation:
 
         # Should calculate compatibility overhead
         assert "http_compatibility_overhead" in summary["session_metrics"]
-        assert summary["session_metrics"]["http_compatibility_overhead"] == 0.8  # Only the compat operation
+        # Only the compat operation
+        assert summary["session_metrics"]["http_compatibility_overhead"] == 0.8
 
 
 @pytest.mark.unit
@@ -415,7 +439,8 @@ class TestPerformanceIntegration:
         """Test behavior when instrumentation is disabled."""
         from arris_modem_status import ArrisModemStatusClient
 
-        client = ArrisModemStatusClient(password="test", enable_instrumentation=False)
+        client = ArrisModemStatusClient(
+            password="test", enable_instrumentation=False)
 
         assert client.instrumentation is None
 
@@ -423,7 +448,8 @@ class TestPerformanceIntegration:
         """Test behavior when instrumentation is enabled."""
         from arris_modem_status import ArrisModemStatusClient
 
-        client = ArrisModemStatusClient(password="test", enable_instrumentation=True)
+        client = ArrisModemStatusClient(
+            password="test", enable_instrumentation=True)
 
         assert client.instrumentation is not None
         assert isinstance(client.instrumentation, PerformanceInstrumentation)
@@ -432,7 +458,8 @@ class TestPerformanceIntegration:
         """Test getting performance metrics from client."""
         from arris_modem_status import ArrisModemStatusClient
 
-        client = ArrisModemStatusClient(password="test", enable_instrumentation=True)
+        client = ArrisModemStatusClient(
+            password="test", enable_instrumentation=True)
 
         # Should return metrics even if empty
         metrics = client.get_performance_metrics()
@@ -442,7 +469,8 @@ class TestPerformanceIntegration:
         """Test getting performance metrics when disabled."""
         from arris_modem_status import ArrisModemStatusClient
 
-        client = ArrisModemStatusClient(password="test", enable_instrumentation=False)
+        client = ArrisModemStatusClient(
+            password="test", enable_instrumentation=False)
 
         metrics = client.get_performance_metrics()
         assert metrics["error"] == "Performance instrumentation not enabled"
