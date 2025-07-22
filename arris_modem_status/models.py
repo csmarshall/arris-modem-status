@@ -62,7 +62,7 @@ class ChannelInfo:
     uncorrected_errors: Optional[str] = None
     channel_type: str = "unknown"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Post-init processing for data validation and cleanup."""
         # Clean up frequency format
         if self.frequency.isdigit():

@@ -33,7 +33,7 @@ from .logging_setup import setup_logging
 logger = logging.getLogger(__name__)
 
 
-def main():
+def main() -> None:
     """Main entry point for the CLI application."""
     # IMPORTANT: Define start_time at function scope to avoid variable scoping issues
     start_time = time.time()
@@ -72,7 +72,9 @@ def main():
                     file=sys.stderr,
                 )
 
-                print_connectivity_troubleshooting(args.host, args.port, error_msg)
+                # error_msg is guaranteed to be a string from quick_connectivity_check
+                if error_msg:
+                    print_connectivity_troubleshooting(args.host, args.port, error_msg)
                 sys.exit(1)
 
         # Get optimal timeouts based on host type

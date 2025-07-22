@@ -30,7 +30,7 @@ class PerformanceInstrumentation:
     - Concurrent request coordination
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.timing_metrics: List[TimingMetrics] = []
         self.session_start_time = time.time()
         self.auth_metrics: Dict[str, float] = {}

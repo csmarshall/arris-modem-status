@@ -719,7 +719,7 @@ class ArrisModemStatusClient:
         if not self.error_captures:
             return {"message": "No errors captured yet"}
 
-        analysis = {
+        analysis: Dict[str, Any] = {
             "total_errors": len(self.error_captures),
             "error_types": {},
             "http_compatibility_issues": 0,
@@ -918,7 +918,7 @@ class ArrisModemStatusClient:
 
     def _parse_channels(self, hnaps_response: Dict[str, Any]) -> Dict[str, List[ChannelInfo]]:
         """Parse channel information from HNAP response."""
-        channels = {"downstream": [], "upstream": []}
+        channels: Dict[str, List[ChannelInfo]] = {"downstream": [], "upstream": []}
 
         try:
             downstream_resp = hnaps_response.get("GetCustomerStatusDownstreamChannelInfoResponse", {})
@@ -1004,11 +1004,11 @@ class ArrisModemStatusClient:
         if self.session:
             self.session.close()
 
-    def __enter__(self):
+    def __enter__(self) -> "ArrisModemStatusClient":
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit."""
         self.close()
 

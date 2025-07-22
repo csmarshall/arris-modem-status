@@ -10,7 +10,7 @@ License: MIT
 
 import logging
 import sys
-from typing import Optional
+from typing import Optional, List
 
 
 def setup_logging(debug: bool = False, log_file: Optional[str] = None) -> None:
@@ -25,7 +25,7 @@ def setup_logging(debug: bool = False, log_file: Optional[str] = None) -> None:
     level = logging.DEBUG if debug else logging.INFO
 
     # Base logging configuration
-    handlers = []
+    handlers: List[logging.Handler] = []
 
     # Console handler (stderr)
     console_handler = logging.StreamHandler(sys.stderr)

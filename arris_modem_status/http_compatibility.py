@@ -14,6 +14,7 @@ import socket
 import ssl
 import time
 import warnings
+from typing import Optional, Any, Union, Tuple
 
 import requests
 import urllib3
@@ -24,7 +25,8 @@ from urllib3.util.retry import Retry
 
 # Configure HTTP compatibility warnings suppression
 urllib3.disable_warnings(InsecureRequestWarning)
-urllib3.disable_warnings(HeaderParsingError)
+# Note: HeaderParsingError is not a Warning subclass, so we can't disable it this way
+# Instead, we'll handle it differently
 
 # Suppress specific HTTP compatibility warnings using warnings module
 warnings.filterwarnings(
@@ -54,7 +56,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
     Solution: Use relaxed parsing by default for all /HNAP1/ requests.
     """
 
-    def __init__(self, instrumentation=None, *args, **kwargs):
+    def __init__(self, instrumentation: Optional[Any] = None, *args: Any, **kwargs: Any) -> None:
         """Initialize the Arris-compatible HTTP adapter."""
         super().__init__(*args, **kwargs)
         self.instrumentation = instrumentation
@@ -62,20 +64,20 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
 
     def send(
         self,
-        request,
-        stream=False,
-        timeout=None,
-        verify=None,
-        cert=None,
-        proxies=None,
-    ):
+        request: requests.PreparedRequest,
+        stream: bool = False,
+        timeout: Optional[Union[float, Tuple[float, float]]] = None,
+        verify: Union[bool, str] = True,
+        cert: Optional[Union[str, Tuple[str, str]]] = None,
+        proxies: Optional[dict] = None,
+    ) -> Response:
         """
         Send HTTP request using relaxed parsing for HNAP endpoints.
 
         For /HNAP1/ endpoints, we skip urllib3's strict parsing and use our
         browser-compatible parser directly.
         """
-        start_time = time.time() if self.instrumentation else None
+        start_time: Optional[float] = time.time() if self.instrumentation else None
 
         # Always use relaxed parsing for HNAP endpoints
         if "/HNAP1/" in request.url:
@@ -137,7 +139,12 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
                 )
             raise
 
-    def _raw_socket_request(self, request, timeout=None, verify=None) -> Response:
+    def _raw_socket_request(
+        self,
+        request: requests.PreparedRequest,
+        timeout: Optional[Union[float, Tuple[float, float]]] = None,
+        verify: Union[bool, str] = True
+    ) -> Response:
         """
         Make HTTP request using raw socket with browser-like tolerance.
 
@@ -196,7 +203,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
             # Always close the socket
             sock.close()
 
-    def _build_raw_http_request(self, request, host: str, path: str) -> str:
+    def _build_raw_http_request(self, request: requests.PreparedRequest, host: str, path: str) -> str:
         """Build raw HTTP request string from requests.Request object."""
         lines = [f"{request.method} {path} HTTP/1.1"]
         lines.append(f"Host: {host}")
@@ -228,7 +235,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
 
         return "\r\n".join(lines)
 
-    def _receive_response_tolerantly(self, sock) -> bytes:
+    def _receive_response_tolerantly(self, sock: socket.socket) -> bytes:
         """
         Receive HTTP response with browser-like tolerance.
 
@@ -286,7 +293,11 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
         logger.debug(f"📥 Raw response received: {len(response_data)} bytes")
         return response_data
 
-    def _parse_response_tolerantly(self, raw_response: bytes, original_request) -> Response:
+    def _parse_response_tolerantly(
+        self,
+        raw_response: bytes,
+        original_request: requests.PreparedRequest
+    ) -> Response:
         """
         Parse raw HTTP response with browser-like tolerance.
 
@@ -367,7 +378,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
             return response
 
 
-def create_arris_compatible_session(instrumentation=None) -> requests.Session:
+def create_arris_compatible_session(instrumentation: Optional[Any] = None) -> requests.Session:
     """
     Create a requests Session optimized for Arris modem compatibility.
 
