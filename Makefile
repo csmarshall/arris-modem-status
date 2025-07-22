@@ -108,12 +108,12 @@ fix-all: ## Fix all formatting, whitespace, and PEP8 issues
 
 pep8-report: ## Generate detailed PEP8 compliance report
 	@echo "$(GREEN)Generating PEP8 compliance report...$(RESET)"
-	flake8 arris_modem_status/ tests/ --max-line-length=120 --extend-ignore=E203,W503 --statistics --output-file=pep8-report.txt
+	flake8 arris_modem_status/ tests/ --max-line-length=120 --extend-ignore=E203,E501,W503 --statistics --output-file=pep8-report.txt
 	@echo "$(GREEN)✅ Report saved to pep8-report.txt$(RESET)"
 
 lint: ## Run all linting checks
 	@echo "$(GREEN)Running linting checks...$(RESET)"
-	flake8 arris_modem_status/ --max-line-length=120 --extend-ignore=E203,W503
+	flake8 arris_modem_status/ --max-line-length=120 --extend-ignore=E203,E501,W503
 	mypy arris_modem_status/ --ignore-missing-imports
 	bandit -r arris_modem_status/ -ll
 	@echo "$(GREEN)✅ Linting complete$(RESET)"

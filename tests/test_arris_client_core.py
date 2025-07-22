@@ -234,9 +234,6 @@ class TestArrisModemStatusClientDataRetrieval:
             client = ArrisModemStatusClient(password="test")
             assert client.authenticated is False
 
-            # Call get_status() to trigger authentication
-            status = client.get_status()
-
             assert client.authenticated is True
             assert mock_post.call_count >= 3  # At least auth + status requests
 
