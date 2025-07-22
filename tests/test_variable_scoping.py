@@ -7,9 +7,9 @@ from unittest.mock import patch
 import pytest
 
 try:
-    # Ensure the module is imported for patching in Python 3.9
+    # Import the cli.main module for patching
     import arris_modem_status.cli.main
-    from arris_modem_status import ArrisModemStatusClient  # Need this for the first test
+    from arris_modem_status import ArrisModemStatusClient
     from arris_modem_status.cli import main
 
     CLIENT_AVAILABLE = True
@@ -38,7 +38,8 @@ class TestVariableScoping:
         test_argv = ["arris-modem-status", "--password", "test"]
 
         with patch("sys.argv", test_argv):
-            with patch("arris_modem_status.ArrisModemStatusClient") as mock_client:
+            # Use patch.object with the full module path
+            with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client:
                 mock_client.side_effect = Exception("Generic error")
 
                 stderr_capture = StringIO()
