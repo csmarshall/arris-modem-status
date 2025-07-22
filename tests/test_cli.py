@@ -11,7 +11,6 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-# Import from the new CLI package structure
 from arris_modem_status.cli import main
 from arris_modem_status.cli.args import (
     create_parser,
