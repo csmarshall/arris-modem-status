@@ -11,8 +11,9 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-# Import the module to ensure proper patching
-import arris_modem_status.cli.main  # noqa: F401
+# Ensure the module is imported for patching in Python 3.9
+import arris_modem_status.cli.main
+
 from arris_modem_status.cli.args import create_parser, parse_args, validate_args
 from arris_modem_status.cli.connectivity import (
     get_optimal_timeouts,
@@ -359,7 +360,11 @@ class TestCLILogging:
 class TestCLIMainIntegration:
     """Test main orchestration module."""
 
-    @patch("arris_modem_status.cli.main.ArrisModemStatusClient")
+    # Note: We patch ArrisModemStatusClient at the package level (arris_modem_status.ArrisModemStatusClient)
+    # rather than the module level (arris_modem_status.cli.main.ArrisModemStatusClient) for Python 3.9 compatibility.
+    # This ensures consistent behavior across all Python versions as the import binding may differ.
+
+    @patch("arris_modem_status.ArrisModemStatusClient")
     @patch("sys.argv", ["arris-modem-status", "--password", "test123"])
     def test_main_success(self, mock_client_class):
         """Test successful main execution."""
@@ -404,7 +409,7 @@ class TestCLIMainIntegration:
         assert json_data["internet_status"] == "Connected"
         assert json_data["query_host"] == "192.168.100.1"
 
-    @patch("arris_modem_status.cli.main.ArrisModemStatusClient")
+    @patch("arris_modem_status.ArrisModemStatusClient")
     @patch(
         "sys.argv",
         ["arris-modem-status", "--password", "test123", "--quick-check"],
@@ -428,7 +433,7 @@ class TestCLIMainIntegration:
         # Client should not be created if connectivity check fails
         mock_client_class.assert_not_called()
 
-    @patch("arris_modem_status.cli.main.ArrisModemStatusClient")
+    @patch("arris_modem_status.ArrisModemStatusClient")
     @patch("sys.argv", ["arris-modem-status", "--password", "test123"])
     def test_main_client_error(self, mock_client_class):
         """Test main execution with client error."""
@@ -446,7 +451,7 @@ class TestCLIMainIntegration:
         assert "Connection failed" in stderr_output
         assert "Troubleshooting suggestions:" in stderr_output
 
-    @patch("arris_modem_status.cli.main.ArrisModemStatusClient")
+    @patch("arris_modem_status.ArrisModemStatusClient")
     @patch("sys.argv", ["arris-modem-status", "--password", "test123", "--quiet"])
     def test_main_quiet_mode(self, mock_client_class):
         """Test main execution in quiet mode."""
@@ -483,7 +488,7 @@ class TestCLIMainIntegration:
     def test_main_keyboard_interrupt(self):
         """Test handling of keyboard interrupt."""
         # Patch ArrisModemStatusClient to raise KeyboardInterrupt during initialization
-        with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client_class:
+        with patch("arris_modem_status.ArrisModemStatusClient") as mock_client_class:
             mock_client_class.side_effect = KeyboardInterrupt()
 
             stderr_capture = StringIO()
@@ -496,7 +501,7 @@ class TestCLIMainIntegration:
             stderr_output = stderr_capture.getvalue()
             assert "cancelled by user" in stderr_output
 
-    @patch("arris_modem_status.cli.main.ArrisModemStatusClient")
+    @patch("arris_modem_status.ArrisModemStatusClient")
     @patch("sys.argv", ["arris-modem-status", "--password", "test123", "--serial"])
     def test_main_serial_mode(self, mock_client_class):
         """Test main execution in serial mode."""
