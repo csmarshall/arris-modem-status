@@ -12,8 +12,8 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 # Import the module to ensure proper patching
-import arris_modem_status.cli.main  # noqa: F401
-from arris_modem_status.cli import main
+import arris_modem_status.cli.main
+from arris_modem_status.cli.main import main
 from arris_modem_status.cli.args import create_parser, parse_args, validate_args
 from arris_modem_status.cli.connectivity import (
     get_optimal_timeouts,
@@ -409,7 +409,7 @@ class TestCLIMainIntegration:
         "sys.argv",
         ["arris-modem-status", "--password", "test123", "--quick-check"],
     )
-    @patch("arris_modem_status.cli.main.quick_connectivity_check")
+    @patch("arris_modem_status.cli.connectivity.quick_connectivity_check")
     def test_main_connectivity_check_failed(self, mock_quick_check, mock_client_class):
         """Test main execution with failed connectivity check."""
         # Mock connectivity check to fail
@@ -482,8 +482,9 @@ class TestCLIMainIntegration:
     @patch("sys.argv", ["arris-modem-status", "--password", "test123"])
     def test_main_keyboard_interrupt(self):
         """Test handling of keyboard interrupt."""
-        with patch("arris_modem_status.cli.main.parse_args") as mock_parse_args:
-            mock_parse_args.side_effect = KeyboardInterrupt()
+        # Patch ArrisModemStatusClient to raise KeyboardInterrupt during initialization
+        with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client_class:
+            mock_client_class.side_effect = KeyboardInterrupt()
 
             stderr_capture = StringIO()
 
