@@ -70,7 +70,7 @@ dev = [
     "black>=22.0.0", 
     "isort==5.10.0",
     "flake8>=5.0.0",
-    "mypy>=0.980",
+    "mypy>=1.14",
     "bump-my-version>=0.17.0",
     "autopep8>=2.0.0",
     "bandit>=1.7.5",
