@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
+
 try:
     from arris_modem_status import ArrisModemStatusClient
     from arris_modem_status.cli import main
@@ -36,7 +37,8 @@ class TestVariableScoping:
         test_argv = ["arris-modem-status", "--password", "test"]
 
         with patch("sys.argv", test_argv):
-            with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client:
+            # Patch where ArrisModemStatusClient is actually imported from
+            with patch("arris_modem_status.ArrisModemStatusClient") as mock_client:
                 mock_client.side_effect = Exception("Generic error")
 
                 stderr_capture = StringIO()
