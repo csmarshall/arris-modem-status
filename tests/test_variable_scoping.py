@@ -31,22 +31,22 @@ class TestVariableScoping:
             result = client.authenticate()
             assert result is False
 
-    def test_cli_error_handling_no_undefined_vars(self):
+    @patch("arris_modem_status.ArrisModemStatusClient")
+    def test_cli_error_handling_no_undefined_vars(self, mock_client_class):
         """Test CLI error handling doesn't have undefined variables."""
         test_argv = ["arris-modem-status", "--password", "test"]
 
         with patch("sys.argv", test_argv):
-            with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client:
-                mock_client.side_effect = Exception("Generic error")
+            mock_client_class.side_effect = Exception("Generic error")
 
-                stderr_capture = StringIO()
+            stderr_capture = StringIO()
 
-                try:
-                    with redirect_stderr(stderr_capture):
-                        main()
-                except SystemExit:
-                    pass  # Expected
+            try:
+                with redirect_stderr(stderr_capture):
+                    main()
+            except SystemExit:
+                pass  # Expected
 
-                # Check no NameError in stderr
-                stderr_output = stderr_capture.getvalue()
-                assert "NameError" not in stderr_output
+            # Check no NameError in stderr
+            stderr_output = stderr_capture.getvalue()
+            assert "NameError" not in stderr_output
