@@ -6,7 +6,6 @@ This module tests the CLI package with its modular structure.
 
 import argparse
 import json
-import sys
 from io import StringIO
 from unittest.mock import MagicMock, Mock, patch
 
