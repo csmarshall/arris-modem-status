@@ -33,12 +33,10 @@ class TestVariableScoping:
 
     def test_cli_error_handling_no_undefined_vars(self):
         """Test CLI error handling doesn't have undefined variables."""
-        import arris_modem_status.cli.main as main_module
-
         test_argv = ["arris-modem-status", "--password", "test"]
 
         with patch("sys.argv", test_argv):
-            with patch.object(main_module, "ArrisModemStatusClient") as mock_client:
+            with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client:
                 mock_client.side_effect = Exception("Generic error")
 
                 stderr_capture = StringIO()
