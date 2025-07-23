@@ -359,8 +359,10 @@ class TestCLIMainIntegration:
 
     def test_main_success(self):
         """Test successful main execution."""
+        import arris_modem_status.cli.main as main_module
+
         with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
-            with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client_class:
+            with patch.object(main_module, "ArrisModemStatusClient") as mock_client_class:
                 # Mock client instance
                 mock_client = MagicMock()
                 mock_client_class.return_value = mock_client
@@ -405,9 +407,11 @@ class TestCLIMainIntegration:
 
     def test_main_connectivity_check_failed(self):
         """Test main execution with failed connectivity check."""
+        import arris_modem_status.cli.main as main_module
+
         with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--quick-check"]):
-            with patch("arris_modem_status.cli.main.quick_connectivity_check") as mock_quick_check:
-                with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client_class:
+            with patch.object(main_module, "quick_connectivity_check") as mock_quick_check:
+                with patch.object(main_module, "ArrisModemStatusClient") as mock_client_class:
                     # Mock connectivity check to fail
                     mock_quick_check.return_value = (False, "Connection timeout")
 
@@ -426,8 +430,10 @@ class TestCLIMainIntegration:
 
     def test_main_client_error(self):
         """Test main execution with client error."""
+        import arris_modem_status.cli.main as main_module
+
         with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
-            with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client_class:
+            with patch.object(main_module, "ArrisModemStatusClient") as mock_client_class:
                 # Mock client to raise exception
                 mock_client_class.side_effect = Exception("Connection failed")
 
@@ -444,8 +450,10 @@ class TestCLIMainIntegration:
 
     def test_main_quiet_mode(self):
         """Test main execution in quiet mode."""
+        import arris_modem_status.cli.main as main_module
+
         with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--quiet"]):
-            with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client_class:
+            with patch.object(main_module, "ArrisModemStatusClient") as mock_client_class:
                 # Mock client instance
                 mock_client = MagicMock()
                 mock_client_class.return_value = mock_client
@@ -479,8 +487,10 @@ class TestCLIMainIntegration:
 
     def test_main_keyboard_interrupt(self):
         """Test handling of keyboard interrupt."""
+        import arris_modem_status.cli.main as main_module
+
         with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
-            with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client_class:
+            with patch.object(main_module, "ArrisModemStatusClient") as mock_client_class:
                 # Patch ArrisModemStatusClient to raise KeyboardInterrupt during initialization
                 mock_client_class.side_effect = KeyboardInterrupt()
 
@@ -496,8 +506,10 @@ class TestCLIMainIntegration:
 
     def test_main_serial_mode(self):
         """Test main execution in serial mode."""
+        import arris_modem_status.cli.main as main_module
+
         with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--serial"]):
-            with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client_class:
+            with patch.object(main_module, "ArrisModemStatusClient") as mock_client_class:
                 # Verify that client is created with concurrent=False
                 mock_client = MagicMock()
                 mock_client_class.return_value = mock_client
