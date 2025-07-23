@@ -7,8 +7,7 @@ from unittest.mock import patch
 import pytest
 
 try:
-    # Import the cli.main module for patching
-    import arris_modem_status.cli.main
+    # Import only what we actually use
     from arris_modem_status import ArrisModemStatusClient
     from arris_modem_status.cli import main
 
@@ -38,7 +37,7 @@ class TestVariableScoping:
         test_argv = ["arris-modem-status", "--password", "test"]
 
         with patch("sys.argv", test_argv):
-            # Use patch.object with the full module path
+            # patch works with string paths, no import needed
             with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client:
                 mock_client.side_effect = Exception("Generic error")
 
