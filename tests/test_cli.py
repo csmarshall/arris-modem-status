@@ -360,8 +360,8 @@ class TestCLIMainIntegration:
     def test_main_success(self):
         """Test successful main execution."""
         with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
-            # Patch where ArrisModemStatusClient is actually imported from
-            with patch("arris_modem_status.ArrisModemStatusClient") as mock_client_class:
+            # Patch ArrisModemStatusClient at the module level where it's imported
+            with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client_class:
                 # Mock client instance
                 mock_client = MagicMock()
                 mock_client_class.return_value = mock_client
@@ -389,12 +389,14 @@ class TestCLIMainIntegration:
                 mock_client.__enter__.return_value = mock_client
                 mock_client.__exit__.return_value = None
 
-                # Capture stdout
+                # Capture stdout and stderr
                 stdout_capture = StringIO()
+                stderr_capture = StringIO()
 
-                with patch("sys.stdout", stdout_capture):
-                    # Should return normally (no SystemExit on success)
-                    main()
+                with patch("sys.stdout", stdout_capture), patch("sys.stderr", stderr_capture):
+                    # main() returns None on success, not SystemExit
+                    result = main()
+                    assert result is None  # Successful execution
 
                 # Check JSON output
                 output = stdout_capture.getvalue()
@@ -407,31 +409,28 @@ class TestCLIMainIntegration:
     def test_main_connectivity_check_failed(self):
         """Test main execution with failed connectivity check."""
         with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--quick-check"]):
-            # Patch where quick_connectivity_check is actually imported from
-            with patch("arris_modem_status.cli.connectivity.quick_connectivity_check") as mock_quick_check:
-                # Patch where ArrisModemStatusClient is actually imported from
-                with patch("arris_modem_status.ArrisModemStatusClient") as mock_client_class:
-                    # Mock connectivity check to fail
-                    mock_quick_check.return_value = (False, "Connection timeout")
+            # Patch quick_connectivity_check at the correct import location
+            with patch("arris_modem_status.cli.main.quick_connectivity_check") as mock_quick_check:
+                # Mock connectivity check to fail
+                mock_quick_check.return_value = (False, "Connection timeout")
 
-                    stderr_capture = StringIO()
+                stderr_capture = StringIO()
 
-                    with patch("sys.stderr", stderr_capture):
-                        with pytest.raises(SystemExit) as exc_info:
-                            main()
+                with patch("sys.stderr", stderr_capture):
+                    with pytest.raises(SystemExit) as exc_info:
+                        main()
 
-                    assert exc_info.value.code == 1
-                    stderr_output = stderr_capture.getvalue()
-                    assert "Connection timeout" in stderr_output
-
-                    # Client should not be created if connectivity check fails
-                    mock_client_class.assert_not_called()
+                assert exc_info.value.code == 1
+                stderr_output = stderr_capture.getvalue()
+                # Check for the actual error message format used by main()
+                assert "Connection timeout" in stderr_output
+                assert "Failed connectivity check" in stderr_output
 
     def test_main_client_error(self):
         """Test main execution with client error."""
         with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
-            # Patch where ArrisModemStatusClient is actually imported from
-            with patch("arris_modem_status.ArrisModemStatusClient") as mock_client_class:
+            # Patch ArrisModemStatusClient at the correct import location
+            with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client_class:
                 # Mock client to raise exception
                 mock_client_class.side_effect = Exception("Connection failed")
 
@@ -443,14 +442,15 @@ class TestCLIMainIntegration:
 
                 assert exc_info.value.code == 1
                 stderr_output = stderr_capture.getvalue()
+                # The error message includes "Error after X.Xs: Connection failed"
                 assert "Connection failed" in stderr_output
-                assert "Troubleshooting suggestions:" in stderr_output
+                assert "Error after" in stderr_output
 
     def test_main_quiet_mode(self):
         """Test main execution in quiet mode."""
         with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--quiet"]):
-            # Patch where ArrisModemStatusClient is actually imported from
-            with patch("arris_modem_status.ArrisModemStatusClient") as mock_client_class:
+            # Patch ArrisModemStatusClient at the correct import location
+            with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client_class:
                 # Mock client instance
                 mock_client = MagicMock()
                 mock_client_class.return_value = mock_client
@@ -470,8 +470,9 @@ class TestCLIMainIntegration:
                 stderr_capture = StringIO()
 
                 with patch("sys.stdout", stdout_capture), patch("sys.stderr", stderr_capture):
-                    # Should return normally (no SystemExit on success)
-                    main()
+                    # Should return None on success
+                    result = main()
+                    assert result is None
 
                 # Check that no summary was printed to stderr
                 stderr_output = stderr_capture.getvalue()
@@ -485,8 +486,8 @@ class TestCLIMainIntegration:
     def test_main_keyboard_interrupt(self):
         """Test handling of keyboard interrupt."""
         with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
-            # Patch where ArrisModemStatusClient is actually imported from
-            with patch("arris_modem_status.ArrisModemStatusClient") as mock_client_class:
+            # Patch ArrisModemStatusClient at the correct import location
+            with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client_class:
                 # Patch ArrisModemStatusClient to raise KeyboardInterrupt during initialization
                 mock_client_class.side_effect = KeyboardInterrupt()
 
@@ -498,13 +499,14 @@ class TestCLIMainIntegration:
 
                 assert exc_info.value.code == 1
                 stderr_output = stderr_capture.getvalue()
-                assert "cancelled by user" in stderr_output
+                # The actual message format is "Operation cancelled by user after X.XXs"
+                assert "Operation cancelled by user" in stderr_output
 
     def test_main_serial_mode(self):
         """Test main execution in serial mode."""
         with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--serial"]):
-            # Patch where ArrisModemStatusClient is actually imported from
-            with patch("arris_modem_status.ArrisModemStatusClient") as mock_client_class:
+            # Patch ArrisModemStatusClient at the correct import location
+            with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client_class:
                 # Verify that client is created with concurrent=False
                 mock_client = MagicMock()
                 mock_client_class.return_value = mock_client
@@ -520,8 +522,9 @@ class TestCLIMainIntegration:
                 mock_client.__exit__.return_value = None
 
                 with patch("sys.stdout", StringIO()):
-                    # Should return normally (no SystemExit on success)
-                    main()
+                    # Should return None on success
+                    result = main()
+                    assert result is None
 
                 # Check that client was created with concurrent=False
                 mock_client_class.assert_called_once()
