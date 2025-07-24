@@ -7,7 +7,6 @@ Final fixed version using string-based patching at the correct locations.
 
 import argparse
 import json
-import sys
 from io import StringIO
 from unittest.mock import MagicMock, Mock, patch
 
