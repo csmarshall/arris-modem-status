@@ -7,15 +7,13 @@ Fixed version that uses the refactored testable structure.
 
 import argparse
 import json
-import sys
 import time
 from io import StringIO
-from unittest.mock import MagicMock, Mock, create_autospec, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 # Now we can import both the module and the function
-from arris_modem_status.cli import main as cli_main_module
 from arris_modem_status.cli.args import create_parser, parse_args, validate_args
 from arris_modem_status.cli.connectivity import (
     get_optimal_timeouts,
@@ -588,7 +586,7 @@ class TestCLIHelperFunctions:
         with patch("arris_modem_status.cli.main.quick_connectivity_check") as mock_check:
             mock_check.return_value = (False, "Connection refused")
 
-            with patch("sys.stderr", StringIO()) as stderr:
+            with patch("sys.stderr", StringIO()):
                 result = perform_connectivity_check(args)
                 assert result is False
 
