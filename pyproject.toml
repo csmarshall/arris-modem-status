@@ -72,7 +72,6 @@ dev = [
     "flake8>=5.0.0",
     "mypy>=1.14.1",
     "bump-my-version>=0.17.0",
-    "autopep8>=2.0.0",
     "bandit>=1.7.5",
     "pre-commit>=3.0.0"
 ]
