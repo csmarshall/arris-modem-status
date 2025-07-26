@@ -4,9 +4,9 @@
 [![PyPI version](https://badge.fury.io/py/arris-modem-status.svg)](https://badge.fury.io/py/arris-modem-status)
 [![Python versions](https://img.shields.io/pypi/pyversions/arris-modem-status.svg)](https://pypi.org/project/arris-modem-status/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/gbraad)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?logo=buy-me-a-coffee)](https://www.buymeacoffee.com/cs_marshall)
 
-I got tired of logging into my Arris cable modem's clunky web interface just to check signal levels. So, with the help of AI (Claude from Anthropic), I reverse-engineered the modem's API and built this Python library!
+I got tired of logging into my Arris cable modem's clunky web interface just to check signal levels. So, with the help of AI (Claude), I reverse-engineered the modem's API and built this Python library!
 
 ## What's This Thing Do? 🤔
 
@@ -79,7 +79,7 @@ Fun fact: The trickiest part wasn't the authentication - it was figuring out why
 ## Requirements 📋
 
 - Python 3.9+
-- An Arris S33/S34/SB8200 modem, (tested on the S34)
+- An Arris S33/S34/SB8200 modem
 - The admin password (usually on the sticker)
 - A healthy curiosity about your internet connection
 
