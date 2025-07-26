@@ -12,8 +12,11 @@ Author: Charles Marshall
 License: MIT
 """
 
-# Import main function from main module
-from .main import main
+# Import the main module itself, not just the function
+from . import main
 
-# Export main function
-__all__ = ["main"]
+# Also export the main function for backward compatibility
+from .main import main as main_function
+
+# Export both for different use cases
+__all__ = ["main", "main_function"]

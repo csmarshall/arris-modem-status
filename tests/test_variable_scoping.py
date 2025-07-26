@@ -2,13 +2,13 @@
 
 from contextlib import redirect_stderr
 from io import StringIO
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 try:
     from arris_modem_status import ArrisModemStatusClient
-    from arris_modem_status.cli import main
+    from arris_modem_status.cli.main import main  # Import the function, not the module
 
     CLIENT_AVAILABLE = True
 except ImportError:
@@ -36,18 +36,21 @@ class TestVariableScoping:
         test_argv = ["arris-modem-status", "--password", "test"]
 
         with patch("sys.argv", test_argv):
-            # Patch where ArrisModemStatusClient is actually imported from
-            with patch("arris_modem_status.ArrisModemStatusClient") as mock_client:
-                mock_client.side_effect = Exception("Generic error")
+            # Create a mock client class that raises an exception
+            MockClientClass = Mock()
+            MockClientClass.side_effect = Exception("Generic error")
 
-                stderr_capture = StringIO()
+            stderr_capture = StringIO()
 
-                try:
-                    with redirect_stderr(stderr_capture):
-                        main()
-                except SystemExit:
-                    pass  # Expected
+            try:
+                with redirect_stderr(stderr_capture):
+                    # Call main with the mock client class
+                    exit_code = main(client_class=MockClientClass)
+                    # The function should return 1 on error
+                    assert exit_code == 1
+            except SystemExit:
+                pass  # This is also acceptable if main calls sys.exit()
 
-                # Check no NameError in stderr
-                stderr_output = stderr_capture.getvalue()
-                assert "NameError" not in stderr_output
+            # Check no NameError in stderr
+            stderr_output = stderr_capture.getvalue()
+            assert "NameError" not in stderr_output

@@ -2,21 +2,20 @@
 Tests for the Arris Modem Status CLI.
 
 This module tests the CLI package with its modular structure.
-Fixed version that handles import patching correctly across Python versions.
+Fixed version that uses the refactored testable structure.
 """
 
 import argparse
 import json
 import sys
+import time
 from io import StringIO
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
 
-# Import the modules we need to patch - be careful about module vs function imports
-import arris_modem_status
-import arris_modem_status.cli.connectivity
-from arris_modem_status.cli import main as cli_main_module  # Import the MODULE, not the function
+# Now we can import both the module and the function
+from arris_modem_status.cli import main as cli_main_module
 from arris_modem_status.cli.args import create_parser, parse_args, validate_args
 from arris_modem_status.cli.connectivity import (
     get_optimal_timeouts,
@@ -31,7 +30,7 @@ from arris_modem_status.cli.formatters import (
     print_summary_to_stderr,
 )
 from arris_modem_status.cli.logging_setup import get_logger, setup_logging
-from arris_modem_status.cli.main import main  # Now import the function
+from arris_modem_status.cli.main import create_client, main, perform_connectivity_check, process_modem_status
 
 
 @pytest.mark.unit
@@ -360,10 +359,10 @@ class TestCLILogging:
 @pytest.mark.integration
 @pytest.mark.cli
 class TestCLIMainIntegration:
-    """Test main orchestration module."""
+    """Test main orchestration module with the new testable structure."""
 
     def test_main_success(self):
-        """Test successful main execution."""
+        """Test successful main execution using the new testable structure."""
         # Create a proper mock channel object
         mock_channel = Mock()
         mock_channel.channel_id = "1"
@@ -384,83 +383,68 @@ class TestCLIMainIntegration:
             "upstream_channels": [],
         }
 
+        # Create a mock client class
+        MockClientClass = Mock()
+        mock_client_instance = MagicMock()
+        MockClientClass.return_value = mock_client_instance
+        mock_client_instance.get_status.return_value = mock_status
+
+        # Setup context manager
+        mock_client_instance.__enter__.return_value = mock_client_instance
+        mock_client_instance.__exit__.return_value = None
+
         with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
-            # Patch at the module level where it's imported - use the cli_main_module we imported
-            with patch.object(cli_main_module, "ArrisModemStatusClient") as mock_client_class:
-                # Create mock instance
-                mock_client = MagicMock()
-                mock_client_class.return_value = mock_client
-                mock_client.get_status.return_value = mock_status
+            # Capture output
+            stdout_capture = StringIO()
+            stderr_capture = StringIO()
 
-                # Setup context manager
-                mock_client.__enter__.return_value = mock_client
-                mock_client.__exit__.return_value = None
+            with patch("sys.stdout", stdout_capture), patch("sys.stderr", stderr_capture):
+                # Execute main with our mock client class
+                result = main(client_class=MockClientClass)
 
-                # Capture output
-                stdout_capture = StringIO()
-                stderr_capture = StringIO()
+                # On success, main() returns None
+                assert result is None
 
-                with patch("sys.stdout", stdout_capture), patch("sys.stderr", stderr_capture):
-                    # Execute main - it should complete normally without raising SystemExit
-                    try:
-                        result = main()
-                        # On success, main() returns None (implicitly)
-                        assert result is None
-                    except SystemExit as e:
-                        # If SystemExit is raised with code 0, that's also success
-                        if e.code == 0:
-                            pass
-                        else:
-                            raise
+            # Check JSON output
+            output = stdout_capture.getvalue()
+            json_data = json.loads(output)
 
-                # Check JSON output
-                output = stdout_capture.getvalue()
-                json_data = json.loads(output)
-
-                assert json_data["model_name"] == "S34"
-                assert json_data["internet_status"] == "Connected"
-                assert json_data["query_host"] == "192.168.100.1"
+            assert json_data["model_name"] == "S34"
+            assert json_data["internet_status"] == "Connected"
+            assert json_data["query_host"] == "192.168.100.1"
 
     def test_main_connectivity_check_failed(self):
         """Test main execution with failed connectivity check."""
         with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--quick-check"]):
-            # First patch ArrisModemStatusClient to prevent any real client creation
-            with patch.object(cli_main_module, "ArrisModemStatusClient"):
-                # Then patch the quick_connectivity_check function where it's imported in the module
-                with patch.object(cli_main_module, "quick_connectivity_check") as mock_quick_check:
-                    mock_quick_check.return_value = (False, "Connection timeout")
-
-                    stderr_capture = StringIO()
-
-                    with patch("sys.stderr", stderr_capture):
-                        with pytest.raises(SystemExit) as exc_info:
-                            main()
-
-                    assert exc_info.value.code == 1
-                    stderr_output = stderr_capture.getvalue()
-                    # The error output includes both the error message and other output
-                    # Check for both the error message and the failure indication
-                    assert "Connection timeout" in stderr_output
-                    assert "Failed connectivity check" in stderr_output or "❌" in stderr_output
-
-    def test_main_client_error(self):
-        """Test main execution with client error."""
-        with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
-            # Patch at the module level
-            with patch.object(cli_main_module, "ArrisModemStatusClient") as mock_client_class:
-                # Make the client constructor raise an exception
-                mock_client_class.side_effect = Exception("Connection failed")
+            # Mock the connectivity check to fail
+            with patch("arris_modem_status.cli.main.quick_connectivity_check") as mock_quick_check:
+                mock_quick_check.return_value = (False, "Connection timeout")
 
                 stderr_capture = StringIO()
 
                 with patch("sys.stderr", stderr_capture):
-                    with pytest.raises(SystemExit) as exc_info:
-                        main()
+                    # Execute main - no need to pass client_class since connectivity fails first
+                    result = main()
 
-                assert exc_info.value.code == 1
+                assert result == 1
                 stderr_output = stderr_capture.getvalue()
-                # The error format includes timing information
-                assert "Connection failed" in stderr_output
+                assert "Connection timeout" in stderr_output
+
+    def test_main_client_error(self):
+        """Test main execution with client error."""
+        # Create a mock client class that raises an exception
+        MockClientClass = Mock()
+        MockClientClass.side_effect = Exception("Connection failed")
+
+        with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
+            stderr_capture = StringIO()
+
+            with patch("sys.stderr", stderr_capture):
+                result = main(client_class=MockClientClass)
+
+            assert result == 1
+            stderr_output = stderr_capture.getvalue()
+            assert "Connection failed" in stderr_output
 
     def test_main_quiet_mode(self):
         """Test main execution in quiet mode."""
@@ -471,56 +455,48 @@ class TestCLIMainIntegration:
             "upstream_channels": [],
         }
 
+        # Create a mock client class
+        MockClientClass = Mock()
+        mock_client_instance = MagicMock()
+        MockClientClass.return_value = mock_client_instance
+        mock_client_instance.get_status.return_value = mock_status
+
+        # Setup context manager
+        mock_client_instance.__enter__.return_value = mock_client_instance
+        mock_client_instance.__exit__.return_value = None
+
         with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--quiet"]):
-            with patch.object(cli_main_module, "ArrisModemStatusClient") as mock_client_class:
-                # Setup mock
-                mock_client = MagicMock()
-                mock_client_class.return_value = mock_client
-                mock_client.get_status.return_value = mock_status
+            stdout_capture = StringIO()
+            stderr_capture = StringIO()
 
-                # Setup context manager
-                mock_client.__enter__.return_value = mock_client
-                mock_client.__exit__.return_value = None
+            with patch("sys.stdout", stdout_capture), patch("sys.stderr", stderr_capture):
+                result = main(client_class=MockClientClass)
+                assert result is None
 
-                stdout_capture = StringIO()
-                stderr_capture = StringIO()
+            # Check that no summary was printed to stderr
+            stderr_output = stderr_capture.getvalue()
+            assert "ARRIS MODEM STATUS SUMMARY" not in stderr_output
 
-                with patch("sys.stdout", stdout_capture), patch("sys.stderr", stderr_capture):
-                    # Execute main
-                    try:
-                        result = main()
-                        assert result is None
-                    except SystemExit as e:
-                        if e.code == 0:
-                            pass
-                        else:
-                            raise
-
-                # Check that no summary was printed to stderr
-                stderr_output = stderr_capture.getvalue()
-                assert "ARRIS MODEM STATUS SUMMARY" not in stderr_output
-
-                # But JSON should still be on stdout
-                stdout_output = stdout_capture.getvalue()
-                json_data = json.loads(stdout_output)
-                assert json_data["model_name"] == "S34"
+            # But JSON should still be on stdout
+            stdout_output = stdout_capture.getvalue()
+            json_data = json.loads(stdout_output)
+            assert json_data["model_name"] == "S34"
 
     def test_main_keyboard_interrupt(self):
         """Test handling of keyboard interrupt."""
+        # Create a mock client class that raises KeyboardInterrupt
+        MockClientClass = Mock()
+        MockClientClass.side_effect = KeyboardInterrupt()
+
         with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
-            with patch.object(cli_main_module, "ArrisModemStatusClient") as mock_client_class:
-                # Make initialization raise KeyboardInterrupt
-                mock_client_class.side_effect = KeyboardInterrupt()
+            stderr_capture = StringIO()
 
-                stderr_capture = StringIO()
+            with patch("sys.stderr", stderr_capture):
+                result = main(client_class=MockClientClass)
 
-                with patch("sys.stderr", stderr_capture):
-                    with pytest.raises(SystemExit) as exc_info:
-                        main()
-
-                assert exc_info.value.code == 1
-                stderr_output = stderr_capture.getvalue()
-                assert "Operation cancelled by user" in stderr_output
+            assert result == 1
+            stderr_output = stderr_capture.getvalue()
+            assert "Operation cancelled by user" in stderr_output
 
     def test_main_serial_mode(self):
         """Test main execution in serial mode."""
@@ -531,29 +507,183 @@ class TestCLIMainIntegration:
             "upstream_channels": [],
         }
 
+        # Create a mock client class
+        MockClientClass = Mock()
+        mock_client_instance = MagicMock()
+        MockClientClass.return_value = mock_client_instance
+        mock_client_instance.get_status.return_value = mock_status
+
+        # Setup context manager
+        mock_client_instance.__enter__.return_value = mock_client_instance
+        mock_client_instance.__exit__.return_value = None
+
         with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--serial"]):
-            with patch.object(cli_main_module, "ArrisModemStatusClient") as mock_client_class:
-                # Setup mock
-                mock_client = MagicMock()
-                mock_client_class.return_value = mock_client
-                mock_client.get_status.return_value = mock_status
+            with patch("sys.stdout", StringIO()):
+                result = main(client_class=MockClientClass)
+                assert result is None
 
-                # Setup context manager
-                mock_client.__enter__.return_value = mock_client
-                mock_client.__exit__.return_value = None
+            # Verify client was created with concurrent=False
+            MockClientClass.assert_called_once()
+            call_kwargs = MockClientClass.call_args[1]
+            assert call_kwargs["concurrent"] is False
 
-                with patch("sys.stdout", StringIO()):
-                    # Execute main
-                    try:
-                        result = main()
-                        assert result is None
-                    except SystemExit as e:
-                        if e.code == 0:
-                            pass
-                        else:
-                            raise
 
-                # Verify client was created with concurrent=False
-                mock_client_class.assert_called_once()
-                call_kwargs = mock_client_class.call_args[1]
-                assert call_kwargs["concurrent"] is False
+@pytest.mark.unit
+@pytest.mark.cli
+class TestCLIHelperFunctions:
+    """Test the new helper functions."""
+
+    def test_create_client(self):
+        """Test create_client factory function."""
+        args = argparse.Namespace(
+            host="192.168.100.1",
+            port=443,
+            username="admin",
+            password="test123",
+            serial=False,
+            workers=2,
+            retries=3,
+            timeout=30,
+        )
+
+        MockClientClass = Mock()
+        mock_instance = Mock()
+        MockClientClass.return_value = mock_instance
+
+        client = create_client(args, client_class=MockClientClass)
+
+        assert client == mock_instance
+        MockClientClass.assert_called_once_with(
+            host="192.168.100.1",
+            port=443,
+            username="admin",
+            password="test123",
+            concurrent=True,
+            max_workers=2,
+            max_retries=3,
+            timeout=(2, 8),  # Based on local IP
+        )
+
+    def test_perform_connectivity_check_not_requested(self):
+        """Test perform_connectivity_check when not requested."""
+        args = argparse.Namespace(quick_check=False)
+
+        result = perform_connectivity_check(args)
+        assert result is True
+
+    def test_perform_connectivity_check_success(self):
+        """Test perform_connectivity_check when successful."""
+        args = argparse.Namespace(quick_check=True, host="192.168.100.1", port=443)
+
+        with patch("arris_modem_status.cli.main.quick_connectivity_check") as mock_check:
+            mock_check.return_value = (True, None)
+
+            result = perform_connectivity_check(args)
+            assert result is True
+
+    def test_perform_connectivity_check_failure(self):
+        """Test perform_connectivity_check when it fails."""
+        args = argparse.Namespace(quick_check=True, host="192.168.100.1", port=443)
+
+        with patch("arris_modem_status.cli.main.quick_connectivity_check") as mock_check:
+            mock_check.return_value = (False, "Connection refused")
+
+            with patch("sys.stderr", StringIO()) as stderr:
+                result = perform_connectivity_check(args)
+                assert result is False
+
+    def test_process_modem_status(self):
+        """Test process_modem_status function."""
+        # Create mock client
+        mock_client = MagicMock()
+        mock_status = {
+            "model_name": "S34",
+            "internet_status": "Connected",
+            "downstream_channels": [],
+            "upstream_channels": [],
+        }
+        mock_client.get_status.return_value = mock_status
+        mock_client.__enter__.return_value = mock_client
+        mock_client.__exit__.return_value = None
+
+        # Create args
+        args = argparse.Namespace(
+            host="192.168.100.1",
+            port=443,
+            quiet=False,
+            workers=2,
+            retries=3,
+            timeout=30,
+            serial=False,
+        )
+
+        # Capture output
+        stdout_capture = StringIO()
+        stderr_capture = StringIO()
+
+        with patch("sys.stdout", stdout_capture), patch("sys.stderr", stderr_capture):
+            process_modem_status(mock_client, args, time.time(), True)
+
+        # Check that summary was printed to stderr
+        stderr_output = stderr_capture.getvalue()
+        assert "ARRIS MODEM STATUS SUMMARY" in stderr_output
+
+        # Check that JSON was printed to stdout
+        stdout_output = stdout_capture.getvalue()
+        json_data = json.loads(stdout_output)
+        assert json_data["model_name"] == "S34"
+
+    def test_create_client_default_class(self):
+        """Test create_client with default client class."""
+        args = argparse.Namespace(
+            host="192.168.100.1",
+            port=443,
+            username="admin",
+            password="test123",
+            serial=False,
+            workers=2,
+            retries=3,
+            timeout=30,
+        )
+
+        # Patch the ArrisModemStatusClient at the module level
+        with patch("arris_modem_status.cli.main.ArrisModemStatusClient") as mock_client_class:
+            mock_instance = Mock()
+            mock_client_class.return_value = mock_instance
+
+            client = create_client(args)
+
+            assert client == mock_instance
+            mock_client_class.assert_called_once()
+
+    def test_main_with_serial_debug_quiet_options(self):
+        """Test main with combination of options."""
+        mock_status = {
+            "model_name": "S34",
+            "internet_status": "Connected",
+            "downstream_channels": [],
+            "upstream_channels": [],
+        }
+
+        MockClientClass = Mock()
+        mock_client_instance = MagicMock()
+        MockClientClass.return_value = mock_client_instance
+        mock_client_instance.get_status.return_value = mock_status
+        mock_client_instance.__enter__.return_value = mock_client_instance
+        mock_client_instance.__exit__.return_value = None
+
+        with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--serial", "--debug", "--quiet"]):
+            stdout_capture = StringIO()
+            stderr_capture = StringIO()
+
+            with patch("sys.stdout", stdout_capture), patch("sys.stderr", stderr_capture):
+                result = main(client_class=MockClientClass)
+                assert result is None
+
+            # In quiet mode, no summary should be printed
+            stderr_output = stderr_capture.getvalue()
+            assert "ARRIS MODEM STATUS SUMMARY" not in stderr_output
+
+            # Verify serial mode was used
+            call_kwargs = MockClientClass.call_args[1]
+            assert call_kwargs["concurrent"] is False
