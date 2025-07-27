@@ -146,17 +146,17 @@ version: ## Show current version
 	@echo "$(BLUE)Current version:$(RESET)"
 	@grep -E '^__version__' arris_modem_status/__init__.py | cut -d'"' -f2
 
-version-bump-patch: ## Bump patch version (1.3.0 -> 1.3.1)
+version-bump-patch: ## Bump patch version (1.0.0 -> 1.0.1)
 	@echo "$(GREEN)Bumping patch version...$(RESET)"
 	bump-my-version bump patch
 	@echo "$(GREEN)✅ Patch version bumped$(RESET)"
 
-version-bump-minor: ## Bump minor version (1.3.0 -> 1.4.0)
+version-bump-minor: ## Bump minor version (1.0.0 -> 1.1.0)
 	@echo "$(GREEN)Bumping minor version...$(RESET)"
 	bump-my-version bump minor
 	@echo "$(GREEN)✅ Minor version bumped$(RESET)"
 
-version-bump-major: ## Bump major version (1.3.0 -> 2.0.0)
+version-bump-major: ## Bump major version (1.0.0 -> 2.0.0)
 	@echo "$(YELLOW)Bumping major version (breaking changes)...$(RESET)"
 	bump-my-version bump major
 	@echo "$(GREEN)✅ Major version bumped$(RESET)"
