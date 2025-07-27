@@ -22,7 +22,7 @@ from datetime import datetime
 
 from playwright.async_api import async_playwright
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -60,16 +60,11 @@ class EnhancedDeepCapture:
 
         async with async_playwright() as p:
             # Launch browser with HAR recording
-            browser = await p.chromium.launch(
-                headless=False,
-                args=['--enable-logging', '--v=1']
-            )
+            browser = await p.chromium.launch(headless=False, args=["--enable-logging", "--v=1"])
 
             # CRITICAL: Set up HAR recording
             context = await browser.new_context(
-                ignore_https_errors=True,
-                record_har_path=self.har_file,
-                record_har_url_filter="**/*"
+                ignore_https_errors=True, record_har_path=self.har_file, record_har_url_filter="**/*"
             )
 
             page = await context.new_page()
@@ -102,23 +97,23 @@ class EnhancedDeepCapture:
 
         # Prepare JSON export data
         capture_data = {
-            'timestamp': datetime.now().isoformat(),
-            'requests': self.all_requests,
-            'cookies': self.cookie_timeline,
-            'console': self.console_logs,
-            'storage': self.storage_snapshots,
-            'timing': self.timing_data,
-            'files_created': {
-                'har_file': self.har_file,
-                'har_exists': os.path.exists(self.har_file),
-                'har_size': os.path.getsize(self.har_file) if os.path.exists(self.har_file) else 0
-            }
+            "timestamp": datetime.now().isoformat(),
+            "requests": self.all_requests,
+            "cookies": self.cookie_timeline,
+            "console": self.console_logs,
+            "storage": self.storage_snapshots,
+            "timing": self.timing_data,
+            "files_created": {
+                "har_file": self.har_file,
+                "har_exists": os.path.exists(self.har_file),
+                "har_size": os.path.getsize(self.har_file) if os.path.exists(self.har_file) else 0,
+            },
         }
 
         # Export JSON file
         logger.info("💾 Exporting JSON data...")
         try:
-            with open(self.json_file, 'w') as f:
+            with open(self.json_file, "w") as f:
                 json.dump(capture_data, f, indent=2)
 
             json_size = os.path.getsize(self.json_file)
@@ -133,12 +128,12 @@ class EnhancedDeepCapture:
         """Set up all event listeners for comprehensive capture"""
 
         # Console capture
-        page.on("console", lambda msg: self.console_logs.append({
-            'timestamp': datetime.now().isoformat(),
-            'level': msg.type,
-            'text': msg.text,
-            'location': msg.location
-        }))
+        page.on(
+            "console",
+            lambda msg: self.console_logs.append(
+                {"timestamp": datetime.now().isoformat(), "level": msg.type, "text": msg.text, "location": msg.location}
+            ),
+        )
 
         # Request capture with timing
         def handle_request(request):
@@ -151,28 +146,32 @@ class EnhancedDeepCapture:
             self.last_request_time = current_time
 
             request_data = {
-                'type': 'request',
-                'timestamp': datetime.now().isoformat(),
-                'timing_delta_ms': timing_delta * 1000 if timing_delta else 0,
-                'method': request.method,
-                'url': request.url,
-                'headers': dict(request.headers),
-                'post_data': request.post_data
+                "type": "request",
+                "timestamp": datetime.now().isoformat(),
+                "timing_delta_ms": timing_delta * 1000 if timing_delta else 0,
+                "method": request.method,
+                "url": request.url,
+                "headers": dict(request.headers),
+                "post_data": request.post_data,
             }
 
             self.all_requests.append(request_data)
 
             if "/HNAP1/" in request.url:
-                logger.info(f"📤 HNAP Request: {request.method} (∆{timing_delta:.1f}s)" if timing_delta else f"📤 HNAP Request: {request.method}")
+                logger.info(
+                    f"📤 HNAP Request: {request.method} (∆{timing_delta:.1f}s)"
+                    if timing_delta
+                    else f"📤 HNAP Request: {request.method}"
+                )
 
         def handle_response(response):
             response_data = {
-                'type': 'response',
-                'timestamp': datetime.now().isoformat(),
-                'method': response.request.method,
-                'url': response.url,
-                'status': response.status,
-                'headers': dict(response.headers)
+                "type": "response",
+                "timestamp": datetime.now().isoformat(),
+                "method": response.request.method,
+                "url": response.url,
+                "status": response.status,
+                "headers": dict(response.headers),
             }
 
             self.all_requests.append(response_data)
@@ -184,7 +183,7 @@ class EnhancedDeepCapture:
                 async def capture_body():
                     try:
                         body = await response.text()
-                        response_data['content'] = body
+                        response_data["content"] = body
                         if len(body) > 50:
                             logger.info(f"   Body: {body[:100]}...")
                     except Exception as e:
@@ -206,13 +205,13 @@ class EnhancedDeepCapture:
 
         # Step 2: Login process
         logger.info("\n🔑 Step 2: Performing login...")
-        await page.fill('#loginUsername', self.username)
-        await page.fill('#loginWAP', self.password)
+        await page.fill("#loginUsername", self.username)
+        await page.fill("#loginWAP", self.password)
 
         await self._capture_cookies(page)
 
         # Click login and wait
-        await page.click('#login')
+        await page.click("#login")
         await page.wait_for_load_state("networkidle")
         await asyncio.sleep(3)
 
@@ -241,10 +240,7 @@ class EnhancedDeepCapture:
     async def _capture_cookies(self, page):
         """Capture current cookie state"""
         cookies = await page.context.cookies()
-        self.cookie_timeline.append({
-            'timestamp': datetime.now().isoformat(),
-            'cookies': cookies
-        })
+        self.cookie_timeline.append({"timestamp": datetime.now().isoformat(), "cookies": cookies})
         logger.info(f"🍪 Cookies captured: {len(cookies)} total")
 
     async def _capture_storage(self, page):
@@ -253,14 +249,18 @@ class EnhancedDeepCapture:
             local_storage = await page.evaluate("() => Object.entries(localStorage)")
             session_storage = await page.evaluate("() => Object.entries(sessionStorage)")
 
-            self.storage_snapshots.append({
-                'timestamp': datetime.now().isoformat(),
-                'localStorage': dict(local_storage) if local_storage else {},
-                'sessionStorage': dict(session_storage) if session_storage else {}
-            })
+            self.storage_snapshots.append(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "localStorage": dict(local_storage) if local_storage else {},
+                    "sessionStorage": dict(session_storage) if session_storage else {},
+                }
+            )
 
             if local_storage or session_storage:
-                logger.info(f"💾 Storage captured: localStorage={len(local_storage)}, sessionStorage={len(session_storage)}")
+                logger.info(
+                    f"💾 Storage captured: localStorage={len(local_storage)}, sessionStorage={len(session_storage)}"
+                )
         except Exception as e:
             logger.warning(f"Could not capture storage: {e}")
 
@@ -277,9 +277,9 @@ class EnhancedDeepCapture:
 
             # Try to validate HAR structure
             try:
-                with open(self.har_file, 'r') as f:
+                with open(self.har_file, "r") as f:
                     har_data = json.load(f)
-                    entries = har_data.get('log', {}).get('entries', [])
+                    entries = har_data.get("log", {}).get("entries", [])
                     logger.info(f"   📊 HAR contains {len(entries)} network entries")
             except Exception as e:
                 logger.warning(f"   ⚠️ HAR file may be corrupted: {e}")
@@ -293,9 +293,9 @@ class EnhancedDeepCapture:
 
             # Try to validate JSON structure
             try:
-                with open(self.json_file, 'r') as f:
+                with open(self.json_file, "r") as f:
                     json_data = json.load(f)
-                    requests = json_data.get('requests', [])
+                    requests = json_data.get("requests", [])
                     logger.info(f"   📊 JSON contains {len(requests)} captured requests")
             except Exception as e:
                 logger.warning(f"   ⚠️ JSON file may be corrupted: {e}")
@@ -338,6 +338,7 @@ async def main():
     except Exception as e:
         logger.error(f"❌ Enhanced capture failed: {e}")
         import traceback
+
         traceback.print_exc()
 
 

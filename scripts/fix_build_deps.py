@@ -35,12 +35,7 @@ class BuildDependencyFixer:
         """Initialize the build dependency fixer."""
         self.verbose = verbose
         self.project_root = Path(__file__).parent.parent
-        self.required_packages = {
-            'build': '>=0.10.0',
-            'twine': '>=4.0.0',
-            'wheel': '>=0.40.0',
-            'setuptools': '>=65.0'
-        }
+        self.required_packages = {"build": ">=0.10.0", "twine": ">=4.0.0", "wheel": ">=0.40.0", "setuptools": ">=65.0"}
 
     def check_package_installed(self, package_name: str) -> bool:
         """Check if a package is installed."""
@@ -54,11 +49,13 @@ class BuildDependencyFixer:
         """Get the version of an installed package."""
         try:
             import importlib.metadata
+
             return importlib.metadata.version(package_name)
         except Exception:
             try:
                 # Fallback for older Python versions
                 import pkg_resources
+
                 return pkg_resources.get_distribution(package_name).version
             except Exception:
                 return "unknown"
@@ -66,11 +63,11 @@ class BuildDependencyFixer:
     def check_all_dependencies(self) -> Dict[str, Any]:
         """Check status of all build dependencies."""
         status = {
-            'all_installed': True,
-            'missing_packages': [],
-            'outdated_packages': [],
-            'installed_packages': {},
-            'python_version': f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+            "all_installed": True,
+            "missing_packages": [],
+            "outdated_packages": [],
+            "installed_packages": {},
+            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         }
 
         print("🔍 Checking build dependencies...")
@@ -81,14 +78,14 @@ class BuildDependencyFixer:
 
             if is_installed:
                 version = self.get_package_version(package)
-                status['installed_packages'][package] = version
+                status["installed_packages"][package] = version
                 print(f"✅ {package}: {version}")
 
                 if self.verbose:
                     print(f"   Required: {min_version}")
             else:
-                status['missing_packages'].append(package)
-                status['all_installed'] = False
+                status["missing_packages"].append(package)
+                status["all_installed"] = False
                 print(f"❌ {package}: Not installed")
 
         print(f"\n🐍 Python: {status['python_version']}")
@@ -111,7 +108,7 @@ class BuildDependencyFixer:
             else:
                 install_packages.append(package)
 
-        cmd = [sys.executable, '-m', 'pip', 'install'] + install_packages
+        cmd = [sys.executable, "-m", "pip", "install"] + install_packages
 
         if self.verbose:
             print(f"🔧 Running: {' '.join(cmd)}")
@@ -140,6 +137,7 @@ class BuildDependencyFixer:
         try:
             sys.path.insert(0, str(self.project_root))
             import arris_modem_status
+
             version = arris_modem_status.__version__
             print(f"✅ Package import works: {version}")
         except Exception as e:
@@ -148,7 +146,7 @@ class BuildDependencyFixer:
 
         # Test 2: Can we run build command?
         try:
-            cmd = [sys.executable, '-m', 'build', '--help']
+            cmd = [sys.executable, "-m", "build", "--help"]
             result = subprocess.run(cmd, capture_output=True, text=True, cwd=self.project_root)
 
             if result.returncode == 0:
@@ -178,7 +176,7 @@ class BuildDependencyFixer:
                         return True
 
                 content = tomllib.loads(pyproject_file.read_text())
-                if 'build-system' in content:
+                if "build-system" in content:
                     print("✅ Build system configured")
                 else:
                     print("❌ Build system not configured in pyproject.toml")
@@ -202,7 +200,7 @@ class BuildDependencyFixer:
         # Check current status
         status = self.check_all_dependencies()
 
-        if status['all_installed']:
+        if status["all_installed"]:
             print("\n✅ All build dependencies are installed!")
 
             # Still test the build system
@@ -220,7 +218,7 @@ class BuildDependencyFixer:
 
         # Install missing packages
         print(f"\n📦 Installing missing packages...")
-        success = self.install_missing_packages(status['missing_packages'])
+        success = self.install_missing_packages(status["missing_packages"])
 
         if not success:
             return False
@@ -229,7 +227,7 @@ class BuildDependencyFixer:
         print(f"\n🔍 Re-checking dependencies after installation...")
         new_status = self.check_all_dependencies()
 
-        if not new_status['all_installed']:
+        if not new_status["all_installed"]:
             print("❌ Some packages still missing after installation")
             return False
 
@@ -282,7 +280,7 @@ This script will:
 2. Install any missing packages automatically
 3. Test that the build system works
 4. Provide manual instructions if automatic fixing fails
-        """
+        """,
     )
 
     parser.add_argument("--check-only", action="store_true", help="Only check dependencies, don't install")
@@ -307,6 +305,7 @@ This script will:
         print(f"❌ Unexpected error: {e}")
         if args.verbose:
             import traceback
+
             traceback.print_exc()
         return 1
 

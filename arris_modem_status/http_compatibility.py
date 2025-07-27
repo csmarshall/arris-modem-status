@@ -12,7 +12,7 @@ import socket
 import ssl
 import time
 import warnings
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Mapping, Optional, Tuple, Union
 
 import requests
 import urllib3
@@ -64,10 +64,10 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
         self,
         request: requests.PreparedRequest,
         stream: bool = False,
-        timeout: Optional[Union[float, Tuple[float, float]]] = None,
+        timeout: Optional[Union[float, Tuple[float, float], Tuple[float, None]]] = None,
         verify: Union[bool, str] = True,
-        cert: Optional[Union[str, Tuple[str, str]]] = None,
-        proxies: Optional[dict] = None,
+        cert: Optional[Union[bytes, str, Tuple[Union[bytes, str], Union[bytes, str]]]] = None,
+        proxies: Optional[Mapping[str, str]] = None,
     ) -> Response:
         """
         Send HTTP request using relaxed parsing for HNAP endpoints.
@@ -78,7 +78,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
         start_time: Optional[float] = time.time() if self.instrumentation else None
 
         # Always use relaxed parsing for HNAP endpoints
-        if "/HNAP1/" in request.url:
+        if request.url and "/HNAP1/" in request.url:
             logger.debug("🔧 Using relaxed HTTP parsing for HNAP endpoint")
 
             try:
@@ -140,7 +140,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
     def _raw_socket_request(
         self,
         request: requests.PreparedRequest,
-        timeout: Optional[Union[float, Tuple[float, float]]] = None,
+        timeout: Optional[Union[float, Tuple[float, float], Tuple[float, None]]] = None,
         verify: Union[bool, str] = True,
     ) -> Response:
         """
@@ -152,13 +152,16 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
         logger.debug("🔌 Making request with browser-compatible HTTP parsing")
 
         # Parse URL components
+        if not request.url:
+            raise ValueError("Request URL is None")
+
         url_parts = request.url.split("://", 1)[1].split("/", 1)
         host_port = url_parts[0]
         path = "/" + (url_parts[1] if len(url_parts) > 1 else "")
 
         if ":" in host_port:
-            host, port = host_port.split(":", 1)
-            port = int(port)
+            host, port_str = host_port.split(":", 1)
+            port = int(port_str)
         else:
             host = host_port
             port = 443 if request.url.startswith("https") else 80
@@ -175,7 +178,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
 
         try:
             # SSL wrap for HTTPS BEFORE connecting
-            if request.url.startswith("https"):
+            if request.url and request.url.startswith("https"):
                 context = ssl.create_default_context()
                 if not verify:
                     context.check_hostname = False
@@ -314,7 +317,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
 
             # Parse status line with tolerance
             header_lines = headers_part.replace("\r\n", "\n").split("\n")
-            status_line = header_lines[0] if header_lines else "HTTP/1.1 200 OK"
+            status_line: str = header_lines[0] if header_lines else "HTTP/1.1 200 OK"
 
             # Extract status code with tolerance for variations
             status_code = 200  # Default
@@ -345,7 +348,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
             response = Response()
             response.status_code = status_code
             response.headers.update(headers)
-            response.url = original_request.url
+            response.url = original_request.url if original_request.url else ""
             response.request = original_request
 
             # Set content with proper encoding handling
@@ -366,9 +369,9 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
             response = Response()
             response.status_code = 500
             response._content = b'{"error": "Parsing failed with browser-compatible parser"}'
-            response.url = original_request.url
+            response.url = original_request.url if original_request.url else ""
             response.request = original_request
-            response.reason = "Internal Server Error"  # Add this line
+            response.reason = "Internal Server Error"
             return response
 
 

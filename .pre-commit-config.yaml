@@ -4,6 +4,7 @@
 # Installation:
 #   pip install pre-commit
 #   pre-commit install
+#   pre-commit install --hook-type pre-push
 #
 # Run manually:
 #   pre-commit run --all-files
@@ -36,7 +37,7 @@ repos:
         args: ['--line-length=120']
 
   - repo: https://github.com/pycqa/isort
-    rev: 6.0.1
+    rev: 5.13.2
     hooks:
       - id: isort
         args: ['--profile=black', '--line-length=120']
@@ -47,6 +48,7 @@ repos:
     hooks:
       - id: flake8
         args: ['--max-line-length=120', '--extend-ignore=E203,E501,W503']
+        exclude: '^(debug_tools|scripts|tests)/'
 
   # Security checks
   - repo: https://github.com/PyCQA/bandit
@@ -55,6 +57,7 @@ repos:
       - id: bandit
         args: ['-r', 'arris_modem_status/', '-ll']
         exclude: 'tests/'
+        pass_filenames: false
 
   # Type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
@@ -65,3 +68,26 @@ repos:
         args: ['--ignore-missing-imports']
         exclude: 'tests/|scripts/'
         files: '^arris_modem_status/.*\.py$'
+
+  # Testing - runs on pre-push only (matches Makefile)
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+        # Match the Makefile test command exactly
+        args: ['tests/', '-v', '--cov=arris_modem_status', '--cov-report=term-missing']
+
+# Configuration for specific hooks
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+
+# Fail fast - stop on first failure
+fail_fast: false
+
+# Minimum pre-commit version
+minimum_pre_commit_version: '3.0.0'

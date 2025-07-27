@@ -25,26 +25,26 @@ import logging
 import statistics
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 # Import both clients for comparison
 try:
     from arris_modem_status import ArrisModemStatusClient as OptimizedClient
+
     OPTIMIZED_CLIENT_AVAILABLE = True
 except ImportError:
     OPTIMIZED_CLIENT_AVAILABLE = False
 
 try:
     from arris_modem_status.legacy import ArrisModemStatusClient as OriginalClient
+
     ORIGINAL_CLIENT_AVAILABLE = True
 except ImportError:
     ORIGINAL_CLIENT_AVAILABLE = False
 
 # Configure enhanced logging with timestamps
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
-    datefmt='%H:%M:%S'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s", datefmt="%H:%M:%S"
 )
 logger = logging.getLogger(__name__)
 
@@ -70,16 +70,12 @@ class ComprehensiveTestSuite:
         self.host = host
         self.test_results = {
             "timestamp": datetime.now().isoformat(),
-            "test_configuration": {
-                "host": host,
-                "password_length": len(password),
-                "test_version": "1.3.0"
-            },
+            "test_configuration": {"host": host, "password_length": len(password), "test_version": "1.3.0"},
             "performance_tests": {},
             "validation_tests": {},
             "comparison_tests": {},
             "http_compatibility_analysis": {},
-            "recommendations": []
+            "recommendations": [],
         }
 
         if not OPTIMIZED_CLIENT_AVAILABLE:
@@ -131,7 +127,7 @@ class ComprehensiveTestSuite:
             "authentication_speed": {},
             "data_retrieval_speed": {},
             "concurrent_performance": {},
-            "memory_efficiency": {}
+            "memory_efficiency": {},
         }
 
         try:
@@ -161,11 +157,13 @@ class ComprehensiveTestSuite:
                     "average_time": statistics.mean(auth_times),
                     "min_time": min(auth_times),
                     "max_time": max(auth_times),
-                    "consistency": max(auth_times) - min(auth_times) < 1.0
+                    "consistency": max(auth_times) - min(auth_times) < 1.0,
                 }
 
                 avg_time = statistics.mean(auth_times)
-                logger.info(f"📊 Auth Performance: Avg {avg_time:.2f}s, Range {min(auth_times):.2f}-{max(auth_times):.2f}s")
+                logger.info(
+                    f"📊 Auth Performance: Avg {avg_time:.2f}s, Range {min(auth_times):.2f}-{max(auth_times):.2f}s"
+                )
 
             # Data Retrieval Speed Test
             logger.info("📊 Testing data retrieval speed...")
@@ -179,8 +177,8 @@ class ComprehensiveTestSuite:
                 retrieval_time = time.time() - start_time
 
                 retrieval_times.append(retrieval_time)
-                downstream_count = len(status.get('downstream_channels', []))
-                upstream_count = len(status.get('upstream_channels', []))
+                downstream_count = len(status.get("downstream_channels", []))
+                upstream_count = len(status.get("upstream_channels", []))
                 channel_count = downstream_count + upstream_count
                 logger.info(f"   Retrieval {i + 1}: {retrieval_time:.2f}s, {channel_count} channels ✅")
 
@@ -194,11 +192,13 @@ class ComprehensiveTestSuite:
                     "average_time": statistics.mean(retrieval_times),
                     "min_time": min(retrieval_times),
                     "max_time": max(retrieval_times),
-                    "channels_per_second": channel_count / statistics.mean(retrieval_times) if retrieval_times else 0
+                    "channels_per_second": channel_count / statistics.mean(retrieval_times) if retrieval_times else 0,
                 }
 
                 avg_time = statistics.mean(retrieval_times)
-                logger.info(f"📊 Retrieval Performance: Avg {avg_time:.2f}s, {channel_count / avg_time:.1f} channels/sec")
+                logger.info(
+                    f"📊 Retrieval Performance: Avg {avg_time:.2f}s, {channel_count / avg_time:.1f} channels/sec"
+                )
 
         except Exception as e:
             logger.error(f"Performance test error: {e}")
@@ -226,22 +226,22 @@ class ComprehensiveTestSuite:
                     "basic_info_complete": parsing_validation.get("basic_info_parsed", False),
                     "internet_status_available": parsing_validation.get("internet_status_parsed", False),
                     "channel_data_available": parsing_validation.get("downstream_channels_found", 0) > 0,
-                    "completeness_score": performance_metrics.get("data_completeness_score", 0)
+                    "completeness_score": performance_metrics.get("data_completeness_score", 0),
                 },
                 "channel_analysis": {
                     "downstream_count": parsing_validation.get("downstream_channels_found", 0),
                     "upstream_count": parsing_validation.get("upstream_channels_found", 0),
                     "total_channels": performance_metrics.get("total_channels", 0),
-                    "channel_quality": parsing_validation.get("channel_data_quality", {})
+                    "channel_quality": parsing_validation.get("channel_data_quality", {}),
                 },
                 "format_validation": {
                     "mac_address_valid": parsing_validation.get("mac_address_format", False),
-                    "frequency_formats_valid": parsing_validation.get("frequency_formats", {})
+                    "frequency_formats_valid": parsing_validation.get("frequency_formats", {}),
                 },
                 "http_compatibility_metrics": {
                     "parsing_errors": performance_metrics.get("parsing_errors", 0),
-                    "http_compatibility_issues": performance_metrics.get("http_compatibility_issues", 0)
-                }
+                    "http_compatibility_issues": performance_metrics.get("http_compatibility_issues", 0),
+                },
             }
 
             # Log validation results
@@ -265,13 +265,13 @@ class ComprehensiveTestSuite:
                 upstream_qual = channel_quality.get("upstream_validation", {})
 
                 if downstream_qual:
-                    all_locked = downstream_qual.get('all_locked', False)
-                    modulation_count = len(downstream_qual.get('modulation_types', []))
+                    all_locked = downstream_qual.get("all_locked", False)
+                    modulation_count = len(downstream_qual.get("modulation_types", []))
                     logger.info(f"📡 Downstream Quality: {all_locked} all locked, Modulations: {modulation_count}")
 
                 if upstream_qual:
-                    all_locked = upstream_qual.get('all_locked', False)
-                    modulation_count = len(upstream_qual.get('modulation_types', []))
+                    all_locked = upstream_qual.get("all_locked", False)
+                    modulation_count = len(upstream_qual.get("modulation_types", []))
                     logger.info(f"📤 Upstream Quality: {all_locked} all locked, Modulations: {modulation_count}")
 
         except Exception as e:
@@ -294,7 +294,7 @@ class ComprehensiveTestSuite:
                 max_workers=4,  # Higher concurrency to trigger compatibility issues
                 max_retries=2,
                 base_backoff=0.1,
-                capture_errors=True
+                capture_errors=True,
             )
 
             # Run multiple rapid requests to stress HTTP compatibility
@@ -323,7 +323,7 @@ class ComprehensiveTestSuite:
                 "parsing_artifacts": error_analysis.get("parsing_artifacts", []),
                 "recovery_stats": error_analysis.get("recovery_stats", {}),
                 "patterns": error_analysis.get("patterns", []),
-                "http_compatibility_issues": error_analysis.get("http_compatibility_issues", 0)
+                "http_compatibility_issues": error_analysis.get("http_compatibility_issues", 0),
             }
 
             # Log HTTP compatibility analysis
@@ -346,11 +346,7 @@ class ComprehensiveTestSuite:
 
     def _run_stress_tests(self) -> Dict[str, Any]:
         """Test reliability under stress conditions."""
-        stress_results = {
-            "rapid_requests": {},
-            "connection_stability": {},
-            "error_recovery": {}
-        }
+        stress_results = {"rapid_requests": {}, "connection_stability": {}, "error_recovery": {}}
 
         try:
             logger.info("💪 Testing rapid consecutive requests...")
@@ -367,7 +363,7 @@ class ComprehensiveTestSuite:
                     status = client.get_status()
                     request_time = time.time() - start_time
 
-                    if status and len(status.get('downstream_channels', [])) > 0:
+                    if status and len(status.get("downstream_channels", [])) > 0:
                         rapid_times.append(request_time)
                         rapid_successes += 1
                         logger.info(f"   Rapid request {i + 1}: {request_time:.2f}s ✅")
@@ -384,7 +380,7 @@ class ComprehensiveTestSuite:
                 "successful_requests": rapid_successes,
                 "success_rate": rapid_successes / 5,
                 "average_time": statistics.mean(rapid_times) if rapid_times else 0,
-                "performance_degradation": max(rapid_times) - min(rapid_times) if len(rapid_times) > 1 else 0
+                "performance_degradation": max(rapid_times) - min(rapid_times) if len(rapid_times) > 1 else 0,
             }
 
             logger.info(f"📊 Stress Test: {rapid_successes}/5 successful ({rapid_successes / 5 * 100:.1f}%)")
@@ -427,12 +423,12 @@ class ComprehensiveTestSuite:
             optimized_client.close()
 
             # Compare results
-            original_downstream = len(original_status.get('downstream_channels', []))
-            original_upstream = len(original_status.get('upstream_channels', []))
+            original_downstream = len(original_status.get("downstream_channels", []))
+            original_upstream = len(original_status.get("upstream_channels", []))
             original_channels = original_downstream + original_upstream
 
-            optimized_downstream = len(optimized_status.get('downstream_channels', []))
-            optimized_upstream = len(optimized_status.get('upstream_channels', []))
+            optimized_downstream = len(optimized_status.get("downstream_channels", []))
+            optimized_upstream = len(optimized_status.get("upstream_channels", []))
             optimized_channels = optimized_downstream + optimized_upstream
 
             speed_improvement = ((original_time - optimized_time) / original_time) * 100
@@ -442,13 +438,13 @@ class ComprehensiveTestSuite:
                     "original_time": original_time,
                     "optimized_time": optimized_time,
                     "speed_improvement_percent": speed_improvement,
-                    "faster": optimized_time < original_time
+                    "faster": optimized_time < original_time,
                 },
                 "data_comparison": {
                     "original_channels": original_channels,
                     "optimized_channels": optimized_channels,
                     "channel_count_match": original_channels == optimized_channels,
-                    "data_integrity_maintained": True
+                    "data_integrity_maintained": True,
                 },
                 "feature_comparison": {
                     "original_has_error_handling": False,
@@ -456,8 +452,8 @@ class ComprehensiveTestSuite:
                     "original_has_concurrency": False,
                     "optimized_has_concurrency": True,
                     "original_has_http_compatibility": False,
-                    "optimized_has_http_compatibility": True
-                }
+                    "optimized_has_http_compatibility": True,
+                },
             }
 
             logger.info(f"📊 Performance Comparison:")
@@ -481,18 +477,22 @@ class ComprehensiveTestSuite:
         auth_speed = perf_tests.get("authentication_speed", {})
 
         if auth_speed.get("average_time", 0) > 3.0:
-            recommendations.append({
-                "type": "performance",
-                "priority": "medium",
-                "message": "Authentication taking longer than expected (>3s). Check network latency to modem."
-            })
+            recommendations.append(
+                {
+                    "type": "performance",
+                    "priority": "medium",
+                    "message": "Authentication taking longer than expected (>3s). Check network latency to modem.",
+                }
+            )
 
         if auth_speed.get("consistency", True) is False:
-            recommendations.append({
-                "type": "reliability",
-                "priority": "low",
-                "message": "Authentication timing inconsistent. Consider connection stability."
-            })
+            recommendations.append(
+                {
+                    "type": "reliability",
+                    "priority": "low",
+                    "message": "Authentication timing inconsistent. Consider connection stability.",
+                }
+            )
 
         # Data quality recommendations
 
@@ -500,11 +500,13 @@ class ComprehensiveTestSuite:
         completeness = validation_tests.get("data_completeness", {}).get("completeness_score", 0)
 
         if completeness < 80:
-            recommendations.append({
-                "type": "data_quality",
-                "priority": "high",
-                "message": f"Data completeness only {completeness:.1f}%. Some modem data may be unavailable."
-            })
+            recommendations.append(
+                {
+                    "type": "data_quality",
+                    "priority": "high",
+                    "message": f"Data completeness only {completeness:.1f}%. Some modem data may be unavailable.",
+                }
+            )
 
         # HTTP compatibility recommendations
         http_compatibility_analysis = self.test_results.get("http_compatibility_analysis", {})
@@ -514,35 +516,43 @@ class ComprehensiveTestSuite:
 
         if total_errors > 0:
             if recovery_rate >= 0.9:
-                recommendations.append({
-                    "type": "success",
-                    "priority": "info",
-                    "message": f"Excellent HTTP compatibility handling: {total_errors} errors, {recovery_rate * 100:.1f}% recovery rate."
-                })
+                recommendations.append(
+                    {
+                        "type": "success",
+                        "priority": "info",
+                        "message": f"Excellent HTTP compatibility handling: {total_errors} errors, {recovery_rate * 100:.1f}% recovery rate.",
+                    }
+                )
             else:
-                recommendations.append({
-                    "type": "http_compatibility",
-                    "priority": "medium",
-                    "message": f"HTTP compatibility issues detected with {recovery_rate * 100:.1f}% recovery rate. Consider reducing concurrency."
-                })
+                recommendations.append(
+                    {
+                        "type": "http_compatibility",
+                        "priority": "medium",
+                        "message": f"HTTP compatibility issues detected with {recovery_rate * 100:.1f}% recovery rate. Consider reducing concurrency.",
+                    }
+                )
 
         if compatibility_issues > 0:
-            recommendations.append({
-                "type": "success",
-                "priority": "info",
-                "message": f"HTTP compatibility layer working excellently: {compatibility_issues} urllib3 parsing issues resolved automatically."
-            })
+            recommendations.append(
+                {
+                    "type": "success",
+                    "priority": "info",
+                    "message": f"HTTP compatibility layer working excellently: {compatibility_issues} urllib3 parsing issues resolved automatically.",
+                }
+            )
 
         # Stress test recommendations
         stress_tests = self.test_results.get("stress_tests", {})
         success_rate = stress_tests.get("rapid_requests", {}).get("success_rate", 0)
 
         if success_rate < 0.8:
-            recommendations.append({
-                "type": "reliability",
-                "priority": "medium",
-                "message": f"Rapid request success rate only {success_rate * 100:.1f}%. Consider adding delays between requests."
-            })
+            recommendations.append(
+                {
+                    "type": "reliability",
+                    "priority": "medium",
+                    "message": f"Rapid request success rate only {success_rate * 100:.1f}%. Consider adding delays between requests.",
+                }
+            )
 
         # Performance improvement recommendations
         comparison_tests = self.test_results.get("comparison_tests", {})
@@ -550,17 +560,21 @@ class ComprehensiveTestSuite:
             speed_improvement = comparison_tests.get("timing_comparison", {}).get("speed_improvement_percent", 0)
 
             if speed_improvement > 50:
-                recommendations.append({
-                    "type": "success",
-                    "priority": "info",
-                    "message": f"Outstanding performance improvement: {speed_improvement:.1f}% faster than original client."
-                })
+                recommendations.append(
+                    {
+                        "type": "success",
+                        "priority": "info",
+                        "message": f"Outstanding performance improvement: {speed_improvement:.1f}% faster than original client.",
+                    }
+                )
             elif speed_improvement < 10:
-                recommendations.append({
-                    "type": "performance",
-                    "priority": "low",
-                    "message": "Optimizations showing minimal improvement. Network may be the bottleneck."
-                })
+                recommendations.append(
+                    {
+                        "type": "performance",
+                        "priority": "low",
+                        "message": "Optimizations showing minimal improvement. Network may be the bottleneck.",
+                    }
+                )
 
         self.test_results["recommendations"] = recommendations
 
@@ -578,7 +592,7 @@ class ComprehensiveTestSuite:
             filename = f"comprehensive_test_results_{timestamp}.json"
 
         try:
-            with open(filename, 'w') as f:
+            with open(filename, "w") as f:
                 json.dump(self.test_results, f, indent=2, default=str)
 
             logger.info(f"💾 Results saved to: {filename}")
@@ -681,7 +695,7 @@ Examples:
   python comprehensive_test.py --password "your_password"
   python comprehensive_test.py --password "password" --save-results
   python comprehensive_test.py --password "password" --debug --output-file custom_results.json
-        """
+        """,
     )
 
     parser.add_argument("--password", required=True, help="Modem password")
@@ -727,6 +741,7 @@ Examples:
         logger.error(f"\n❌ Test suite failed: {e}")
         if args.debug:
             import traceback
+
             traceback.print_exc()
         return 1
 

@@ -229,6 +229,12 @@ pre-commit-run: ## Run pre-commit on all files manually
 	pre-commit run --all-files
 	@echo "$(GREEN)✅ Pre-commit checks complete$(RESET)"
 
+pre-commit-install: ## Install pre-commit hooks (including pre-push)
+	@echo "$(GREEN)Installing pre-commit hooks...$(RESET)"
+	pre-commit install --hook-type pre-commit
+	pre-commit install --hook-type pre-push
+	@echo "$(GREEN)✅ Pre-commit and pre-push hooks installed$(RESET)"
+
 pre-commit-update: ## Update pre-commit hooks to latest versions
 	@echo "$(GREEN)Updating pre-commit hooks...$(RESET)"
 	pre-commit autoupdate
