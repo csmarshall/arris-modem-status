@@ -18,9 +18,18 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from .http_compatibility import create_arris_compatible_session
-from .instrumentation import PerformanceInstrumentation
-from .models import ChannelInfo, ErrorCapture
+from arris_modem_status.exceptions import (
+    ArrisAuthenticationError,
+    ArrisConnectionError,
+    ArrisHTTPError,
+    ArrisOperationError,
+    ArrisParsingError,
+    ArrisTimeoutError,
+    wrap_connection_error,
+)
+from arris_modem_status.http_compatibility import create_arris_compatible_session
+from arris_modem_status.instrumentation import PerformanceInstrumentation
+from arris_modem_status.models import ChannelInfo, ErrorCapture
 
 logger = logging.getLogger("arris-modem-status")
 
@@ -204,7 +213,6 @@ class ArrisModemStatusClient:
         """Make HNAP request with retry logic for network errors."""
         last_capture = None
         result = None
-        exhausted = False
 
         for attempt in range(self.max_retries + 1):
             try:
@@ -226,7 +234,38 @@ class ArrisModemStatusClient:
                 response_obj = getattr(e, "response", None)
                 last_capture = self._analyze_error(e, soap_action, response_obj)
 
-                # Only retry for network/timeout errors, not HTTP errors
+                # Convert to our custom exceptions
+                if isinstance(e, requests.exceptions.Timeout):
+                    raise ArrisTimeoutError(
+                        f"Request to {soap_action} timed out",
+                        details={
+                            "operation": soap_action,
+                            "attempt": attempt + 1,
+                            "timeout": self.timeout,
+                        },
+                    ) from e
+
+                if isinstance(e, requests.exceptions.ConnectionError):
+                    if attempt < self.max_retries:
+                        logger.debug(f"🔧 Connection error, attempt {attempt + 1}")
+                        continue
+                    else:
+                        raise wrap_connection_error(e, self.host, self.port) from e
+
+                # HTTP errors should not be retried
+                if response_obj is not None:
+                    status_code = getattr(response_obj, "status_code", None)
+                    if status_code:
+                        raise ArrisHTTPError(
+                            f"HTTP {status_code} error for {soap_action}",
+                            status_code=status_code,
+                            details={
+                                "operation": soap_action,
+                                "response_text": getattr(response_obj, "text", "")[:500],
+                            },
+                        ) from e
+
+                # Only retry for network/timeout errors
                 error_str = str(e).lower()
                 if any(term in error_str for term in ["timeout", "connection", "network"]):
                     mode_str = "concurrent" if self.concurrent else "serial"
@@ -243,9 +282,6 @@ class ArrisModemStatusClient:
             except Exception as e:
                 logger.error(f"❌ Unexpected error in {soap_action}: {e}")
                 break
-        else:
-            # Loop completed without break
-            exhausted = True
 
         if exhausted and result is None:
             logger.error(f"💥 All retry attempts exhausted for {soap_action}")
@@ -332,9 +368,6 @@ class ArrisModemStatusClient:
 
                 return str(response.text)
             else:
-                error = requests.exceptions.RequestException(f"HTTP {response.status_code}")
-                error.response = response
-
                 # Record failed timing
                 if self.instrumentation:
                     self.instrumentation.record_timing(
@@ -345,8 +378,18 @@ class ArrisModemStatusClient:
                         http_status=response.status_code,
                     )
 
-                raise error
+                raise ArrisHTTPError(
+                    f"HTTP {response.status_code} response from modem",
+                    status_code=response.status_code,
+                    details={
+                        "operation": soap_action,
+                        "response_text": response.text[:500],
+                    },
+                )
 
+        except ArrisHTTPError:
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
             # Record exception timing
             if self.instrumentation:
@@ -379,7 +422,17 @@ class ArrisModemStatusClient:
         return f"{auth_hash} {timestamp}"
 
     def authenticate(self) -> bool:
-        """Perform HNAP authentication with relaxed HTTP parsing."""
+        """
+        Perform HNAP authentication with relaxed HTTP parsing.
+
+        Returns:
+            True if authentication successful, False otherwise
+
+        Raises:
+            ArrisAuthenticationError: When authentication fails
+            ArrisConnectionError: When connection to modem fails
+            ArrisTimeoutError: When timeout occurs during authentication
+        """
         try:
             logger.info("🔐 Starting authentication...")
             start_time = (
@@ -412,7 +465,11 @@ class ArrisModemStatusClient:
                         success=False,
                         error_type="challenge_failed",
                     )
-                return False
+
+                raise ArrisAuthenticationError(
+                    "Failed to get authentication challenge",
+                    details={"phase": "challenge", "username": self.username},
+                )
 
             if self.instrumentation:
                 self.instrumentation.record_timing("authentication_challenge", challenge_start, success=True)
@@ -434,7 +491,15 @@ class ArrisModemStatusClient:
                         success=False,
                         error_type="challenge_parse_failed",
                     )
-                return False
+
+                raise ArrisParsingError(
+                    "Failed to parse authentication challenge response",
+                    details={
+                        "phase": "challenge",
+                        "parse_error": str(e),
+                        "response": challenge_response[:200],
+                    },
+                ) from e
 
             # Step 2: Compute private key and login password
             key_computation_start = (
@@ -517,8 +582,18 @@ class ArrisModemStatusClient:
                         error_type="login_failed",
                     )
 
-                return False
+                raise ArrisAuthenticationError(
+                    "Authentication failed - invalid credentials or modem response",
+                    details={
+                        "phase": "login",
+                        "username": self.username,
+                        "response": login_response[:200] if login_response else "None",
+                    },
+                )
 
+        except (ArrisAuthenticationError, ArrisConnectionError, ArrisTimeoutError, ArrisHTTPError, ArrisParsingError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
             logger.error(f"Authentication error: {e}")
 
@@ -530,7 +605,11 @@ class ArrisModemStatusClient:
                     error_type=str(type(e).__name__),
                 )
 
-            return False
+            # Wrap unexpected errors
+            raise ArrisAuthenticationError(
+                f"Unexpected error during authentication: {str(e)}",
+                details={"error_type": type(e).__name__, "error": str(e)},
+            ) from e
 
     def get_status(self) -> Dict[str, Any]:
         """
@@ -538,6 +617,15 @@ class ArrisModemStatusClient:
 
         Uses concurrent or serial requests based on configuration, with built-in
         relaxed HTTP parsing for compatibility with Arris modems.
+
+        Returns:
+            Dictionary containing modem status information
+
+        Raises:
+            ArrisAuthenticationError: When authentication is required but fails
+            ArrisOperationError: When status retrieval fails
+            ArrisConnectionError: When connection to modem fails
+            ArrisTimeoutError: When timeout occurs during status retrieval
         """
         # Initialize start_time at the beginning to fix variable scoping
         start_time = self.instrumentation.start_timer("get_status_complete") if self.instrumentation else time.time()
@@ -545,7 +633,7 @@ class ArrisModemStatusClient:
         try:
             if not self.authenticated:
                 if not self.authenticate():
-                    raise RuntimeError("Authentication failed")
+                    raise ArrisAuthenticationError("Authentication required but failed")
 
             mode_str = "concurrent" if self.concurrent else "serial"
             logger.info(f"📊 Retrieving modem status with {mode_str} processing...")
@@ -653,6 +741,17 @@ class ArrisModemStatusClient:
                 if self.instrumentation:
                     self.instrumentation.record_timing("serial_request_processing", serial_start, success=True)
 
+            # Check if we got any responses
+            if not responses:
+                raise ArrisOperationError(
+                    "Failed to retrieve any status data from modem",
+                    details={
+                        "requests_attempted": len(request_definitions),
+                        "successful_requests": successful_requests,
+                        "mode": mode_str,
+                    },
+                )
+
             # Parse responses
             parsing_start = (
                 self.instrumentation.start_timer("response_parsing") if self.instrumentation else time.time()
@@ -702,6 +801,9 @@ class ArrisModemStatusClient:
 
             return parsed_data
 
+        except (ArrisAuthenticationError, ArrisConnectionError, ArrisTimeoutError, ArrisHTTPError, ArrisParsingError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
             logger.error(f"Status retrieval failed: {e}")
 
@@ -713,7 +815,11 @@ class ArrisModemStatusClient:
                     error_type=str(type(e).__name__),
                 )
 
-            raise
+            # Wrap unexpected errors
+            raise ArrisOperationError(
+                f"Unexpected error during status retrieval: {str(e)}",
+                details={"error_type": type(e).__name__, "error": str(e)},
+            ) from e
 
     def get_performance_metrics(self) -> Dict[str, Any]:
         """Get detailed performance metrics from instrumentation."""
@@ -918,6 +1024,7 @@ class ArrisModemStatusClient:
 
             except json.JSONDecodeError as e:
                 logger.warning(f"Parse failed for {response_type}: {e}")
+                # Don't raise, continue with other responses
 
         if not parsed_data["downstream_channels"] and not parsed_data["upstream_channels"]:
             parsed_data["channel_data_available"] = False
@@ -943,6 +1050,7 @@ class ArrisModemStatusClient:
 
         except Exception as e:
             logger.error(f"Channel parsing error: {e}")
+            # Return empty channels rather than raising
 
         return channels
 
@@ -987,6 +1095,7 @@ class ArrisModemStatusClient:
 
         except Exception as e:
             logger.error(f"Error parsing {channel_type} channel string: {e}")
+            # Return what we have so far
 
         return channels
 

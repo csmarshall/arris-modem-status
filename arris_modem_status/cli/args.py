@@ -11,6 +11,8 @@ License: MIT
 import argparse
 import logging
 
+from arris_modem_status.exceptions import ArrisConfigurationError
+
 logger = logging.getLogger(__name__)
 
 
@@ -124,6 +126,9 @@ def parse_args() -> argparse.Namespace:
 
     Returns:
         Parsed arguments namespace
+
+    Raises:
+        ArrisConfigurationError: If arguments are invalid
     """
     parser = create_parser()
     args = parser.parse_args()
@@ -144,22 +149,34 @@ def validate_args(args: argparse.Namespace) -> None:
         args: Parsed arguments namespace
 
     Raises:
-        ValueError: If arguments are invalid
+        ArrisConfigurationError: If arguments are invalid
     """
     # Validate timeout
     if args.timeout <= 0:
-        raise ValueError("Timeout must be greater than 0")
+        raise ArrisConfigurationError(
+            "Timeout must be greater than 0",
+            details={"parameter": "timeout", "value": args.timeout, "valid_range": "> 0"},
+        )
 
     # Validate workers
     if args.workers < 1:
-        raise ValueError("Workers must be at least 1")
+        raise ArrisConfigurationError(
+            "Workers must be at least 1",
+            details={"parameter": "workers", "value": args.workers, "valid_range": ">= 1"},
+        )
 
     # Validate retries
     if args.retries < 0:
-        raise ValueError("Retries cannot be negative")
+        raise ArrisConfigurationError(
+            "Retries cannot be negative",
+            details={"parameter": "retries", "value": args.retries, "valid_range": ">= 0"},
+        )
 
     # Validate port
     if args.port < 1 or args.port > 65535:
-        raise ValueError("Port must be between 1 and 65535")
+        raise ArrisConfigurationError(
+            "Port must be between 1 and 65535",
+            details={"parameter": "port", "value": args.port, "valid_range": "1-65535"},
+        )
 
     logger.debug("Arguments validated successfully")

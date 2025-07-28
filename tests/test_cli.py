@@ -29,6 +29,14 @@ from arris_modem_status.cli.formatters import (
 )
 from arris_modem_status.cli.logging_setup import get_logger, setup_logging
 from arris_modem_status.cli.main import create_client, main, perform_connectivity_check, process_modem_status
+from arris_modem_status.exceptions import (
+    ArrisAuthenticationError,
+    ArrisConfigurationError,
+    ArrisConnectionError,
+    ArrisModemError,
+    ArrisOperationError,
+    ArrisTimeoutError,
+)
 
 
 @pytest.mark.unit
@@ -101,22 +109,32 @@ class TestCLIArgs:
         """Test argument validation with invalid timeout."""
         args = argparse.Namespace(timeout=0, workers=2, retries=3, port=443)
 
-        with pytest.raises(ValueError, match="Timeout must be greater than 0"):
+        with pytest.raises(ArrisConfigurationError) as exc_info:
             validate_args(args)
+
+        assert "Timeout must be greater than 0" in str(exc_info.value)
+        assert exc_info.value.details["parameter"] == "timeout"
 
     def test_validate_args_invalid_workers(self):
         """Test argument validation with invalid workers."""
         args = argparse.Namespace(timeout=30, workers=0, retries=3, port=443)
 
-        with pytest.raises(ValueError, match="Workers must be at least 1"):
+        with pytest.raises(ArrisConfigurationError) as exc_info:
             validate_args(args)
+
+        assert "Workers must be at least 1" in str(exc_info.value)
+        assert exc_info.value.details["parameter"] == "workers"
 
     def test_validate_args_invalid_port(self):
         """Test argument validation with invalid port."""
         args = argparse.Namespace(timeout=30, workers=2, retries=3, port=70000)
 
-        with pytest.raises(ValueError, match="Port must be between 1 and 65535"):
+        with pytest.raises(ArrisConfigurationError) as exc_info:
             validate_args(args)
+
+        assert "Port must be between 1 and 65535" in str(exc_info.value)
+        assert exc_info.value.details["parameter"] == "port"
+        assert exc_info.value.details["value"] == 70000
 
     @patch("sys.argv", ["arris-modem-status", "--password", "test123"])
     def test_parse_args_integration(self):
@@ -524,6 +542,166 @@ class TestCLIMainIntegration:
             MockClientClass.assert_called_once()
             call_kwargs = MockClientClass.call_args[1]
             assert call_kwargs["concurrent"] is False
+
+    def test_main_configuration_error(self):
+        """Test main execution with configuration error."""
+        with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--port", "0"]):
+            stderr_capture = StringIO()
+
+            with patch("sys.stderr", stderr_capture):
+                result = main()
+
+            assert result == 1
+            stderr_output = stderr_capture.getvalue()
+            assert "Configuration error" in stderr_output
+            assert "Run with --help" in stderr_output
+
+    def test_main_authentication_error(self):
+        """Test main execution with authentication error."""
+        MockClientClass = Mock()
+        mock_client_instance = MagicMock()
+        MockClientClass.return_value = mock_client_instance
+
+        # Make get_status raise AuthenticationError
+        mock_client_instance.get_status.side_effect = ArrisAuthenticationError(
+            "Invalid password", details={"username": "admin"}
+        )
+
+        # Setup context manager
+        mock_client_instance.__enter__.return_value = mock_client_instance
+        mock_client_instance.__exit__.return_value = None
+
+        with patch("sys.argv", ["arris-modem-status", "--password", "wrong_password"]):
+            stderr_capture = StringIO()
+
+            with patch("sys.stderr", stderr_capture):
+                result = main(client_class=MockClientClass)
+
+            assert result == 1
+            stderr_output = stderr_capture.getvalue()
+            assert "Authentication error" in stderr_output
+            assert "verify your password" in stderr_output
+
+    def test_main_timeout_error(self):
+        """Test main execution with timeout error."""
+        MockClientClass = Mock()
+        mock_client_instance = MagicMock()
+        MockClientClass.return_value = mock_client_instance
+
+        # Make get_status raise TimeoutError
+        mock_client_instance.get_status.side_effect = ArrisTimeoutError("Request timed out", details={"timeout": 30})
+
+        # Setup context manager
+        mock_client_instance.__enter__.return_value = mock_client_instance
+        mock_client_instance.__exit__.return_value = None
+
+        with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
+            stderr_capture = StringIO()
+
+            with patch("sys.stderr", stderr_capture):
+                result = main(client_class=MockClientClass)
+
+            assert result == 1
+            stderr_output = stderr_capture.getvalue()
+            assert "Timeout error" in stderr_output
+            assert "--timeout" in stderr_output
+
+    def test_main_connection_error(self):
+        """Test main execution with connection error."""
+        MockClientClass = Mock()
+        mock_client_instance = MagicMock()
+        MockClientClass.return_value = mock_client_instance
+
+        # Make get_status raise ConnectionError
+        mock_client_instance.get_status.side_effect = ArrisConnectionError(
+            "Cannot reach modem", details={"host": "192.168.100.1", "port": 443}
+        )
+
+        # Setup context manager
+        mock_client_instance.__enter__.return_value = mock_client_instance
+        mock_client_instance.__exit__.return_value = None
+
+        with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
+            stderr_capture = StringIO()
+
+            with patch("sys.stderr", stderr_capture):
+                result = main(client_class=MockClientClass)
+
+            assert result == 1
+            stderr_output = stderr_capture.getvalue()
+            assert "Connection error" in stderr_output
+
+    def test_main_operation_error_concurrent(self):
+        """Test main execution with operation error in concurrent mode."""
+        MockClientClass = Mock()
+        mock_client_instance = MagicMock()
+        MockClientClass.return_value = mock_client_instance
+
+        # Make get_status raise OperationError
+        mock_client_instance.get_status.side_effect = ArrisOperationError("No data received", details={"attempts": 3})
+
+        # Setup context manager
+        mock_client_instance.__enter__.return_value = mock_client_instance
+        mock_client_instance.__exit__.return_value = None
+
+        with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
+            stderr_capture = StringIO()
+
+            with patch("sys.stderr", stderr_capture):
+                result = main(client_class=MockClientClass)
+
+            assert result == 1
+            stderr_output = stderr_capture.getvalue()
+            assert "Operation error" in stderr_output
+            assert "--serial" in stderr_output
+
+    def test_main_operation_error_serial(self):
+        """Test main execution with operation error in serial mode."""
+        MockClientClass = Mock()
+        mock_client_instance = MagicMock()
+        MockClientClass.return_value = mock_client_instance
+
+        # Make get_status raise OperationError
+        mock_client_instance.get_status.side_effect = ArrisOperationError("No data received", details={"attempts": 3})
+
+        # Setup context manager
+        mock_client_instance.__enter__.return_value = mock_client_instance
+        mock_client_instance.__exit__.return_value = None
+
+        with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--serial"]):
+            stderr_capture = StringIO()
+
+            with patch("sys.stderr", stderr_capture):
+                result = main(client_class=MockClientClass)
+
+            assert result == 1
+            stderr_output = stderr_capture.getvalue()
+            assert "Operation error" in stderr_output
+            assert "Already using serial mode" in stderr_output
+
+    def test_main_generic_modem_error(self):
+        """Test main execution with generic ArrisModemError."""
+        MockClientClass = Mock()
+        mock_client_instance = MagicMock()
+        MockClientClass.return_value = mock_client_instance
+
+        # Make get_status raise generic ArrisModemError
+        mock_client_instance.get_status.side_effect = ArrisModemError("Something went wrong")
+
+        # Setup context manager
+        mock_client_instance.__enter__.return_value = mock_client_instance
+        mock_client_instance.__exit__.return_value = None
+
+        with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
+            stderr_capture = StringIO()
+
+            with patch("sys.stderr", stderr_capture):
+                result = main(client_class=MockClientClass)
+
+            assert result == 1
+            stderr_output = stderr_capture.getvalue()
+            assert "Something went wrong" in stderr_output
+            assert "Troubleshooting suggestions" in stderr_output
 
 
 @pytest.mark.unit

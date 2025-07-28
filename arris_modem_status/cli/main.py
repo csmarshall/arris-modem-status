@@ -16,6 +16,14 @@ from datetime import datetime
 from typing import Any, Optional, Type
 
 from arris_modem_status import ArrisModemStatusClient, __version__
+from arris_modem_status.exceptions import (
+    ArrisAuthenticationError,
+    ArrisConfigurationError,
+    ArrisConnectionError,
+    ArrisModemError,
+    ArrisOperationError,
+    ArrisTimeoutError,
+)
 
 from .args import parse_args
 from .connectivity import get_optimal_timeouts, print_connectivity_troubleshooting, quick_connectivity_check
@@ -169,6 +177,65 @@ def main(client_class: Optional[Type[ArrisModemStatusClient]] = None) -> Optiona
         # Successful completion returns None (implicitly 0)
         return None
 
+    except ArrisConfigurationError as e:
+        # Configuration errors - show the error and usage help
+        elapsed = time.time() - start_time
+        logger.error(f"Configuration error after {elapsed:.2f}s: {e}")
+        print(f"Configuration error: {e}", file=sys.stderr)
+        print("Run with --help for usage information", file=sys.stderr)
+        return 1
+
+    except ArrisAuthenticationError as e:
+        # Authentication failures - likely wrong password
+        elapsed = time.time() - start_time
+        logger.error(f"Authentication failed after {elapsed:.2f}s: {e}")
+        print(f"❌ Authentication error: {e}", file=sys.stderr)
+        print("Please verify your password is correct", file=sys.stderr)
+        return 1
+
+    except ArrisTimeoutError as e:
+        # Timeout errors - network or modem too slow
+        elapsed = time.time() - start_time
+        logger.error(f"Timeout after {elapsed:.2f}s: {e}")
+        print(f"⏱️  Timeout error: {e}", file=sys.stderr)
+        print("Try increasing --timeout or check network connectivity", file=sys.stderr)
+        return 1
+
+    except ArrisConnectionError as e:
+        # Connection errors - can't reach modem
+        elapsed = time.time() - start_time
+        logger.error(f"Connection failed after {elapsed:.2f}s: {e}")
+        print(f"🔌 Connection error: {e}", file=sys.stderr)
+
+        # Show connectivity troubleshooting if not already done
+        if not connectivity_checked and hasattr(e, "details"):
+            host = e.details.get("host", args.host)
+            port = e.details.get("port", args.port)
+            print_connectivity_troubleshooting(host, port, str(e))
+
+        return 1
+
+    except ArrisOperationError as e:
+        # Operation failures - modem returned errors or invalid data
+        elapsed = time.time() - start_time
+        logger.error(f"Operation failed after {elapsed:.2f}s: {e}")
+        print(f"⚠️  Operation error: {e}", file=sys.stderr)
+
+        if args.serial:
+            print("Already using serial mode. The modem may be unresponsive.", file=sys.stderr)
+        else:
+            print("Try using --serial mode for better compatibility", file=sys.stderr)
+
+        return 1
+
+    except ArrisModemError as e:
+        # Other Arris-specific errors
+        elapsed = time.time() - start_time
+        logger.error(f"Modem error after {elapsed:.2f}s: {e}")
+        print(f"Error: {e}", file=sys.stderr)
+        print_error_suggestions(debug=args.debug)
+        return 1
+
     except KeyboardInterrupt:
         elapsed = time.time() - start_time
         logger.error(f"Operation cancelled by user after {elapsed:.2f}s")
@@ -179,11 +246,12 @@ def main(client_class: Optional[Type[ArrisModemStatusClient]] = None) -> Optiona
         return 1
 
     except Exception as e:
+        # Unexpected errors - show full details in debug mode
         elapsed = time.time() - start_time
-        logger.error(f"Failed to get modem status after {elapsed:.2f}s: {e}")
+        logger.error(f"Unexpected error after {elapsed:.2f}s: {e}")
 
         # Print error to stderr with elapsed time
-        print(f"Error after {elapsed:.2f}s: {e}", file=sys.stderr)
+        print(f"Unexpected error after {elapsed:.2f}s: {e}", file=sys.stderr)
 
         # Check if this looks like a connectivity issue and we haven't done a quick check
         error_str = str(e).lower()

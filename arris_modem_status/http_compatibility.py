@@ -21,6 +21,8 @@ from requests.models import Response
 from urllib3.exceptions import InsecureRequestWarning
 from urllib3.util.retry import Retry
 
+from arris_modem_status.exceptions import ArrisConnectionError, ArrisTimeoutError
+
 # Configure HTTP compatibility warnings suppression
 urllib3.disable_warnings(InsecureRequestWarning)
 # Note: HeaderParsingError is not a Warning subclass, so we can't disable it this way
@@ -186,7 +188,18 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
                 sock = context.wrap_socket(sock, server_hostname=host)
 
             # Connect to server (now with SSL if HTTPS)
-            sock.connect((host, port))
+            try:
+                sock.connect((host, port))
+            except socket.timeout as e:
+                raise ArrisTimeoutError(
+                    f"Connection to {host}:{port} timed out",
+                    details={"host": host, "port": port, "timeout_type": "connection"},
+                ) from e
+            except socket.error as e:
+                raise ArrisConnectionError(
+                    f"Failed to connect to {host}:{port}",
+                    details={"host": host, "port": port, "error": str(e)},
+                ) from e
 
             # Build HTTP request
             http_request = self._build_raw_http_request(request, host, path)
@@ -200,6 +213,20 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
             # Parse response with browser-like tolerance
             return self._parse_response_tolerantly(raw_response, request)
 
+        except (ArrisConnectionError, ArrisTimeoutError):
+            # Re-raise our custom exceptions
+            raise
+        except ssl.SSLError as e:
+            raise ArrisConnectionError(
+                f"SSL error connecting to {host}:{port}",
+                details={"host": host, "port": port, "ssl_error": str(e)},
+            ) from e
+        except Exception as e:
+            # Wrap unexpected errors
+            raise ArrisConnectionError(
+                f"Unexpected error during raw socket request: {str(e)}",
+                details={"host": host, "port": port, "error_type": type(e).__name__},
+            ) from e
         finally:
             # Always close the socket
             sock.close()

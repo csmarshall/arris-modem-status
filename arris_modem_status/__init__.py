@@ -25,11 +25,32 @@ Example Usage:
     print(f"Internet: {status['internet_status']}")
     print(f"Channels: {len(status['downstream_channels'])} down, {len(status['upstream_channels'])} up")
 
+Error Handling:
+    from arris_modem_status import ArrisModemStatusClient, ArrisAuthenticationError, ArrisConnectionError
+
+    try:
+        client = ArrisModemStatusClient(password="your_password")
+        status = client.get_status()
+    except ArrisAuthenticationError as e:
+        print(f"Authentication failed: {e}")
+    except ArrisConnectionError as e:
+        print(f"Connection failed: {e}")
+
 Author: Charles Marshall
 License: MIT
 """
 
 from .client import ArrisModemStatusClient
+from .exceptions import (
+    ArrisAuthenticationError,
+    ArrisConfigurationError,
+    ArrisConnectionError,
+    ArrisHTTPError,
+    ArrisModemError,
+    ArrisOperationError,
+    ArrisParsingError,
+    ArrisTimeoutError,
+)
 from .models import ChannelInfo
 
 # Version information
@@ -39,8 +60,20 @@ __license__ = "MIT"
 
 # Public API
 __all__ = [
+    # Main client
     "ArrisModemStatusClient",
+    # Data models
     "ChannelInfo",
+    # Exceptions
+    "ArrisModemError",
+    "ArrisAuthenticationError",
+    "ArrisConnectionError",
+    "ArrisTimeoutError",
+    "ArrisHTTPError",
+    "ArrisParsingError",
+    "ArrisConfigurationError",
+    "ArrisOperationError",
+    # Metadata
     "__version__",
     "__author__",
     "__license__",
