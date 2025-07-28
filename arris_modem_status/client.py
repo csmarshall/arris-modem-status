@@ -213,6 +213,7 @@ class ArrisModemStatusClient:
         """Make HNAP request with retry logic for network errors."""
         last_capture = None
         result = None
+        exhausted = False  # Initialize exhausted variable
 
         for attempt in range(self.max_retries + 1):
             try:
@@ -261,7 +262,11 @@ class ArrisModemStatusClient:
                             status_code=status_code,
                             details={
                                 "operation": soap_action,
-                                "response_text": getattr(response_obj, "text", "")[:500],
+                                "response_text": (
+                                    getattr(response_obj, "text", "")[:500]
+                                    if hasattr(response_obj, "text") and isinstance(getattr(response_obj, "text", ""), str)
+                                    else ""
+                                ),
                             },
                         ) from e
 
