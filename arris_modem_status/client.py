@@ -139,7 +139,14 @@ class ArrisModemStatusClient:
                     partial_content = response.text[:500] if hasattr(response, "text") else ""
                 except Exception:
                     try:
-                        partial_content = str(response.content[:500])
+                        if hasattr(response, "content"):
+                            content = response.content
+                            if isinstance(content, bytes):
+                                partial_content = str(content[:500])
+                            else:
+                                partial_content = str(content)[:500]
+                        else:
+                            partial_content = "Unable to extract content"
                     except Exception:
                         partial_content = "Unable to extract content"
 
@@ -211,9 +218,10 @@ class ArrisModemStatusClient:
         extra_headers: Optional[Dict[str, str]] = None,
     ) -> Optional[str]:
         """Make HNAP request with retry logic for network errors."""
+        exhausted = False  # Initialize at the start of the method
         last_capture = None
         result = None
-        exhausted = False  # Initialize exhausted variable
+        exhausted = False  # Initialize at the start of the method
 
         for attempt in range(self.max_retries + 1):
             try:
@@ -235,8 +243,15 @@ class ArrisModemStatusClient:
                 response_obj = getattr(e, "response", None)
                 last_capture = self._analyze_error(e, soap_action, response_obj)
 
-                # Convert to our custom exceptions
-                if isinstance(e, requests.exceptions.Timeout):
+                # Check if this is a retryable error first
+                error_str = str(e).lower()
+                is_timeout = isinstance(e, (requests.exceptions.Timeout, requests.exceptions.ConnectTimeout))
+                is_network_error = isinstance(e, requests.exceptions.ConnectionError) or any(
+                    term in error_str for term in ["timeout", "connection", "network"]
+                )
+
+                # If it's a timeout and we've exhausted retries, raise TimeoutError
+                if is_timeout and attempt >= self.max_retries:
                     raise ArrisTimeoutError(
                         f"Request to {soap_action} timed out",
                         details={
@@ -257,22 +272,52 @@ class ArrisModemStatusClient:
                 if response_obj is not None:
                     status_code = getattr(response_obj, "status_code", None)
                     if status_code:
+                        # Get response text safely
+                        response_text = ""
+                        if hasattr(response_obj, "text") and isinstance(getattr(response_obj, "text", ""), str):
+                            response_text = response_obj.text[:500]
+
                         raise ArrisHTTPError(
                             f"HTTP {status_code} error for {soap_action}",
                             status_code=status_code,
                             details={
                                 "operation": soap_action,
-                                "response_text": (
-                                    getattr(response_obj, "text", "")[:500]
-                                    if hasattr(response_obj, "text") and isinstance(getattr(response_obj, "text", ""), str)
-                                    else ""
-                                ),
+                                "response_text": response_text,
+                            },
+                        ) from e
+                # Handle HTTPError specifically
+                if isinstance(e, requests.exceptions.HTTPError):
+                    # Extract status code from HTTPError
+                    status_code = None
+                    if hasattr(e, "response") and hasattr(e.response, "status_code"):
+                        status_code = e.response.status_code
+                    elif hasattr(response_obj, "status_code"):
+                        status_code = response_obj.status_code
+                    else:
+                        # Try to parse from error message
+                        import re
+
+                        match = re.search(r"(\d{3})", str(e))
+                        if match:
+                            status_code = int(match.group(1))
+
+                    if status_code:
+                        # Get response text safely
+                        response_text = ""
+                        if hasattr(response_obj, "text") and isinstance(getattr(response_obj, "text", ""), str):
+                            response_text = response_obj.text[:500]
+
+                        raise ArrisHTTPError(
+                            f"HTTP {status_code} error for {soap_action}",
+                            status_code=status_code,
+                            details={
+                                "operation": soap_action,
+                                "response_text": str(e)[:500],
                             },
                         ) from e
 
-                # Only retry for network/timeout errors
-                error_str = str(e).lower()
-                if any(term in error_str for term in ["timeout", "connection", "network"]):
+                # For network/timeout errors, check if we should retry
+                if is_network_error:
                     mode_str = "concurrent" if self.concurrent else "serial"
                     logger.debug(f"🔧 Network error in {mode_str} mode, attempt {attempt + 1}")
 
@@ -280,13 +325,16 @@ class ArrisModemStatusClient:
                         continue
                     else:
                         exhausted = True
+                        # For connection errors at the end, raise ArrisConnectionError
+                        if isinstance(e, requests.exceptions.ConnectionError) and not is_timeout:
+                            raise wrap_connection_error(e, self.host, self.port) from e
                 else:
-                    logger.error(f"❌ Non-retryable error for {soap_action}: {e}")
-                    break
+                    # Re-raise non-retryable errors
+                    raise
 
             except Exception as e:
-                logger.error(f"❌ Unexpected error in {soap_action}: {e}")
-                break
+                # Re-raise unexpected errors to preserve the exception type
+                raise
 
         if exhausted and result is None:
             logger.error(f"💥 All retry attempts exhausted for {soap_action}")

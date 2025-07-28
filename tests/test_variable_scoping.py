@@ -28,8 +28,15 @@ class TestVariableScoping:
             mock_post.side_effect = ConnectionError("Connection failed")
 
             client = ArrisModemStatusClient(password="test", host="test")
-            result = client.authenticate()
-            assert result is False
+
+            # With the new exception handling, ConnectionError should be raised as ArrisConnectionError
+            from arris_modem_status.exceptions import ArrisConnectionError
+
+            with pytest.raises(ArrisConnectionError) as exc_info:
+                client.authenticate()
+
+            # Verify the error message contains our connection failed message
+            assert "test:443" in str(exc_info.value)
 
     def test_cli_error_handling_no_undefined_vars(self):
         """Test CLI error handling doesn't have undefined variables."""

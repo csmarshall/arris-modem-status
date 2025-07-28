@@ -732,11 +732,13 @@ class TestHttpCompatibilityIntegration:
             error.response = Mock(status_code=403)
             mock_request.side_effect = error
 
-            result = client._make_hnap_request_with_retry("Test", {})
+            # Should raise ArrisHTTPError without retrying
+            with pytest.raises(ArrisHTTPError) as exc_info:
+                client._make_hnap_request_with_retry("Test", {})
 
             # Should not retry for HTTP errors
             assert mock_request.call_count == 1
-            assert result is None
+            assert exc_info.value.status_code == 403
 
 
 @pytest.mark.unit

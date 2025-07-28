@@ -409,7 +409,12 @@ class TestArrisModemStatusClientErrorHandling:
         with patch("requests.Session.post") as mock_post:
             from requests.exceptions import Timeout
 
-            mock_post.side_effect = Timeout("Connection timeout")
+            # Timeout should retry until exhausted
+            mock_post.side_effect = [
+                Timeout("Connection timeout"),
+                Timeout("Connection timeout"),
+                Timeout("Connection timeout"),
+            ]
 
             client = ArrisModemStatusClient(password="test", max_retries=2)
             client.authenticated = True
