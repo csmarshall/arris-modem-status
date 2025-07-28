@@ -271,3 +271,21 @@ security-check: ## Run security audit
 	@echo "$(GREEN)Running security audit...$(RESET)"
 	$(PIP) audit
 	@echo "$(GREEN)✅ Security audit complete$(RESET)"
+
+sync-tools: ## Synchronize tool versions across all configs
+	@echo "🔄 Synchronizing tool versions..."
+	@python scripts/sync_tool_versions.py
+
+update-tools: ## Update all development tools to latest versions
+	@echo "📦 Updating development tools..."
+	pip install --upgrade black isort flake8 mypy bandit pytest pre-commit
+	pre-commit autoupdate
+	@echo "✅ Tools updated! Run 'make sync-tools' to sync configs"
+
+check-versions: ## Check tool version consistency
+	@echo "🔍 Checking tool versions..."
+	@echo "Installed versions:"
+	@pip list | grep -E "black|isort|flake8|mypy|bandit|pytest|pre-commit"
+	@echo ""
+	@echo "Pre-commit versions:"
+	@grep -A1 "rev:" .pre-commit-config.yaml | grep -v "^--"

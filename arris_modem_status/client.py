@@ -219,8 +219,8 @@ class ArrisModemStatusClient:
     ) -> Optional[str]:
         """Make HNAP request with retry logic for network errors."""
         exhausted = False  # Initialize at the start of the method
-        last_capture = None
-        result = None
+        last_capture: Optional[ErrorCapture] = None
+        result: Optional[str] = None
 
         for attempt in range(self.max_retries + 1):
             try:
@@ -232,7 +232,7 @@ class ArrisModemStatusClient:
                 response = self._make_hnap_request_raw(soap_action, request_body, extra_headers)
 
                 if response is not None:
-                    if last_capture:
+                    if last_capture is not None:
                         last_capture.recovery_successful = True
                         logger.info(f"✅ Recovery successful for {soap_action} on attempt {attempt + 1}")
                     result = response
@@ -253,7 +253,7 @@ class ArrisModemStatusClient:
                 if is_timeout and attempt >= self.max_retries:
                     raise ArrisTimeoutError(
                         f"Request to {soap_action} timed out",
-                        details={"operation": soap_action, "attempt": attempt + 1, "timeout": self.timeout}
+                        details={"operation": soap_action, "attempt": attempt + 1, "timeout": self.timeout},
                     ) from e
                 # Handle ConnectionError (only reached if not a timeout that exhausted retries)
                 elif isinstance(e, requests.exceptions.ConnectionError):
@@ -277,7 +277,7 @@ class ArrisModemStatusClient:
                         raise ArrisHTTPError(
                             f"HTTP {status_code} error for {soap_action}",
                             status_code=status_code,
-                            details={"operation": soap_action, "response_text": response_text}
+                            details={"operation": soap_action, "response_text": response_text},
                         ) from e
                 # Handle HTTPError specifically
                 if isinstance(e, requests.exceptions.HTTPError):
@@ -306,7 +306,7 @@ class ArrisModemStatusClient:
                         raise ArrisHTTPError(
                             f"HTTP {status_code} error for {soap_action}",
                             status_code=status_code,
-                            details={"operation": soap_action, "response_text": str(e)[:500]}
+                            details={"operation": soap_action, "response_text": str(e)[:500]},
                         ) from e
 
                 # For network/timeout errors, check if we should retry
@@ -427,7 +427,7 @@ class ArrisModemStatusClient:
                 raise ArrisHTTPError(
                     f"HTTP {response.status_code} response from modem",
                     status_code=response.status_code,
-                    details={"operation": soap_action, "response_text": response.text[:500]}
+                    details={"operation": soap_action, "response_text": response.text[:500]},
                 )
 
         except ArrisHTTPError:
@@ -510,8 +510,7 @@ class ArrisModemStatusClient:
                     )
 
                 raise ArrisAuthenticationError(
-                    "Failed to get authentication challenge",
-                    details={"phase": "challenge", "username": self.username}
+                    "Failed to get authentication challenge", details={"phase": "challenge", "username": self.username}
                 )
 
             if self.instrumentation:
@@ -537,7 +536,7 @@ class ArrisModemStatusClient:
 
                 raise ArrisParsingError(
                     "Failed to parse authentication challenge response",
-                    details={"phase": "challenge", "parse_error": str(e), "response": challenge_response[:200]}
+                    details={"phase": "challenge", "parse_error": str(e), "response": challenge_response[:200]},
                 ) from e
 
             # Step 2: Compute private key and login password
@@ -623,7 +622,11 @@ class ArrisModemStatusClient:
 
                 raise ArrisAuthenticationError(
                     "Authentication failed - invalid credentials or modem response",
-                    details={"phase": "login", "username": self.username, "response": login_response[:200] if login_response else "None"}
+                    details={
+                        "phase": "login",
+                        "username": self.username,
+                        "response": login_response[:200] if login_response else "None",
+                    },
                 )
 
         except (ArrisAuthenticationError, ArrisConnectionError, ArrisTimeoutError, ArrisHTTPError, ArrisParsingError):
@@ -643,7 +646,7 @@ class ArrisModemStatusClient:
             # Wrap unexpected errors
             raise ArrisAuthenticationError(
                 f"Unexpected error during authentication: {str(e)}",
-                details={"error_type": type(e).__name__, "error": str(e)}
+                details={"error_type": type(e).__name__, "error": str(e)},
             ) from e
 
     def get_status(self) -> Dict[str, Any]:
@@ -780,7 +783,11 @@ class ArrisModemStatusClient:
             if not responses:
                 raise ArrisOperationError(
                     "Failed to retrieve any status data from modem",
-                    details={"requests_attempted": len(request_definitions), "successful_requests": successful_requests, "mode": mode_str}
+                    details={
+                        "requests_attempted": len(request_definitions),
+                        "successful_requests": successful_requests,
+                        "mode": mode_str,
+                    },
                 )
 
             # Parse responses
@@ -849,7 +856,7 @@ class ArrisModemStatusClient:
             # Wrap unexpected errors
             raise ArrisOperationError(
                 f"Unexpected error during status retrieval: {str(e)}",
-                details={"error_type": type(e).__name__, "error": str(e)}
+                details={"error_type": type(e).__name__, "error": str(e)},
             ) from e
 
     def get_performance_metrics(self) -> Dict[str, Any]:
