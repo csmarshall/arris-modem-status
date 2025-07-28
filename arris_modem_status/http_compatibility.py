@@ -169,14 +169,15 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
             port = 443 if request.url.startswith("https") else 80
 
         # Create raw socket connection
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        raw_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock = raw_sock  # Track the actual socket to close
 
         # Set timeout
         if timeout:
             if isinstance(timeout, tuple):
-                sock.settimeout(timeout[0])  # Use connect timeout
+                raw_sock.settimeout(timeout[0])  # Use connect timeout
             else:
-                sock.settimeout(timeout)
+                raw_sock.settimeout(timeout)
 
         try:
             # SSL wrap for HTTPS BEFORE connecting
@@ -185,7 +186,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
                 if not verify:
                     context.check_hostname = False
                     context.verify_mode = ssl.CERT_NONE
-                sock = context.wrap_socket(sock, server_hostname=host)
+                sock = context.wrap_socket(raw_sock, server_hostname=host)
 
             # Connect to server (now with SSL if HTTPS)
             try:
@@ -228,8 +229,15 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
                 details={"host": host, "port": port, "error_type": type(e).__name__},
             ) from e
         finally:
-            # Always close the socket
-            sock.close()
+            # Always close the socket - use the wrapped socket if SSL, otherwise raw
+            try:
+                sock.close()
+            except Exception:
+                # If closing the wrapped socket fails, try the raw socket
+                try:
+                    raw_sock.close()
+                except Exception:
+                    pass
 
     def _build_raw_http_request(self, request: requests.PreparedRequest, host: str, path: str) -> str:
         """Build raw HTTP request string from requests.Request object."""

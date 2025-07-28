@@ -37,23 +37,29 @@ class TestConnectionHandling:
         with patch("requests.Session.post") as mock_post:
             mock_post.side_effect = ConnectTimeout("Connection timeout")
 
-            client = ArrisModemStatusClient(password="test")
+            client = ArrisModemStatusClient(password="test", max_retries=0)
 
-            # With the new exception handling, this should raise ArrisTimeoutError
-            from arris_modem_status.exceptions import ArrisTimeoutError
+            # With the new exception handling, this should raise ArrisConnectionError
+            from arris_modem_status.exceptions import ArrisConnectionError
 
-            with pytest.raises(ArrisTimeoutError):
+            with pytest.raises(ArrisConnectionError) as exc_info:
                 client.authenticate()
+            
+            # Verify it's a connection error
+            assert "Failed to connect" in str(exc_info.value)
 
     def test_connection_error_handling(self):
         """Test handling of connection errors."""
         with patch("requests.Session.post") as mock_post:
             mock_post.side_effect = ConnectionError("Network unreachable")
 
-            client = ArrisModemStatusClient(password="test")
+            client = ArrisModemStatusClient(password="test", max_retries=0)
 
-            # With the new exception handling, this should raise ArrisTimeoutError
-            from arris_modem_status.exceptions import ArrisTimeoutError
+            # With the new exception handling, this should raise ArrisConnectionError
+            from arris_modem_status.exceptions import ArrisConnectionError
 
-            with pytest.raises(ArrisTimeoutError):
+            with pytest.raises(ArrisConnectionError) as exc_info:
                 client.authenticate()
+            
+            # Verify it's a connection error
+            assert "Failed to connect" in str(exc_info.value)

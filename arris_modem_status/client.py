@@ -275,7 +275,7 @@ class ArrisModemStatusClient:
                         # Get response text safely
                         response_text = ""
                         if hasattr(response_obj, "text") and isinstance(getattr(response_obj, "text", ""), str):
-                            response_text = response_obj.text[:500]
+                            response_text = response_obj.text[:500] if response_obj and hasattr(response_obj, "text") else ""
 
                         raise ArrisHTTPError(
                             f"HTTP {status_code} error for {soap_action}",
@@ -291,7 +291,7 @@ class ArrisModemStatusClient:
                     status_code = None
                     if hasattr(e, "response") and hasattr(e.response, "status_code"):
                         status_code = e.response.status_code
-                    elif hasattr(response_obj, "status_code"):
+                    elif response_obj is not None and hasattr(response_obj, "status_code"):
                         status_code = response_obj.status_code
                     else:
                         # Try to parse from error message
@@ -305,7 +305,7 @@ class ArrisModemStatusClient:
                         # Get response text safely
                         response_text = ""
                         if hasattr(response_obj, "text") and isinstance(getattr(response_obj, "text", ""), str):
-                            response_text = response_obj.text[:500]
+                            response_text = response_obj.text[:500] if response_obj and hasattr(response_obj, "text") else ""
 
                         raise ArrisHTTPError(
                             f"HTTP {status_code} error for {soap_action}",
@@ -332,7 +332,7 @@ class ArrisModemStatusClient:
                     # Re-raise non-retryable errors
                     raise
 
-            except Exception as e:
+            except Exception:
                 # Re-raise unexpected errors to preserve the exception type
                 raise
 
