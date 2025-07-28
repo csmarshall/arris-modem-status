@@ -14,7 +14,7 @@ import requests
 from urllib3.exceptions import HeaderParsingError
 
 from arris_modem_status import ArrisModemStatusClient
-from arris_modem_status.exceptions import ArrisHTTPError, ArrisTimeoutError, ArrisConnectionError
+from arris_modem_status.exceptions import ArrisConnectionError, ArrisHTTPError, ArrisTimeoutError
 from arris_modem_status.http_compatibility import ArrisCompatibleHTTPAdapter, create_arris_compatible_session
 from arris_modem_status.instrumentation import PerformanceInstrumentation
 
@@ -892,9 +892,9 @@ class TestHTTPCompatibilityErrorPaths:
             # The SSL error should be wrapped as ArrisConnectionError
             with pytest.raises(ArrisConnectionError) as exc_info:
                 adapter._raw_socket_request(request)
-            
+
             assert "SSL error connecting" in str(exc_info.value)
-            
+
             # The raw socket should be closed in the finally block
             # Since SSL wrapping failed, sock is still the raw socket
             mock_socket.close.assert_called()
@@ -923,13 +923,13 @@ class TestHTTPCompatibilityErrorPaths:
                 # SSL errors should be wrapped as ArrisConnectionError
                 with pytest.raises(ArrisConnectionError) as exc_info:
                     adapter._raw_socket_request(request, verify=False)
-                
+
                 assert "SSL error connecting" in str(exc_info.value)
 
                 # Should have set SSL context properly before error
                 assert mock_context.check_hostname is False
                 assert mock_context.verify_mode == ssl.CERT_NONE
-                
+
                 # Socket should be closed
                 mock_socket.close.assert_called()
 

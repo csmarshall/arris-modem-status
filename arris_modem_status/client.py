@@ -221,7 +221,6 @@ class ArrisModemStatusClient:
         exhausted = False  # Initialize at the start of the method
         last_capture = None
         result = None
-        exhausted = False  # Initialize at the start of the method
 
         for attempt in range(self.max_retries + 1):
             try:
@@ -254,14 +253,10 @@ class ArrisModemStatusClient:
                 if is_timeout and attempt >= self.max_retries:
                     raise ArrisTimeoutError(
                         f"Request to {soap_action} timed out",
-                        details={
-                            "operation": soap_action,
-                            "attempt": attempt + 1,
-                            "timeout": self.timeout,
-                        },
+                        details={"operation": soap_action, "attempt": attempt + 1, "timeout": self.timeout}
                     ) from e
-
-                if isinstance(e, requests.exceptions.ConnectionError):
+                # Handle ConnectionError (only reached if not a timeout that exhausted retries)
+                elif isinstance(e, requests.exceptions.ConnectionError):
                     if attempt < self.max_retries:
                         logger.debug(f"🔧 Connection error, attempt {attempt + 1}")
                         continue
@@ -275,15 +270,14 @@ class ArrisModemStatusClient:
                         # Get response text safely
                         response_text = ""
                         if hasattr(response_obj, "text") and isinstance(getattr(response_obj, "text", ""), str):
-                            response_text = response_obj.text[:500] if response_obj and hasattr(response_obj, "text") else ""
+                            response_text = (
+                                response_obj.text[:500] if response_obj and hasattr(response_obj, "text") else ""
+                            )
 
                         raise ArrisHTTPError(
                             f"HTTP {status_code} error for {soap_action}",
                             status_code=status_code,
-                            details={
-                                "operation": soap_action,
-                                "response_text": response_text,
-                            },
+                            details={"operation": soap_action, "response_text": response_text}
                         ) from e
                 # Handle HTTPError specifically
                 if isinstance(e, requests.exceptions.HTTPError):
@@ -305,15 +299,14 @@ class ArrisModemStatusClient:
                         # Get response text safely
                         response_text = ""
                         if hasattr(response_obj, "text") and isinstance(getattr(response_obj, "text", ""), str):
-                            response_text = response_obj.text[:500] if response_obj and hasattr(response_obj, "text") else ""
+                            response_text = (
+                                response_obj.text[:500] if response_obj and hasattr(response_obj, "text") else ""
+                            )
 
                         raise ArrisHTTPError(
                             f"HTTP {status_code} error for {soap_action}",
                             status_code=status_code,
-                            details={
-                                "operation": soap_action,
-                                "response_text": str(e)[:500],
-                            },
+                            details={"operation": soap_action, "response_text": str(e)[:500]}
                         ) from e
 
                 # For network/timeout errors, check if we should retry
@@ -434,10 +427,7 @@ class ArrisModemStatusClient:
                 raise ArrisHTTPError(
                     f"HTTP {response.status_code} response from modem",
                     status_code=response.status_code,
-                    details={
-                        "operation": soap_action,
-                        "response_text": response.text[:500],
-                    },
+                    details={"operation": soap_action, "response_text": response.text[:500]}
                 )
 
         except ArrisHTTPError:
@@ -521,7 +511,7 @@ class ArrisModemStatusClient:
 
                 raise ArrisAuthenticationError(
                     "Failed to get authentication challenge",
-                    details={"phase": "challenge", "username": self.username},
+                    details={"phase": "challenge", "username": self.username}
                 )
 
             if self.instrumentation:
@@ -547,11 +537,7 @@ class ArrisModemStatusClient:
 
                 raise ArrisParsingError(
                     "Failed to parse authentication challenge response",
-                    details={
-                        "phase": "challenge",
-                        "parse_error": str(e),
-                        "response": challenge_response[:200],
-                    },
+                    details={"phase": "challenge", "parse_error": str(e), "response": challenge_response[:200]}
                 ) from e
 
             # Step 2: Compute private key and login password
@@ -637,11 +623,7 @@ class ArrisModemStatusClient:
 
                 raise ArrisAuthenticationError(
                     "Authentication failed - invalid credentials or modem response",
-                    details={
-                        "phase": "login",
-                        "username": self.username,
-                        "response": login_response[:200] if login_response else "None",
-                    },
+                    details={"phase": "login", "username": self.username, "response": login_response[:200] if login_response else "None"}
                 )
 
         except (ArrisAuthenticationError, ArrisConnectionError, ArrisTimeoutError, ArrisHTTPError, ArrisParsingError):
@@ -661,7 +643,7 @@ class ArrisModemStatusClient:
             # Wrap unexpected errors
             raise ArrisAuthenticationError(
                 f"Unexpected error during authentication: {str(e)}",
-                details={"error_type": type(e).__name__, "error": str(e)},
+                details={"error_type": type(e).__name__, "error": str(e)}
             ) from e
 
     def get_status(self) -> Dict[str, Any]:
@@ -798,11 +780,7 @@ class ArrisModemStatusClient:
             if not responses:
                 raise ArrisOperationError(
                     "Failed to retrieve any status data from modem",
-                    details={
-                        "requests_attempted": len(request_definitions),
-                        "successful_requests": successful_requests,
-                        "mode": mode_str,
-                    },
+                    details={"requests_attempted": len(request_definitions), "successful_requests": successful_requests, "mode": mode_str}
                 )
 
             # Parse responses
@@ -871,7 +849,7 @@ class ArrisModemStatusClient:
             # Wrap unexpected errors
             raise ArrisOperationError(
                 f"Unexpected error during status retrieval: {str(e)}",
-                details={"error_type": type(e).__name__, "error": str(e)},
+                details={"error_type": type(e).__name__, "error": str(e)}
             ) from e
 
     def get_performance_metrics(self) -> Dict[str, Any]:

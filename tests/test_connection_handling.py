@@ -39,14 +39,14 @@ class TestConnectionHandling:
 
             client = ArrisModemStatusClient(password="test", max_retries=0)
 
-            # With the new exception handling, this should raise ArrisConnectionError
-            from arris_modem_status.exceptions import ArrisConnectionError
+            # ConnectTimeout is a timeout exception, so it should raise ArrisTimeoutError
+            from arris_modem_status.exceptions import ArrisTimeoutError
 
-            with pytest.raises(ArrisConnectionError) as exc_info:
+            with pytest.raises(ArrisTimeoutError) as exc_info:
                 client.authenticate()
-            
-            # Verify it's a connection error
-            assert "Failed to connect" in str(exc_info.value)
+
+            # Verify it's a timeout error
+            assert "timed out" in str(exc_info.value)
 
     def test_connection_error_handling(self):
         """Test handling of connection errors."""
@@ -60,6 +60,6 @@ class TestConnectionHandling:
 
             with pytest.raises(ArrisConnectionError) as exc_info:
                 client.authenticate()
-            
-            # Verify it's a connection error
-            assert "Failed to connect" in str(exc_info.value)
+
+            # Verify it's a connection error - check for host:port in message
+            assert "192.168.100.1:443" in str(exc_info.value)
