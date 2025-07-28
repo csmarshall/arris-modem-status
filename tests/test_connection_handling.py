@@ -5,8 +5,6 @@ from unittest.mock import patch
 import pytest
 from requests.exceptions import ConnectionError, ConnectTimeout
 
-from arris_modem_status.exceptions import ArrisConnectionError, ArrisTimeoutError
-
 try:
     from arris_modem_status import ArrisModemStatusClient
 
