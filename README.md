@@ -67,6 +67,13 @@ for ch in status['downstream_channels']:
     downstream_power.labels(channel=ch.channel_id).set(float(ch.power.split()[0]))
 ```
 
+## Disclaimer
+
+This is an unofficial library not affiliated with ARRIS® or CommScope, Inc. ARRIS® is a registered trademark of CommScope, Inc.
+
+This is a personal project provided as-is under the MIT license.
+
+
 ## Found a Bug? Want a Feature? 🐛
 
 Open an issue! PRs welcome! The codebase is pretty clean thanks to the AI helping me follow best practices.

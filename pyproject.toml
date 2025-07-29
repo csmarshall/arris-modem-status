@@ -10,9 +10,9 @@ name = "arris-modem-status"
 dynamic = [
     "version",
 ]
-description = "High-performance Python client for Arris cable modem status via HNAP with HTTP compatibility"
+description = "Unofficial Python client for Arris cable modem status via HNAP"
 authors = [
-    { name = "Charles Marshall", email = "charles@wozi.com" },
+    { name = "Charles Marshall" },
 ]
 readme = "README.md"
 requires-python = ">=3.9"

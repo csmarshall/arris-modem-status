@@ -16,6 +16,9 @@ Features:
 - Comprehensive error analysis and monitoring integration
 - Production-ready with extensive testing and validation
 
+
+This is an unofficial library not affiliated with ARRIS® or CommScope.
+
 Example Usage:
     from arris_modem_status import ArrisModemStatusClient
 
