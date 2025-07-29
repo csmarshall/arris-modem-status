@@ -70,16 +70,6 @@ test-quick: ## Quick test without coverage
 	pytest tests/ -x -q -m "not integration"
 	@echo "$(GREEN)✅ Quick tests complete$(RESET)"
 
-format: ## Format code with Black, ruff check --select I --fix, and autopep8
-	@echo "$(GREEN)Formatting Python code...$(RESET)"
-	# Black handles most formatting including whitespace
-	black arris_modem_status/ tests/ --line-length 120
-	# ruff check --select I --fix handles import sorting
-	ruff check --select I --fix arris_modem_status/ tests/ --profile black --line-length 120
-	# autopep8 for any remaining PEP8 issues (whitespace, etc)
-	autopep8 --in-place --recursive --max-line-length 120 arris_modem_status/ tests/
-	@echo "$(GREEN)✅ Code formatting complete$(RESET)"
-
 format-check: ## Check formatting without changing files
 	@echo "$(GREEN)Checking code formatting...$(RESET)"
 	black --check arris_modem_status/ tests/ --line-length 120
@@ -150,11 +140,7 @@ security-scan: ## Run security scans with bandit and pip-audit
 quality: format ruff test docstring-coverage security-scan ## Run all quality checks
 	@echo "$(GREEN)✅ All quality checks complete$(RESET)"
 
-sync-tools: ## Synchronize tool versions across all configs
-	@echo "$(GREEN)Synchronizing tool versions...$(RESET)"
-	python scripts/sync_tool_versions.py
-	@echo "$(GREEN)✅ Tool versions synchronized$(RESET)"
-ruff check-report: ## Generate comprehensive ruff check report
+ruff-report: ## Generate comprehensive ruff check report
 	@echo "$(GREEN)Running comprehensive ruff check analysis...$(RESET)"
 	@echo "======================================"
 	# Basic check
@@ -174,7 +160,7 @@ ruff check-report: ## Generate comprehensive ruff check report
 	@echo "======================================"
 	@echo "$(GREEN)✅ Flake8 analysis complete$(RESET)"
 
-ruff check-strict: ## Run ruff check with strict settings
+ruff-strict: ## Run ruff check with strict settings
 	@echo "$(GREEN)Running strict ruff check checks...$(RESET)"
 	ruff check arris_modem_status tests --max-line-length=79 --max-complexity=5 --select=E,W,F,C,N
 
@@ -314,14 +300,14 @@ sync-tools: ## Synchronize tool versions across all configs
 
 update-tools: ## Update all development tools to latest versions
 	@echo "📦 Updating development tools..."
-	pip install --upgrade black ruff check --select I --fix ruff check mypy bandit pytest pre-commit
+	pip install --upgrade black ruff mypy bandit pytest pre-commit
 	pre-commit autoupdate
 	@echo "✅ Tools updated! Run 'make sync-tools' to sync configs"
 
 check-versions: ## Check tool version consistency
 	@echo "🔍 Checking tool versions..."
 	@echo "Installed versions:"
-	@pip list | grep -E "black|ruff check --select I --fix|ruff check|mypy|bandit|pytest|pre-commit"
+	@pip list | grep -E "black|ruff|mypy|bandit|pytest|pre-commit"
 	@echo ""
 	@echo "Pre-commit versions:"
 	@grep -A1 "rev:" .pre-commit-config.yaml | grep -v "^--"

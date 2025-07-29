@@ -133,7 +133,7 @@ class PerformanceInstrumentation:
         insights = []
 
         # Authentication performance
-        auth_ops = [op for op in operation_stats.keys() if "auth" in op.lower()]
+        auth_ops = [op for op in operation_stats if "auth" in op.lower()]
         if auth_ops:
             # Calculate total auth time across all auth operations
             total_auth_time = 0

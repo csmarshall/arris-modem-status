@@ -368,7 +368,7 @@ class TestResponseParsing:
         # Should parse standard response correctly
         assert response.status_code == 200
         assert response.headers["Content-Type"] == "application/json"
-        assert b'{"status": "success"}' == response.content
+        assert response.content == b'{"status": "success"}'
 
     def test_parse_response_tolerantly_nonstandard(self):
         """Test tolerant response parsing with non-standard HTTP."""
@@ -392,7 +392,7 @@ class TestResponseParsing:
         assert response.status_code == 200
         assert response.headers["Content-Type"] == "text/html"
         assert response.headers["Some-Weird-Header"] == "value_without_space"
-        assert b"<html><body>content</body></html>" == response.content
+        assert response.content == b"<html><body>content</body></html>"
 
     def test_parse_response_tolerantly_malformed(self):
         """Test tolerant response parsing with malformed HTTP."""
@@ -785,7 +785,7 @@ class TestEdgeCases:
         adapter = ArrisCompatibleHTTPAdapter()
 
         mock_socket = Mock()
-        mock_socket.recv.side_effect = socket.error("Socket error")
+        mock_socket.recv.side_effect = OSError("Socket error")
 
         # Should handle socket errors gracefully
         response_data = adapter._receive_response_tolerantly(mock_socket)

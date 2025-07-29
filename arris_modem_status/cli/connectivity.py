@@ -84,9 +84,8 @@ def get_optimal_timeouts(host: str) -> Tuple[float, float]:
     if is_local:
         logger.debug(f"Host {host} appears to be local, using shorter timeouts")
         return (2, 8)  # Shorter timeouts for local devices
-    else:
-        logger.debug(f"Host {host} appears to be remote, using longer timeouts")
-        return (5, 15)  # Longer timeouts for remote access
+    logger.debug(f"Host {host} appears to be remote, using longer timeouts")
+    return (5, 15)  # Longer timeouts for remote access
 
 
 def print_connectivity_troubleshooting(host: str, port: int, error_msg: str) -> None:

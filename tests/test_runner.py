@@ -48,7 +48,7 @@ class ArrisTestRunner:
         print("=" * 60)
 
         try:
-            result = subprocess.run(cmd, cwd=self.project_root)
+            result = subprocess.run(cmd, cwd=self.project_root, check=False)
             return result.returncode == 0
         except Exception as e:
             print(f"❌ Test execution failed: {e}")

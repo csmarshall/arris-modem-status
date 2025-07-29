@@ -12,7 +12,8 @@ import socket
 import ssl
 import time
 import warnings
-from typing import Any, Mapping, Optional, Tuple, Union
+from collections.abc import Mapping
+from typing import Any, Optional, Tuple, Union
 
 import requests
 import urllib3
@@ -196,7 +197,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
                     f"Connection to {host}:{port} timed out",
                     details={"host": host, "port": port, "timeout_type": "connection"},
                 ) from e
-            except socket.error as e:
+            except OSError as e:
                 raise ArrisConnectionError(
                     f"Failed to connect to {host}:{port}",
                     details={"host": host, "port": port, "error": str(e)},
@@ -225,7 +226,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
         except Exception as e:
             # Wrap unexpected errors
             raise ArrisConnectionError(
-                f"Unexpected error during raw socket request: {str(e)}",
+                f"Unexpected error during raw socket request: {e!s}",
                 details={"host": host, "port": port, "error_type": type(e).__name__},
             ) from e
         finally:

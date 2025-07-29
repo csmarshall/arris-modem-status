@@ -67,8 +67,6 @@ class ArrisAuthenticationError(ArrisModemError):
         details: May include 'phase' (challenge/login), 'status_code', etc.
     """
 
-    pass
-
 
 class ArrisConnectionError(ArrisModemError):
     """
@@ -85,8 +83,6 @@ class ArrisConnectionError(ArrisModemError):
         details: May include 'host', 'port', 'timeout', 'original_error'
     """
 
-    pass
-
 
 class ArrisTimeoutError(ArrisConnectionError):
     """
@@ -101,8 +97,6 @@ class ArrisTimeoutError(ArrisConnectionError):
         message: Human-readable error message
         details: May include 'timeout_type', 'timeout_value', 'operation'
     """
-
-    pass
 
 
 class ArrisHTTPError(ArrisModemError):
@@ -155,8 +149,6 @@ class ArrisParsingError(ArrisModemError):
         details: May include 'response_type', 'raw_data', 'parse_error'
     """
 
-    pass
-
 
 class ArrisConfigurationError(ArrisModemError):
     """
@@ -172,8 +164,6 @@ class ArrisConfigurationError(ArrisModemError):
         details: May include 'parameter', 'value', 'valid_range'
     """
 
-    pass
-
 
 class ArrisOperationError(ArrisModemError):
     """
@@ -188,8 +178,6 @@ class ArrisOperationError(ArrisModemError):
         message: Human-readable error message
         details: May include 'operation', 'attempts', 'last_error'
     """
-
-    pass
 
 
 # Convenience function for wrapping standard exceptions
@@ -237,13 +225,13 @@ def wrap_connection_error(original_error: Exception, host: str, port: int) -> Ar
 
 # Export all exceptions
 __all__ = [
-    "ArrisModemError",
     "ArrisAuthenticationError",
-    "ArrisConnectionError",
-    "ArrisTimeoutError",
-    "ArrisHTTPError",
-    "ArrisParsingError",
     "ArrisConfigurationError",
+    "ArrisConnectionError",
+    "ArrisHTTPError",
+    "ArrisModemError",
     "ArrisOperationError",
+    "ArrisParsingError",
+    "ArrisTimeoutError",
     "wrap_connection_error",
 ]

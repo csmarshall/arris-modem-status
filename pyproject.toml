@@ -156,7 +156,7 @@ target-version = [
     "py313",
 ]
 include = "\\.pyi?$"
-exclude = "(.git|__pycache__|*.pyc|*.pyo|build|dist|*.egg-info|.tox|.venv|venv|.mypy_cache|.pytest_cache|htmlcov|.coverage|*.orig|.ruff_cache|.DS_Store|debug_tools|scripts)"
+exclude = "(\n    \\.git\n    | __pycache__\n    | \\.pyc\n    | \\.pyo\n    | build\n    | dist\n    | \\.egg-info\n    | \\.tox\n    | \\.venv\n    | venv\n    | \\.mypy_cache\n    | \\.pytest_cache\n    | htmlcov\n    | \\.coverage\n    | \\.orig\n    | \\.ruff_cache\n    | \\.DS_Store\n    | debug_tools\n    | scripts\n)"
 
 [tool.isort]
 profile = "black"
@@ -344,7 +344,6 @@ select = [
 ignore = [
     "E203",
     "E501",
-    "W503",
 ]
 fixable = [
     "ALL",

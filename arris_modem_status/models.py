@@ -84,4 +84,4 @@ class ChannelInfo:
 
 
 # Export all models
-__all__ = ["TimingMetrics", "ErrorCapture", "ChannelInfo"]
+__all__ = ["ChannelInfo", "ErrorCapture", "TimingMetrics"]
