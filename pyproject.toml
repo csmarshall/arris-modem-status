@@ -10,9 +10,9 @@ name = "arris-modem-status"
 dynamic = [
     "version",
 ]
-description = "High-performance Python client for Arris cable modem status via HNAP with HTTP compatibility"
+description = "Unofficial Python client for Arris cable modem status via HNAP"
 authors = [
-    { name = "Charles Marshall", email = "charles@wozi.com" },
+    { name = "Charles Marshall" },
 ]
 readme = "README.md"
 requires-python = ">=3.9"
@@ -75,7 +75,7 @@ arris-modem-status = "arris_modem_status.cli.main:main"
 [project.optional-dependencies]
 dev = [
     "setuptools>=78.1.1",  # Security fix for PYSEC-2025-49
-    "ruff==0.8.4",
+    "ruff==0.12.7",
     "black==25.1.0",
     "mypy==1.14.1",
     "pytest>=8.3.5",
@@ -356,6 +356,7 @@ ignore = [
     "SIM108",
     "UP006",
     "UP035",
+    "PLC0415",
 ]
 fixable = [
     "ALL",
@@ -380,6 +381,10 @@ unfixable = []
 max-args = 7
 max-branches = 15
 max-statements = 60
+
+[tool.ruff.lint.mccabe]
+# Maximum complexity for functions (for C901 rule)
+max-complexity = 10  # Set to 5 for strict mode
 
 [tool.ruff.format]
 quote-style = "double"

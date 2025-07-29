@@ -98,7 +98,7 @@ fix-all: ## Fix all formatting, whitespace, and PEP8 issues
 
 pep8-report: ## Generate detailed PEP8 compliance report
 	@echo "$(GREEN)Generating PEP8 compliance report...$(RESET)"
-	ruff check arris_modem_status/ tests/ --max-line-length=120 --extend-ignore=E203,E501,W503 --statistics --output-file=pep8-report.txt
+	ruff check arris_modem_status/ tests/ --line-length=120 --extend-ignore=E203,E501 --statistics --output-file=pep8-report.txt
 	@echo "$(GREEN)✅ Report saved to pep8-report.txt$(RESET)"
 
 lint: ruff test mypy ## Run all linting checks
@@ -162,7 +162,7 @@ ruff-report: ## Generate comprehensive ruff check report
 
 ruff-strict: ## Run ruff check with strict settings
 	@echo "$(GREEN)Running strict ruff check checks...$(RESET)"
-	ruff check arris_modem_status tests --max-line-length=79 --max-complexity=5 --select=E,W,F,C,N
+	ruff check arris_modem_status tests --line-length=79 --select=E,W,F,C,N
 
 version: ## Show current version
 	@echo "$(BLUE)Current version:$(RESET)"
