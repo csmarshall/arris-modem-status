@@ -35,7 +35,12 @@ class BuildDependencyFixer:
         """Initialize the build dependency fixer."""
         self.verbose = verbose
         self.project_root = Path(__file__).parent.parent
-        self.required_packages = {"build": ">=0.10.0", "twine": ">=4.0.0", "wheel": ">=0.40.0", "setuptools": ">=65.0"}
+        self.required_packages = {
+            "build": ">=0.10.0",
+            "twine": ">=4.0.0",
+            "wheel": ">=0.40.0",
+            "setuptools": ">=78.1.1",
+        }
 
     def check_package_installed(self, package_name: str) -> bool:
         """Check if a package is installed."""

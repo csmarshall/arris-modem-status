@@ -71,3 +71,7 @@ dist/
 build/
 *.egg-info/
 .eggs/
+
+# Requirements files (keep CI requirements)
+requirements.txt
+requirements-dev.txt
