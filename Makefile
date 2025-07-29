@@ -134,7 +134,7 @@ dead-code: ## Find dead code with vulture
 security-scan: ## Run security scans with bandit and pip-audit
 	@echo "$(GREEN)Running security scans...$(RESET)"
 	bandit -r arris_modem_status/ -ll
-	pip-audit
+	pip-audit --desc --skip-editable --ignore-vuln PYSEC-2022-42969
 	@echo "$(GREEN)✅ Security scans complete$(RESET)"
 
 quality: format ruff test docstring-coverage security-scan ## Run all quality checks

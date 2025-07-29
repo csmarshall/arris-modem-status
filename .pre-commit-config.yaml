@@ -98,7 +98,8 @@ repos:
     - pre-push
   - id: pip-audit
     name: pip-audit (security)
-    entry: pip-audit
+    # Skip editable package and ignore py vulnerability from interrogate (dev-only dependency)
+    entry: pip-audit --skip-editable --ignore-vuln PYSEC-2022-42969
     language: system
     pass_filenames: false
     stages:
