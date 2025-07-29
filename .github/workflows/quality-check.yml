@@ -1,76 +1,77 @@
 name: Quality Check
-
-on:
+'on':
   push:
-    branches: [ main, develop ]
+    branches:
+    - main
+    - develop
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:  # Allow manual triggers
-
+    branches:
+    - main
+  workflow_dispatch: null
 permissions:
   contents: read
   security-events: write
-
 jobs:
   quality:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-
+        python-version:
+        - '3.9'
+        - '3.10'
+        - '3.11'
+        - '3.12'
+        - '3.13'
     permissions:
       contents: read
       security-events: write
       actions: read
-
     steps:
     - uses: actions/checkout@v4
-
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-
     - name: Cache pip packages
       uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
+        restore-keys: ${{ runner.os }}-pip-
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        # Pin tool versions to match local development
-        pip install black==25.1.0 isort==6.0.1 flake8==7.3.0 mypy==1.17.0 bandit==1.8.6
-        pip install -e .[dev,test]
+      run: 'python -m pip install --upgrade pip
 
+        pip install -e .[dev,test]'
+    - name: Run Ruff linting
+      run: 'ruff --version
+
+        ruff check arris_modem_status tests --output-format=github'
     - name: Run Black formatting check
-      run: |
-        black --version  # Log version for debugging
-        black --check arris_modem_status tests --line-length 120
+      run: 'black --version
 
-    - name: Run isort import check
-      run: |
-        isort --check-only arris_modem_status tests --profile black --line-length 120
-
-    - name: Run Flake8 linting
-      run: |
-        flake8 arris_modem_status tests --max-line-length=120 --extend-ignore=E203,E501,W503
-
+        black --check arris_modem_status tests --line-length 120'
     - name: Run mypy type checking
-      run: |
-        mypy arris_modem_status --ignore-missing-imports
+      run: 'mypy --version
 
+        mypy arris_modem_status --ignore-missing-imports'
     - name: Run Bandit security check
-      run: |
-        bandit -r arris_modem_status -ll
+      run: 'bandit --version
 
+        bandit -r arris_modem_status -ll -f json -o bandit-report.json
+
+        bandit -r arris_modem_status -ll'
+    - name: Check docstring coverage
+      run: 'interrogate --version
+
+        interrogate -v arris_modem_status/ --fail-under 80'
+    - name: Find dead code
+      run: 'vulture --version
+
+        vulture arris_modem_status/ --min-confidence 80 || true'
     - name: Run pytest with coverage
-      run: |
-        pytest tests/ -v --cov=arris_modem_status --cov-report=xml --cov-report=term-missing
+      run: 'pytest --version
 
+        pytest tests/ -v --cov=arris_modem_status --cov-report=xml --cov-report=term-missing'
     - name: Upload coverage to Codecov
       if: matrix.python-version == '3.11'
       uses: codecov/codecov-action@v4
@@ -79,55 +80,32 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
-        token: ${{ secrets.CODECOV_TOKEN }}  # Optional but recommended
-
-  build:
-    needs: quality
+        token: ${{ secrets.CODECOV_TOKEN }}
+  security:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
-
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
+    - name: Install dependencies
+      run: 'python -m pip install --upgrade pip
 
-    - name: Install build tools
-      run: |
-        python -m pip install --upgrade pip
-        pip install build twine
+        pip install -e .[dev]
 
-    - name: Build package
-      run: |
-        python -m build
-
-    - name: Check distribution
-      run: |
-        twine check dist/*
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: dist
-        path: dist/
-
-  security:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-
+        pip install pip-audit'
+    - name: Run pip-audit
+      run: pip-audit --desc
     - name: Run Trivy security scan
       uses: aquasecurity/trivy-action@master
       with:
-        scan-type: 'fs'
-        scan-ref: '.'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-
+        scan-type: fs
+        scan-ref: .
+        format: sarif
+        output: trivy-results.sarif
     - name: Upload Trivy scan results
       uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
-        sarif_file: 'trivy-results.sarif'
+        sarif_file: trivy-results.sarif

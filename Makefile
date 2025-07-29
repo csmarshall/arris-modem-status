@@ -70,12 +70,12 @@ test-quick: ## Quick test without coverage
 	pytest tests/ -x -q -m "not integration"
 	@echo "$(GREEN)✅ Quick tests complete$(RESET)"
 
-format: ## Format code with Black, isort, and autopep8
+format: ## Format code with Black, ruff check --select I --fix, and autopep8
 	@echo "$(GREEN)Formatting Python code...$(RESET)"
 	# Black handles most formatting including whitespace
 	black arris_modem_status/ tests/ --line-length 120
-	# isort handles import sorting
-	isort arris_modem_status/ tests/ --profile black --line-length 120
+	# ruff check --select I --fix handles import sorting
+	ruff check --select I --fix arris_modem_status/ tests/ --profile black --line-length 120
 	# autopep8 for any remaining PEP8 issues (whitespace, etc)
 	autopep8 --in-place --recursive --max-line-length 120 arris_modem_status/ tests/
 	@echo "$(GREEN)✅ Code formatting complete$(RESET)"
@@ -83,7 +83,7 @@ format: ## Format code with Black, isort, and autopep8
 format-check: ## Check formatting without changing files
 	@echo "$(GREEN)Checking code formatting...$(RESET)"
 	black --check arris_modem_status/ tests/ --line-length 120
-	isort --check-only arris_modem_status/ tests/ --profile black --line-length 120
+	ruff check --select I --fix --check-only arris_modem_status/ tests/ --profile black --line-length 120
 	@echo "$(GREEN)✅ Format check complete$(RESET)"
 
 fix-whitespace: ## Fix whitespace issues specifically
@@ -108,39 +108,75 @@ fix-all: ## Fix all formatting, whitespace, and PEP8 issues
 
 pep8-report: ## Generate detailed PEP8 compliance report
 	@echo "$(GREEN)Generating PEP8 compliance report...$(RESET)"
-	flake8 arris_modem_status/ tests/ --max-line-length=120 --extend-ignore=E203,E501,W503 --statistics --output-file=pep8-report.txt
+	ruff check arris_modem_status/ tests/ --max-line-length=120 --extend-ignore=E203,E501,W503 --statistics --output-file=pep8-report.txt
 	@echo "$(GREEN)✅ Report saved to pep8-report.txt$(RESET)"
 
-lint: ## Run all linting checks
-	@echo "$(GREEN)Running linting checks...$(RESET)"
-	flake8 arris_modem_status/ --max-line-length=120 --extend-ignore=E203,E501,W503
-	mypy arris_modem_status/ --ignore-missing-imports
-	bandit -r arris_modem_status/ -ll
-	@echo "$(GREEN)✅ Linting complete$(RESET)"
+lint: ruff test mypy ## Run all linting checks
 
-flake8-report: ## Generate comprehensive flake8 report
-	@echo "$(GREEN)Running comprehensive flake8 analysis...$(RESET)"
+
+# Modern code quality commands
+ruff: ## Run Ruff linter (replaces Flake8 + isort)
+	@echo "$(GREEN)Running Ruff linter...$(RESET)"
+	ruff check arris_modem_status/ tests/
+	@echo "$(GREEN)✅ Ruff check complete$(RESET)"
+
+ruff-fix: ## Fix auto-fixable issues with Ruff
+	@echo "$(GREEN)Fixing issues with Ruff...$(RESET)"
+	ruff check --fix arris_modem_status/ tests/
+	@echo "$(GREEN)✅ Ruff fixes applied$(RESET)"
+
+format: ## Format code with Black and Ruff
+	@echo "$(GREEN)Formatting code...$(RESET)"
+	black arris_modem_status/ tests/ --line-length 120
+	ruff check --select I --fix arris_modem_status/ tests/
+	@echo "$(GREEN)✅ Code formatting complete$(RESET)"
+
+docstring-coverage: ## Check docstring coverage with interrogate
+	@echo "$(GREEN)Checking docstring coverage...$(RESET)"
+	interrogate -v arris_modem_status/
+	@echo "$(GREEN)✅ Docstring coverage check complete$(RESET)"
+
+dead-code: ## Find dead code with vulture
+	@echo "$(GREEN)Finding dead code...$(RESET)"
+	vulture arris_modem_status/ --min-confidence 80
+	@echo "$(GREEN)✅ Dead code check complete$(RESET)"
+
+security-scan: ## Run security scans with bandit and pip-audit
+	@echo "$(GREEN)Running security scans...$(RESET)"
+	bandit -r arris_modem_status/ -ll
+	pip-audit
+	@echo "$(GREEN)✅ Security scans complete$(RESET)"
+
+quality: format ruff test docstring-coverage security-scan ## Run all quality checks
+	@echo "$(GREEN)✅ All quality checks complete$(RESET)"
+
+sync-tools: ## Synchronize tool versions across all configs
+	@echo "$(GREEN)Synchronizing tool versions...$(RESET)"
+	python scripts/sync_tool_versions.py
+	@echo "$(GREEN)✅ Tool versions synchronized$(RESET)"
+ruff check-report: ## Generate comprehensive ruff check report
+	@echo "$(GREEN)Running comprehensive ruff check analysis...$(RESET)"
 	@echo "======================================"
 	# Basic check
-	@flake8 arris_modem_status tests --count --statistics || true
+	@ruff check arris_modem_status tests --count --statistics || true
 	@echo ""
 	@echo "$(BLUE)Code Complexity Report:$(RESET)"
-	@flake8 arris_modem_status --max-complexity=10 --select=C901 || true
+	@ruff check arris_modem_status --max-complexity=10 --select=C901 || true
 	@echo ""
 	@echo "$(BLUE)Import Issues:$(RESET)"
-	@flake8 arris_modem_status tests --select=F401,F402,F403,F404 || true
+	@ruff check arris_modem_status tests --select=F401,F402,F403,F404 || true
 	@echo ""
 	@echo "$(BLUE)Naming Conventions:$(RESET)"
-	@flake8 arris_modem_status --select=N8 || true
+	@ruff check arris_modem_status --select=N8 || true
 	@echo ""
 	@echo "$(BLUE)Documentation Issues:$(RESET)"
-	@flake8 arris_modem_status --select=D || true
+	@ruff check arris_modem_status --select=D || true
 	@echo "======================================"
 	@echo "$(GREEN)✅ Flake8 analysis complete$(RESET)"
 
-flake8-strict: ## Run flake8 with strict settings
-	@echo "$(GREEN)Running strict flake8 checks...$(RESET)"
-	flake8 arris_modem_status tests --max-line-length=79 --max-complexity=5 --select=E,W,F,C,N
+ruff check-strict: ## Run ruff check with strict settings
+	@echo "$(GREEN)Running strict ruff check checks...$(RESET)"
+	ruff check arris_modem_status tests --max-line-length=79 --max-complexity=5 --select=E,W,F,C,N
 
 version: ## Show current version
 	@echo "$(BLUE)Current version:$(RESET)"
@@ -278,14 +314,14 @@ sync-tools: ## Synchronize tool versions across all configs
 
 update-tools: ## Update all development tools to latest versions
 	@echo "📦 Updating development tools..."
-	pip install --upgrade black isort flake8 mypy bandit pytest pre-commit
+	pip install --upgrade black ruff check --select I --fix ruff check mypy bandit pytest pre-commit
 	pre-commit autoupdate
 	@echo "✅ Tools updated! Run 'make sync-tools' to sync configs"
 
 check-versions: ## Check tool version consistency
 	@echo "🔍 Checking tool versions..."
 	@echo "Installed versions:"
-	@pip list | grep -E "black|isort|flake8|mypy|bandit|pytest|pre-commit"
+	@pip list | grep -E "black|ruff check --select I --fix|ruff check|mypy|bandit|pytest|pre-commit"
 	@echo ""
 	@echo "Pre-commit versions:"
 	@grep -A1 "rev:" .pre-commit-config.yaml | grep -v "^--"

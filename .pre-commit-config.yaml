@@ -1,93 +1,112 @@
-# Pre-commit hooks for arris-modem-status
-# Consistent with Makefile and GitHub Actions
-#
-# Installation:
-#   pip install pre-commit
-#   pre-commit install
-#   pre-commit install --hook-type pre-push
-#
-# Run manually:
-#   pre-commit run --all-files
-#   OR
-#   make pre-commit-run
-
 repos:
-  # Basic file hygiene
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
-    hooks:
-      - id: trailing-whitespace
-        exclude: \.md$
-      - id: end-of-file-fixer
-      - id: check-yaml
-      - id: check-json
-      - id: check-toml
-      - id: check-merge-conflict
-      - id: check-added-large-files
-        args: ['--maxkb=1000']
-      - id: mixed-line-ending
-        args: ['--fix=lf']
-
-  # Python formatting - MUST match GitHub Actions
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
-    hooks:
-      - id: black
-        language_version: python3
-        args: ['--line-length=120']
-
-  - repo: https://github.com/pycqa/isort
-    rev: 6.0.1
-    hooks:
-      - id: isort
-        args: ['--profile=black', '--line-length=120']
-
-  # Linting - MUST match GitHub Actions
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.3.0
-    hooks:
-      - id: flake8
-        args: ['--max-line-length=120', '--extend-ignore=E203,E501,W503']
-        exclude: '^(debug_tools|scripts|tests)/'
-
-  # Security checks
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.8.6
-    hooks:
-      - id: bandit
-        args: ['-r', 'arris_modem_status/', '-ll']
-        exclude: 'tests/'
-        pass_filenames: false
-
-  # Type checking
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.17.0
-    hooks:
-      - id: mypy
-        additional_dependencies: [types-requests]
-        args: ['--ignore-missing-imports']
-        exclude: 'tests/|scripts/'
-        files: '^arris_modem_status/.*\.py$'
-
-  # Testing - runs on pre-push only (matches Makefile)
-  - repo: local
-    hooks:
-      - id: pytest
-        name: pytest
-        entry: pytest
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-push]
-        # Match the Makefile test command exactly
-        args: ['tests/', '-v', '--cov=arris_modem_status', '--cov-report=term-missing']
-
-# Configuration for specific hooks
-default_install_hook_types: [pre-commit, pre-push]
-default_stages: [pre-commit]
-
-# Fail fast - stop on first failure
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v5.0.0
+  hooks:
+  - id: trailing-whitespace
+  - id: end-of-file-fixer
+  - id: check-yaml
+  - id: check-json
+  - id: check-toml
+  - id: check-merge-conflict
+  - id: check-added-large-files
+    args:
+    - --maxkb=1000
+  - id: mixed-line-ending
+    args:
+    - --fix=lf
+  - id: check-docstring-first
+  - id: debug-statements
+  - id: check-ast
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.8.4
+  hooks:
+  - id: ruff
+    args:
+    - --fix
+    - --exit-non-zero-on-fix
+    types_or:
+    - python
+    - pyi
+    - jupyter
+  - id: ruff-format
+    types_or:
+    - python
+    - pyi
+    - jupyter
+- repo: https://github.com/psf/black
+  rev: 25.1.0
+  hooks:
+  - id: black
+    language_version: python3
+    args:
+    - --line-length=120
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.14.1
+  hooks:
+  - id: mypy
+    additional_dependencies:
+    - types-requests
+    args:
+    - --ignore-missing-imports
+    exclude: tests/|scripts/
+    files: ^arris_modem_status/.*\.py$
+- repo: https://github.com/PyCQA/bandit
+  rev: 1.8.0
+  hooks:
+  - id: bandit
+    args:
+    - -r
+    - arris_modem_status/
+    - -ll
+    exclude: tests/
+    pass_filenames: false
+- repo: https://github.com/econchick/interrogate
+  rev: 1.7.0
+  hooks:
+  - id: interrogate
+    args:
+    - -v
+    - --fail-under=80
+    exclude: ^(tests/|scripts/|debug_tools/)
+    pass_filenames: false
+- repo: local
+  hooks:
+  - id: pytest
+    name: pytest
+    entry: pytest
+    language: system
+    pass_filenames: false
+    always_run: true
+    stages:
+    - pre-push
+    args:
+    - tests/
+    - -v
+    - --cov=arris_modem_status
+    - --cov-report=term-missing
+  - id: vulture
+    name: vulture (dead code)
+    entry: vulture
+    language: system
+    types:
+    - python
+    args:
+    - arris_modem_status/
+    - --min-confidence=80
+    pass_filenames: false
+    stages:
+    - pre-push
+  - id: pip-audit
+    name: pip-audit (security)
+    entry: pip-audit
+    language: system
+    pass_filenames: false
+    stages:
+    - pre-push
+default_install_hook_types:
+- pre-commit
+- pre-push
+default_stages:
+- pre-commit
 fail_fast: false
-
-# Minimum pre-commit version
-minimum_pre_commit_version: '3.0.0'
+minimum_pre_commit_version: 3.0.0
