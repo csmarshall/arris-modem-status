@@ -1161,6 +1161,8 @@ class ArrisModemStatusClient:
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit."""
+        # Parameters are required by context manager protocol but unused
+        _ = (exc_type, exc_val, exc_tb)  # Mark as intentionally unused
         self.close()
 
 

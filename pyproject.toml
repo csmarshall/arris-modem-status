@@ -98,7 +98,7 @@ all = [
     "arris-modem-status[dev,debug]",
 ]
 test = [
-    "pytest>=7.0.0",
+    "pytest>=8.3.5",
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
     "pytest-timeout>=2.1.0",
