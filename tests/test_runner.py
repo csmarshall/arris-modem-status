@@ -66,7 +66,7 @@ class ArrisTestRunner:
             "all": "All test categories",
         }
 
-        for category, test_file in self.test_categories.items():
+        for category, _test_file in self.test_categories.items():
             desc = descriptions.get(category, "")
             print(f"  {category:12} - {desc}")
 

@@ -431,20 +431,22 @@ class TestCLIMainIntegration:
 
     def test_main_connectivity_check_failed(self):
         """Test main execution with failed connectivity check."""
-        with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--quick-check"]):
+        with (
+            patch("sys.argv", ["arris-modem-status", "--password", "test123", "--quick-check"]),
+            patch("arris_modem_status.cli.main.quick_connectivity_check") as mock_quick_check,
+        ):
             # Mock the connectivity check to fail
-            with patch("arris_modem_status.cli.main.quick_connectivity_check") as mock_quick_check:
-                mock_quick_check.return_value = (False, "Connection timeout")
+            mock_quick_check.return_value = (False, "Connection timeout")
 
-                stderr_capture = StringIO()
+            stderr_capture = StringIO()
 
-                with patch("sys.stderr", stderr_capture):
-                    # Execute main - no need to pass client_class since connectivity fails first
-                    result = main()
+            with patch("sys.stderr", stderr_capture):
+                # Execute main - no need to pass client_class since connectivity fails first
+                result = main()
 
-                assert result == 1
-                stderr_output = stderr_capture.getvalue()
-                assert "Connection timeout" in stderr_output
+            assert result == 1
+            stderr_output = stderr_capture.getvalue()
+            assert "Connection timeout" in stderr_output
 
     def test_main_client_error(self):
         """Test main execution with client error."""

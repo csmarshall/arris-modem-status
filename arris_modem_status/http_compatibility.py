@@ -7,13 +7,14 @@ by using relaxed parsing by default, avoiding urllib3's strict standards.
 
 """
 
+import contextlib
 import logging
 import socket
 import ssl
 import time
 import warnings
 from collections.abc import Mapping
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 import requests
 import urllib3
@@ -67,9 +68,9 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
         self,
         request: requests.PreparedRequest,
         stream: bool = False,
-        timeout: Optional[Union[float, Tuple[float, float], Tuple[float, None]]] = None,
+        timeout: Optional[Union[float, tuple[float, float], tuple[float, None]]] = None,
         verify: Union[bool, str] = True,
-        cert: Optional[Union[bytes, str, Tuple[Union[bytes, str], Union[bytes, str]]]] = None,
+        cert: Optional[Union[bytes, str, tuple[Union[bytes, str], Union[bytes, str]]]] = None,
         proxies: Optional[Mapping[str, str]] = None,
     ) -> Response:
         """
@@ -143,7 +144,7 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
     def _raw_socket_request(
         self,
         request: requests.PreparedRequest,
-        timeout: Optional[Union[float, Tuple[float, float], Tuple[float, None]]] = None,
+        timeout: Optional[Union[float, tuple[float, float], tuple[float, None]]] = None,
         verify: Union[bool, str] = True,
     ) -> Response:
         """
@@ -235,10 +236,8 @@ class ArrisCompatibleHTTPAdapter(HTTPAdapter):
                 sock.close()
             except Exception:
                 # If closing the wrapped socket fails, try the raw socket
-                try:
+                with contextlib.suppress(Exception):
                     raw_sock.close()
-                except Exception:
-                    pass
 
     def _build_raw_http_request(self, request: requests.PreparedRequest, host: str, path: str) -> str:
         """Build raw HTTP request string from requests.Request object."""

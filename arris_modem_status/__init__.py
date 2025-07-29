@@ -60,21 +60,17 @@ __license__ = "MIT"
 
 # Public API
 __all__ = [
-    # Main client
-    "ArrisModemStatusClient",
-    # Data models
-    "ChannelInfo",
-    # Exceptions
-    "ArrisModemError",
     "ArrisAuthenticationError",
-    "ArrisConnectionError",
-    "ArrisTimeoutError",
-    "ArrisHTTPError",
-    "ArrisParsingError",
     "ArrisConfigurationError",
+    "ArrisConnectionError",
+    "ArrisHTTPError",
+    "ArrisModemError",
+    "ArrisModemStatusClient",
     "ArrisOperationError",
-    # Metadata
-    "__version__",
+    "ArrisParsingError",
+    "ArrisTimeoutError",
+    "ChannelInfo",
     "__author__",
     "__license__",
+    "__version__",
 ]

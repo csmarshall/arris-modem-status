@@ -18,7 +18,7 @@ Author: Charles Marshall
 License: MIT
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 
 class ArrisModemError(Exception):
@@ -33,7 +33,7 @@ class ArrisModemError(Exception):
         details: Optional dictionary with additional error context
     """
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, message: str, details: Optional[dict[str, Any]] = None) -> None:
         """
         Initialize ArrisModemError.
 
@@ -118,7 +118,7 @@ class ArrisHTTPError(ArrisModemError):
         self,
         message: str,
         status_code: Optional[int] = None,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[dict[str, Any]] = None,
     ) -> None:
         """
         Initialize ArrisHTTPError.

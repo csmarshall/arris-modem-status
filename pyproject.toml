@@ -304,6 +304,7 @@ exclude = [
     ".tox",
     ".venv",
     "venv",
+    "arris_modem_venv",
     ".mypy_cache",
     ".pytest_cache",
     "htmlcov",
@@ -342,8 +343,18 @@ select = [
     "RUF",
 ]
 ignore = [
+    "DTZ005",
     "E203",
     "E501",
+    "ISC001",
+    "PLR0912",
+    "PLR0913",
+    "PLR0915",
+    "PLR2004",
+    "SIM102",
+    "SIM108",
+    "UP006",
+    "UP035",
 ]
 fixable = [
     "ALL",
@@ -357,7 +368,17 @@ unfixable = []
 "tests/*" = [
     "PLR2004",
     "ARG001",
+    "ARG002",
+    "B017",
+    "PT011",
+    "N806",
+    "A004",
 ]
+
+[tool.ruff.lint.pylint]
+max-args = 7
+max-branches = 15
+max-statements = 60
 
 [tool.ruff.format]
 quote-style = "double"
@@ -381,6 +402,9 @@ exclude = [
     "docs",
     "build",
     "tests",
+    ".venv",
+    "venv",
+    "arris_modem_venv",
 ]
 ignore-regex = [
     "^get$",
@@ -402,6 +426,7 @@ exclude = [
     "debug_tools/",
     ".venv/",
     "venv/",
+    "arris_modem_venv/",
 ]
 ignore_decorators = [
     "@pytest.fixture",

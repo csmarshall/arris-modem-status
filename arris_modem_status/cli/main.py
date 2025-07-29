@@ -13,7 +13,7 @@ import logging
 import sys
 import time
 from datetime import datetime
-from typing import Any, Optional, Type
+from typing import Any, Optional
 
 from arris_modem_status import ArrisModemStatusClient, __version__
 from arris_modem_status.exceptions import (
@@ -33,7 +33,7 @@ from .logging_setup import setup_logging
 logger = logging.getLogger(__name__)
 
 
-def create_client(args: Any, client_class: Optional[Type[ArrisModemStatusClient]] = None) -> ArrisModemStatusClient:
+def create_client(args: Any, client_class: Optional[type[ArrisModemStatusClient]] = None) -> ArrisModemStatusClient:
     """
     Factory function to create the Arris client.
 
@@ -120,7 +120,7 @@ def process_modem_status(
     print_json_output(json_output)
 
 
-def main(client_class: Optional[Type[ArrisModemStatusClient]] = None) -> Optional[int]:
+def main(client_class: Optional[type[ArrisModemStatusClient]] = None) -> Optional[int]:  # noqa: PLR0911
     """
     Main entry point for the CLI application.
 

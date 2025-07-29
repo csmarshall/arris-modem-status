@@ -12,12 +12,12 @@ License: MIT
 import logging
 import socket
 import sys
-from typing import Optional, Tuple
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
-def quick_connectivity_check(host: str, port: int = 443, timeout: float = 2.0) -> Tuple[bool, Optional[str]]:
+def quick_connectivity_check(host: str, port: int = 443, timeout: float = 2.0) -> tuple[bool, Optional[str]]:
     """
     Quick TCP connectivity check before attempting HTTPS connection.
 
@@ -63,7 +63,7 @@ def quick_connectivity_check(host: str, port: int = 443, timeout: float = 2.0) -
         return False, error_msg
 
 
-def get_optimal_timeouts(host: str) -> Tuple[float, float]:
+def get_optimal_timeouts(host: str) -> tuple[float, float]:
     """
     Get optimal connection timeouts based on whether the host appears to be local.
 
@@ -74,12 +74,7 @@ def get_optimal_timeouts(host: str) -> Tuple[float, float]:
         (connect_timeout, read_timeout) in seconds
     """
     # Check if this appears to be a local network address
-    is_local = (
-        host.startswith("192.168.")
-        or host.startswith("10.")
-        or host.startswith("172.")
-        or host in ["localhost", "127.0.0.1"]
-    )
+    is_local = host.startswith(("192.168.", "10.", "172.")) or host in ["localhost", "127.0.0.1"]
 
     if is_local:
         logger.debug(f"Host {host} appears to be local, using shorter timeouts")

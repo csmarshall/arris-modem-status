@@ -14,7 +14,7 @@ import json
 import logging
 import sys
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
 from arris_modem_status import __version__
 
@@ -136,7 +136,7 @@ def print_summary_to_stderr(status: dict) -> None:
 
 
 def format_json_output(
-    status: Dict[str, Any], args: argparse.Namespace, elapsed_time: float, connectivity_checked: bool
+    status: dict[str, Any], args: argparse.Namespace, elapsed_time: float, connectivity_checked: bool
 ) -> dict:
     """
     Format the complete JSON output with metadata.

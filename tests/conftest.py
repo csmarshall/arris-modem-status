@@ -139,8 +139,10 @@ def mock_performance_instrumentation():
     """Mock performance instrumentation."""
     from arris_modem_status.instrumentation import PerformanceInstrumentation
 
-    with patch.object(PerformanceInstrumentation, "start_timer") as mock_start:
-        with patch.object(PerformanceInstrumentation, "record_timing") as mock_record:
-            mock_start.return_value = time.time()
-            mock_record.return_value = Mock(operation="test", duration=0.1, success=True, duration_ms=100)
-            yield mock_start, mock_record
+    with (
+        patch.object(PerformanceInstrumentation, "start_timer") as mock_start,
+        patch.object(PerformanceInstrumentation, "record_timing") as mock_record,
+    ):
+        mock_start.return_value = time.time()
+        mock_record.return_value = Mock(operation="test", duration=0.1, success=True, duration_ms=100)
+        yield mock_start, mock_record

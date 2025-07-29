@@ -9,7 +9,7 @@ and analyzing the performance characteristics of the Arris client.
 
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from .models import TimingMetrics
 
@@ -29,13 +29,14 @@ class PerformanceInstrumentation:
     """
 
     def __init__(self) -> None:
-        self.timing_metrics: List[TimingMetrics] = []
+        self.timing_metrics: list[TimingMetrics] = []
         self.session_start_time = time.time()
-        self.auth_metrics: Dict[str, float] = {}
-        self.request_metrics: Dict[str, List[float]] = {}
+        self.auth_metrics: dict[str, float] = {}
+        self.request_metrics: dict[str, list[float]] = {}
 
-    def start_timer(self, operation: str) -> float:
+    def start_timer(self, operation: str) -> float:  # noqa: ARG002
         """Start timing an operation."""
+        # Operation parameter kept for API compatibility
         return time.time()
 
     def record_timing(
@@ -74,7 +75,7 @@ class PerformanceInstrumentation:
         logger.debug(f"📊 {operation}: {duration * 1000:.1f}ms (success: {success})")
         return metric
 
-    def get_performance_summary(self) -> Dict[str, Any]:
+    def get_performance_summary(self) -> dict[str, Any]:
         """Get comprehensive performance summary."""
         if not self.timing_metrics:
             return {"error": "No timing metrics recorded"}
@@ -128,7 +129,7 @@ class PerformanceInstrumentation:
             "performance_insights": self._generate_performance_insights(operation_stats, total_session_time),
         }
 
-    def _generate_performance_insights(self, operation_stats: Dict[str, Any], total_time: float) -> List[str]:
+    def _generate_performance_insights(self, operation_stats: dict[str, Any], total_time: float) -> list[str]:
         """Generate performance insights based on metrics."""
         insights = []
 

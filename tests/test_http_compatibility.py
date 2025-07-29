@@ -5,6 +5,7 @@ This module tests the HTTP compatibility implementation that provides
 relaxed parsing for Arris modem responses.
 """
 
+import contextlib
 import socket
 import ssl
 from unittest.mock import MagicMock, Mock, patch
@@ -218,26 +219,28 @@ class TestRawSocketImplementation:
         mock_wrapped_socket = Mock()
         mock_ssl_context.wrap_socket.return_value = mock_wrapped_socket
 
-        with patch("ssl.create_default_context", return_value=mock_ssl_context):
-            with patch.object(adapter, "_receive_response_tolerantly") as mock_receive:
-                mock_receive.return_value = b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html></html>"
+        with (
+            patch("ssl.create_default_context", return_value=mock_ssl_context),
+            patch.object(adapter, "_receive_response_tolerantly") as mock_receive,
+        ):
+            mock_receive.return_value = b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<html></html>"
 
-                with patch.object(adapter, "_parse_response_tolerantly") as mock_parse:
-                    mock_response = Mock()
-                    mock_response.status_code = 200
-                    mock_parse.return_value = mock_response
+            with patch.object(adapter, "_parse_response_tolerantly") as mock_parse:
+                mock_response = Mock()
+                mock_response.status_code = 200
+                mock_parse.return_value = mock_response
 
-                    request = Mock()
-                    request.url = "https://192.168.100.1/HNAP1/"
-                    request.method = "GET"
-                    request.headers = {}
-                    request.body = None
+                request = Mock()
+                request.url = "https://192.168.100.1/HNAP1/"
+                request.method = "GET"
+                request.headers = {}
+                request.body = None
 
-                    response = adapter._raw_socket_request(request)
+                response = adapter._raw_socket_request(request)
 
-                    # Should return the parsed response
-                    assert response.status_code == 200
-                    mock_ssl_context.wrap_socket.assert_called_once()
+                # Should return the parsed response
+                assert response.status_code == 200
+                mock_ssl_context.wrap_socket.assert_called_once()
 
     @patch("socket.socket")
     def test_raw_socket_request_http(self, mock_socket_class):
@@ -461,7 +464,7 @@ class TestResponseParsing:
             b"\r\n",
             b"Hello World",
         ]
-        mock_socket.recv.side_effect = response_chunks + [b""]  # End with empty to stop
+        mock_socket.recv.side_effect = [*response_chunks, b""]  # End with empty to stop
 
         response_data = adapter._receive_response_tolerantly(mock_socket)
 
@@ -814,10 +817,10 @@ class TestEdgeCases:
                 request.body = None
 
                 # Try to make request with verify=True
-                try:
+                from contextlib import suppress
+
+                with suppress(Exception):  # We\'re testing SSL setup, not the full request
                     adapter._raw_socket_request(request, verify=True)
-                except Exception:
-                    pass  # We're testing SSL setup, not the full request
 
                 # When verify=True, check_hostname should not be set to False
                 # If check_hostname is set, it should not be False
@@ -831,10 +834,8 @@ class TestEdgeCases:
 
                 # When verify=False, check_hostname should be False
                 mock_context.reset_mock()
-                try:
+                with contextlib.suppress(Exception):
                     adapter._raw_socket_request(request, verify=False)
-                except Exception:
-                    pass
 
                 # Now check_hostname should have been set to False
                 assert mock_context.check_hostname is False

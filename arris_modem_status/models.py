@@ -8,7 +8,7 @@ Arris Modem Status Client.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Optional
 
 
 @dataclass
@@ -40,7 +40,7 @@ class ErrorCapture:
     http_status: int
     error_type: str
     raw_error: str
-    response_headers: Dict[str, str]
+    response_headers: dict[str, str]
     partial_content: str
     recovery_successful: bool
     compatibility_issue: bool  # True if this was an HTTP compatibility issue

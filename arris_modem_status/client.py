@@ -14,7 +14,7 @@ import logging
 import random
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import requests
 
@@ -100,7 +100,7 @@ class ArrisModemStatusClient:
         self.authenticated: bool = False
 
         # Error analysis storage
-        self.error_captures: List[ErrorCapture] = []
+        self.error_captures: list[ErrorCapture] = []
 
         # Performance instrumentation
         self.instrumentation = PerformanceInstrumentation() if enable_instrumentation else None
@@ -214,8 +214,8 @@ class ArrisModemStatusClient:
     def _make_hnap_request_with_retry(
         self,
         soap_action: str,
-        request_body: Dict[str, Any],
-        extra_headers: Optional[Dict[str, str]] = None,
+        request_body: dict[str, Any],
+        extra_headers: Optional[dict[str, str]] = None,
     ) -> Optional[str]:
         """Make HNAP request with retry logic for network errors."""
         exhausted = False  # Initialize at the start of the method
@@ -344,8 +344,8 @@ class ArrisModemStatusClient:
     def _make_hnap_request_raw(
         self,
         soap_action: str,
-        request_body: Dict[str, Any],
-        extra_headers: Optional[Dict[str, str]] = None,
+        request_body: dict[str, Any],
+        extra_headers: Optional[dict[str, str]] = None,
     ) -> Optional[str]:
         """Make raw HNAP request using HTTP session with relaxed parsing."""
         start_time = (
@@ -645,7 +645,7 @@ class ArrisModemStatusClient:
                 details={"error_type": type(e).__name__, "error": str(e)},
             ) from e
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """
         Retrieve comprehensive modem status using relaxed HTTP parsing.
 
@@ -855,19 +855,19 @@ class ArrisModemStatusClient:
                 details={"error_type": type(e).__name__, "error": str(e)},
             ) from e
 
-    def get_performance_metrics(self) -> Dict[str, Any]:
+    def get_performance_metrics(self) -> dict[str, Any]:
         """Get detailed performance metrics from instrumentation."""
         if not self.instrumentation:
             return {"error": "Performance instrumentation not enabled"}
 
         return self.instrumentation.get_performance_summary()
 
-    def get_error_analysis(self) -> Dict[str, Any]:
+    def get_error_analysis(self) -> dict[str, Any]:
         """Enhanced error analysis."""
         if not self.error_captures:
             return {"message": "No errors captured yet"}
 
-        analysis: Dict[str, Any] = {
+        analysis: dict[str, Any] = {
             "total_errors": len(self.error_captures),
             "error_types": {},
             "http_compatibility_issues": 0,
@@ -924,7 +924,7 @@ class ArrisModemStatusClient:
 
         return analysis
 
-    def validate_parsing(self) -> Dict[str, Any]:
+    def validate_parsing(self) -> dict[str, Any]:
         """Validate data parsing and return comprehensive quality metrics."""
         try:
             status = self.get_status()
@@ -946,9 +946,9 @@ class ArrisModemStatusClient:
             channel_quality = {}
             if downstream_count > 0:
                 downstream_locked = sum(1 for ch in status["downstream_channels"] if "Locked" in ch.lock_status)
-                downstream_modulations = set(
+                downstream_modulations = {
                     ch.modulation for ch in status["downstream_channels"] if ch.modulation != "Unknown"
-                )
+                }
 
                 channel_quality["downstream_validation"] = {
                     "total_channels": downstream_count,
@@ -959,9 +959,9 @@ class ArrisModemStatusClient:
 
             if upstream_count > 0:
                 upstream_locked = sum(1 for ch in status["upstream_channels"] if "Locked" in ch.lock_status)
-                upstream_modulations = set(
+                upstream_modulations = {
                     ch.modulation for ch in status["upstream_channels"] if ch.modulation != "Unknown"
-                )
+                }
 
                 channel_quality["upstream_validation"] = {
                     "total_channels": upstream_count,
@@ -1009,7 +1009,7 @@ class ArrisModemStatusClient:
             logger.error(f"Validation failed: {e}")
             return {"error": str(e)}
 
-    def _parse_responses(self, responses: Dict[str, str]) -> Dict[str, Any]:
+    def _parse_responses(self, responses: dict[str, str]) -> dict[str, Any]:
         """Parse HNAP responses into structured data."""
         parsed_data = {
             "model_name": "Unknown",
@@ -1065,9 +1065,9 @@ class ArrisModemStatusClient:
 
         return parsed_data
 
-    def _parse_channels(self, hnaps_response: Dict[str, Any]) -> Dict[str, List[ChannelInfo]]:
+    def _parse_channels(self, hnaps_response: dict[str, Any]) -> dict[str, list[ChannelInfo]]:
         """Parse channel information from HNAP response."""
-        channels: Dict[str, List[ChannelInfo]] = {"downstream": [], "upstream": []}
+        channels: dict[str, list[ChannelInfo]] = {"downstream": [], "upstream": []}
 
         try:
             downstream_resp = hnaps_response.get("GetCustomerStatusDownstreamChannelInfoResponse", {})
@@ -1088,7 +1088,7 @@ class ArrisModemStatusClient:
 
         return channels
 
-    def _parse_channel_string(self, raw_data: str, channel_type: str) -> List[ChannelInfo]:
+    def _parse_channel_string(self, raw_data: str, channel_type: str) -> list[ChannelInfo]:
         """Parse pipe-delimited channel data into ChannelInfo objects."""
         channels = []
 
@@ -1152,7 +1152,7 @@ class ArrisModemStatusClient:
             total_ops = performance_summary.get("session_metrics", {}).get("total_operations", 0)
             logger.info(f"📊 Session performance: {total_ops} operations in {session_time:.2f}s")
 
-        if self.session:
+        if self.session is not None:
             self.session.close()
 
     def __enter__(self) -> "ArrisModemStatusClient":
