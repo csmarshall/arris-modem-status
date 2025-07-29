@@ -13,7 +13,7 @@ I got tired of logging into my Arris cable modem's clunky web interface just to 
 
 It grabs ALL the juicy details from your Arris S33/S34/SB8200 cable modem:
 - 📊 Signal levels, SNR, and all that good stuff
-- 🌊 Downstream/upstream channel info  
+- 🌊 Downstream/upstream channel info
 - 🔧 Modem uptime, firmware version, the works
 - ⚡ And it's FAST (< 1.5 seconds vs 7+ seconds scraping the web UI)
 
@@ -36,10 +36,10 @@ from arris_modem_status import ArrisModemStatusClient
 
 with ArrisModemStatusClient(password="YOUR_PASSWORD") as client:
     status = client.get_status()
-    
+
     print(f"Modem: {status['model_name']}")
     print(f"Uptime: {status['system_uptime']}")
-    
+
     # Check signal levels
     for channel in status['downstream_channels']:
         print(f"Channel {channel.channel_id}: {channel.power} / SNR: {channel.snr}")

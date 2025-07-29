@@ -32,7 +32,7 @@ class ToolVersionSync:
         "pip-audit": "2.8.0",
         "interrogate": "1.7.0",
         "vulture": "2.14",
-        "pre-commit": "4.0.2"
+        "pre-commit": "4.0.2",
     }
 
     def __init__(self, project_root: Path = Path.cwd()):

@@ -65,7 +65,7 @@ The mysterious `HeaderParsingError` with patterns like `"3.500000 |Content-type:
 
 #### New Test Approaches
 - **HTTP Compatibility Test**: `error_analysis_test.py` - HTTP compatibility issue investigation
-- **Raw HTTP Analysis**: `raw_http_analyzer.py` - Byte-level HTTP response analysis  
+- **Raw HTTP Analysis**: `raw_http_analyzer.py` - Byte-level HTTP response analysis
 - **Browser Comparison**: `browser_session_analyzer.py` - Browser vs client behavior analysis
 - **Production Test**: `production_test.py` - Comprehensive functionality validation with HTTP compatibility
 
@@ -244,7 +244,7 @@ arris-modem-status --password PASSWORD --debug  # Shows HTTP compatibility handl
 This project uses [Semantic Versioning](https://semver.org/):
 
 - **MAJOR** version for incompatible API changes
-- **MINOR** version for backwards-compatible functionality additions  
+- **MINOR** version for backwards-compatible functionality additions
 - **PATCH** version for backwards-compatible bug fixes
 
 ## Migration Guide
@@ -259,7 +259,7 @@ This project uses [Semantic Versioning](https://semver.org/):
 # Enhanced HTTP compatibility (automatic)
 with ArrisStatusClient(password="PASSWORD", capture_errors=True) as client:
     status = client.get_status()
-    
+
     # Check for HTTP compatibility handling
     if '_error_analysis' in status:
         error_info = status['_error_analysis']
