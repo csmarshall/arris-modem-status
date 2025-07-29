@@ -39,39 +39,40 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
         restore-keys: ${{ runner.os }}-pip-
     - name: Install dependencies
-      run: 'python -m pip install --upgrade pip
-
-        pip install -e .[dev,test]'
+      run: |
+        python -m pip install --upgrade pip
+        # Upgrade setuptools to fix security vulnerabilities
+        python -m pip install --upgrade "setuptools>=78.1.1"
+        pip install -e .[dev,test]
     - name: Run Ruff linting
-      run: 'ruff --version
-
-        ruff check arris_modem_status tests --output-format=github'
+      run: |
+        ruff --version
+        ruff check arris_modem_status tests --output-format=github
     - name: Run Black formatting check
-      run: 'black --version
-
-        black --check arris_modem_status tests --line-length 120'
+      run: |
+        black --version
+        black --check arris_modem_status tests --line-length 120
     - name: Run mypy type checking
-      run: 'mypy --version
-
-        mypy arris_modem_status --ignore-missing-imports'
+      run: |
+        mypy --version
+        mypy arris_modem_status --ignore-missing-imports
     - name: Run Bandit security check
-      run: 'bandit --version
-
+      run: |
+        bandit --version
         bandit -r arris_modem_status -ll -f json -o bandit-report.json
-
-        bandit -r arris_modem_status -ll'
+        bandit -r arris_modem_status -ll
     - name: Check docstring coverage
-      run: 'interrogate --version
-
-        interrogate -v arris_modem_status/ --fail-under 80'
+      run: |
+        interrogate --version
+        interrogate -v arris_modem_status/ --fail-under 80
     - name: Find dead code
-      run: 'vulture --version
-
-        vulture arris_modem_status/ --min-confidence 80 || true'
+      run: |
+        vulture --version
+        vulture arris_modem_status/ --min-confidence 80 || true
     - name: Run pytest with coverage
-      run: 'pytest --version
-
-        pytest tests/ -v --cov=arris_modem_status --cov-report=xml --cov-report=term-missing'
+      run: |
+        pytest --version
+        pytest tests/ -v --cov=arris_modem_status --cov-report=xml --cov-report=term-missing
     - name: Upload coverage to Codecov
       if: matrix.python-version == '3.11'
       uses: codecov/codecov-action@v4
@@ -90,11 +91,12 @@ jobs:
       with:
         python-version: '3.11'
     - name: Install dependencies
-      run: 'python -m pip install --upgrade pip
-
+      run: |
+        python -m pip install --upgrade pip
+        # Upgrade setuptools to fix security vulnerabilities
+        python -m pip install --upgrade "setuptools>=78.1.1"
         pip install -e .[dev]
-
-        pip install pip-audit'
+        pip install pip-audit
     - name: Run pip-audit
       run: pip-audit --desc --skip-editable --ignore-vuln PYSEC-2022-42969
     - name: Run Trivy security scan
@@ -106,6 +108,7 @@ jobs:
         output: trivy-results.sarif
     - name: Upload Trivy scan results
       uses: github/codeql-action/upload-sarif@v3
-      if: always()
+      # Only upload if the scan was successful and the file exists
+      if: success() && hashFiles('trivy-results.sarif') != ''
       with:
         sarif_file: trivy-results.sarif
