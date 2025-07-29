@@ -381,6 +381,10 @@ max-args = 7
 max-branches = 15
 max-statements = 60
 
+[tool.ruff.lint.mccabe]
+# Maximum complexity for functions (for C901 rule)
+max-complexity = 10  # Set to 5 for strict mode
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
