@@ -356,6 +356,7 @@ ignore = [
     "SIM108",
     "UP006",
     "UP035",
+    "PLC0415",
 ]
 fixable = [
     "ALL",
