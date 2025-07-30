@@ -341,61 +341,98 @@ class ArrisModemStatusClient:
 
         return float(min(backoff_time, 10.0))
 
-    def _make_hnap_request_raw(
-        self,
-        soap_action: str,
-        request_body: dict[str, Any],
-        extra_headers: Optional[dict[str, str]] = None,
-    ) -> Optional[str]:
-        """Make raw HNAP request using HTTP session with relaxed parsing."""
-        start_time = (
-            self.instrumentation.start_timer(f"hnap_request_{soap_action}") if self.instrumentation else time.time()
-        )
+    def _build_hnap_headers(self, soap_action: str, request_body: dict[str, Any]) -> dict[str, str]:
+        """
+        Build standardized HNAP headers for all request types.
 
-        # Build headers
-        headers = {"Content-Type": "application/json"}
+        This ensures consistency across all HNAP requests, matching browser behavior.
+        """
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+        }
 
-        # Check if this is the initial challenge request
+        # Determine if this is a challenge request (initial login without password)
         is_challenge_request = (
             soap_action == "Login"
             and request_body.get("Login", {}).get("Action") == "request"
             and request_body.get("Login", {}).get("LoginPassword", "") == ""
         )
 
-        # Only include HNAP_AUTH for non-challenge requests
+        # SOAP Action header - uppercase for non-Login requests (matches browser)
+        if soap_action == "Login":
+            headers["SOAPAction"] = f'"http://purenetworks.com/HNAP1/{soap_action}"'
+        else:
+            headers["SOAPACTION"] = f'"http://purenetworks.com/HNAP1/{soap_action}"'
+
+        # Referer header based on request type
+        if soap_action == "Login":
+            headers["Referer"] = f"{self.base_url}/Login.html"
+        # Determine referer based on the request content
+        elif "GetCustomerStatusSoftware" in str(request_body):
+            headers["Referer"] = f"{self.base_url}/Cmswinfo.html"
+        elif any(x in str(request_body) for x in ["ChannelInfo", "ConnectionStatus"]):
+            headers["Referer"] = f"{self.base_url}/Cmconnectionstatus.html"
+        else:
+            # Default referer
+            headers["Referer"] = f"{self.base_url}/Cmconnectionstatus.html"
+
+        # HNAP_AUTH header - skip only for initial challenge request
         if not is_challenge_request:
             auth_token = self._generate_hnap_auth_token(soap_action)
             headers["HNAP_AUTH"] = auth_token
 
-        # Add SOAP action header
-        if soap_action == "Login":
-            headers["SOAPAction"] = f'"http://purenetworks.com/HNAP1/{soap_action}"'
-            headers["Referer"] = f"{self.base_url}/Login.html"
-        else:
-            headers["SOAPACTION"] = f'"http://purenetworks.com/HNAP1/{soap_action}"'
-            headers["Referer"] = f"{self.base_url}/Cmconnectionstatus.html"
+        # Cookies - always include if we have them (except for challenge request)
+        if not is_challenge_request and self.authenticated:
+            cookies = []
 
-        # Add cookies for authenticated requests
-        if self.authenticated and self.uid_cookie:
-            cookies = [f"uid={self.uid_cookie}"]
+            # Add uid cookie if available
+            if self.uid_cookie:
+                cookies.append(f"uid={self.uid_cookie}")
+
+            # Add PrivateKey cookie if available
             if self.private_key:
                 cookies.append(f"PrivateKey={self.private_key}")
-            headers["Cookie"] = "; ".join(cookies)
 
-        # Merge additional headers
+            if cookies:
+                headers["Cookie"] = "; ".join(cookies)
+
+        return headers
+
+    def _make_hnap_request_raw(
+        self,
+        soap_action: str,
+        request_body: dict[str, Any],
+        extra_headers: Optional[dict[str, str]] = None,
+    ) -> Optional[str]:
+        """Make raw HNAP request using standardized headers."""
+        start_time = (
+            self.instrumentation.start_timer(f"hnap_request_{soap_action}") if self.instrumentation else time.time()
+        )
+
+        # Build standardized headers
+        headers = self._build_hnap_headers(soap_action, request_body)
+
+        # Merge any extra headers
         if extra_headers:
             headers.update(extra_headers)
 
         logger.debug(f"📤 HNAP: {soap_action}")
+        logger.debug(f"   Headers: {json.dumps(headers, indent=2)}")
+        logger.debug(f"   Body: {json.dumps(request_body, indent=2)}")
 
         try:
-            # Execute request with relaxed parsing (handled by our session)
             response = self.session.post(
                 f"{self.base_url}/HNAP1/",
                 json=request_body,
                 headers=headers,
                 timeout=self.timeout,
             )
+
+            logger.debug(f"📥 Response Status: {response.status_code}")
+            logger.debug(f"📥 Response Headers: {dict(response.headers)}")
 
             if response.status_code == 200:
                 logger.debug(f"📥 Response: {len(response.text)} chars")
@@ -411,6 +448,12 @@ class ArrisModemStatusClient:
                     )
 
                 return str(response.text)
+
+            # Log the full response for debugging 403 errors
+            if response.status_code == 403:
+                logger.error(f"❌ HTTP 403 Forbidden for {soap_action}")
+                logger.error(f"   Response: {response.text[:500]}")
+
             # Record failed timing
             if self.instrumentation:
                 self.instrumentation.record_timing(
@@ -428,10 +471,8 @@ class ArrisModemStatusClient:
             )
 
         except ArrisHTTPError:
-            # Re-raise our custom exceptions
             raise
         except Exception as e:
-            # Record exception timing
             if self.instrumentation:
                 self.instrumentation.record_timing(
                     f"hnap_request_{soap_action}",

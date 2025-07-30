@@ -12,6 +12,8 @@ import logging
 import sys
 from typing import Optional
 
+_logging_configured = False
+
 
 def setup_logging(
     debug: bool = False, quiet: bool = False, silent: bool = False, log_file: Optional[str] = None
