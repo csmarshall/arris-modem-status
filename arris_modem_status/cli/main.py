@@ -112,7 +112,7 @@ def process_modem_status(
     elapsed = time.time() - start_time
 
     # Print summary to stderr (unless quiet mode)
-    if not args.quiet and not args.silent:
+    if not args.quiet:
         print_summary_to_stderr(status)
 
     # Format and output JSON
@@ -138,10 +138,10 @@ def main(client_class: Optional[type[ArrisModemStatusClient]] = None) -> Optiona
         args = parse_args()
 
         # Configure logging based on debug flag
-        setup_logging(debug=args.debug, quiet=args.quiet, silent=args.silent)
+        setup_logging(debug=args.debug)
 
         # Log startup information (to stderr)
-        if not args.quiet and not args.silent:
+        if not args.quiet:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             mode_str = "serial" if args.serial else "concurrent"
             print(

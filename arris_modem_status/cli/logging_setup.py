@@ -13,50 +13,19 @@ import sys
 from typing import Optional
 
 
-def setup_logging(
-    debug: bool = False, quiet: bool = False, silent: bool = False, log_file: Optional[str] = None
-) -> None:
+def setup_logging(debug: bool = False, log_file: Optional[str] = None) -> None:
     """
     Configure logging for the CLI application.
 
     Args:
         debug: If True, enable debug-level logging
-        quiet: If True, only show warnings and errors
-        silent: If True, suppress all console output (like curl -s)
         log_file: Optional path to log file for output
     """
-    # Determine log level based on flags
-    if debug:
-        level = logging.DEBUG
-    elif quiet:
-        level = logging.WARNING
-    else:
-        level = logging.INFO
+    # Determine log level based on debug flag
+    level = logging.DEBUG if debug else logging.INFO
 
     # Base logging configuration
     handlers: list[logging.Handler] = []
-
-    # Console handler (stderr) - only if not silent
-    if not silent:
-        console_handler = logging.StreamHandler(sys.stderr)
-        console_handler.setLevel(level)
-
-        # Create formatter
-        if debug:
-            # More detailed format for debug mode
-            formatter = logging.Formatter(
-                "%(asctime)s - %(levelname)s - %(name)s - %(funcName)s:%(lineno)d - %(message)s",
-                datefmt="%Y-%m-%d %H:%M:%S",
-            )
-        else:
-            # Simpler format for normal mode
-            formatter = logging.Formatter(
-                "%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-                datefmt="%Y-%m-%d %H:%M:%S",
-            )
-
-        console_handler.setFormatter(formatter)
-        handlers.append(console_handler)
 
     # Console handler (stderr)
     console_handler = logging.StreamHandler(sys.stderr)

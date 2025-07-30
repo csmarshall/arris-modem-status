@@ -81,10 +81,12 @@ Quick Check:
         action="store_true",
         help="Enable debug logging output to stderr",
     )
-    parser.add_argument("--quiet", action="store_true", help="Suppress summary output to stderr (JSON only to stdout)")
     parser.add_argument(
-        "--silent", action="store_true", help="Suppress all output to stderr (like curl -s). Only JSON to stdout."
+        "--quiet",
+        action="store_true",
+        help="Suppress summary output to stderr (JSON only to stdout)",
     )
+
     # Performance options
     parser.add_argument(
         "--timeout",
