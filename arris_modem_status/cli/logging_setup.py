@@ -12,8 +12,6 @@ import logging
 import sys
 from typing import Optional
 
-_logging_configured = False
-
 
 def setup_logging(
     debug: bool = False, quiet: bool = False, silent: bool = False, log_file: Optional[str] = None
@@ -27,14 +25,6 @@ def setup_logging(
         silent: If True, suppress all console output (like curl -s)
         log_file: Optional path to log file for output
     """
-    global _logging_configured
-
-    # Only configure logging once
-    if _logging_configured:
-        return
-
-    _logging_configured = True
-
     # Determine log level based on flags
     if debug:
         level = logging.DEBUG
@@ -67,6 +57,27 @@ def setup_logging(
 
         console_handler.setFormatter(formatter)
         handlers.append(console_handler)
+
+    # Console handler (stderr)
+    console_handler = logging.StreamHandler(sys.stderr)
+    console_handler.setLevel(level)
+
+    # Create formatter
+    if debug:
+        # More detailed format for debug mode
+        formatter = logging.Formatter(
+            "%(asctime)s - %(levelname)s - %(name)s - %(funcName)s:%(lineno)d - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    else:
+        # Simpler format for normal mode
+        formatter = logging.Formatter(
+            "%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+
+    console_handler.setFormatter(formatter)
+    handlers.append(console_handler)
 
     # File handler if requested
     if log_file:

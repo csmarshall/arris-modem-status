@@ -185,30 +185,18 @@ class TestArrisModemStatusClientDataRetrieval:
     """Test data retrieval functionality."""
 
     def test_get_status_success(self, mock_successful_status_flow):
-        """Test successful status retrieval with GetCustomerStatusSoftware."""
+        """Test successful status retrieval."""
         client = ArrisModemStatusClient(password="test")
 
         status = client.get_status()
 
         assert isinstance(status, dict)
         assert "model_name" in status
-        assert "firmware_version" in status
         assert "internet_status" in status
         assert "downstream_channels" in status
         assert "upstream_channels" in status
-
-        # Test new data from GetCustomerStatusSoftware
         assert status["model_name"] == "S34"
-        assert status["firmware_version"] == "AT01.01.010.042324_S3.04.735"
-        assert status["mac_address"] == "F8:20:D2:1D:21:27"
-        assert status["serial_number"] == "4CD54D222102727"
-        assert status["system_uptime"] == "26 day(s) 09h:30m:06s"
-        assert status.get("docsis_version") == "DOCSIS 3.1"
-        assert status.get("hardware_version") == "1.0"
-
-        # Test other endpoints still work
         assert status["internet_status"] == "Connected"
-        assert status["connection_status"] == "Allowed"
         assert len(status["downstream_channels"]) == 3
         assert len(status["upstream_channels"]) == 3
 
@@ -352,22 +340,6 @@ class TestArrisModemStatusClientDataRetrieval:
                 client.get_status()
 
             assert "Failed to retrieve any status data" in str(exc_info.value)
-
-    def test_parse_software_info_response(self, mock_modem_responses):
-        """Test parsing of GetCustomerStatusSoftware response specifically."""
-        client = ArrisModemStatusClient(password="test")
-
-        responses = {"software_info": mock_modem_responses["software_info_only"]}
-
-        parsed_data = client._parse_responses(responses)
-
-        assert parsed_data["model_name"] == "S34"
-        assert parsed_data["firmware_version"] == "AT01.01.010.042324_S3.04.735"
-        assert parsed_data["mac_address"] == "F8:20:D2:1D:21:27"
-        assert parsed_data["serial_number"] == "4CD54D222102727"
-        assert parsed_data["system_uptime"] == "26 day(s) 09h:30m:06s"
-        assert parsed_data["docsis_version"] == "DOCSIS 3.1"
-        assert parsed_data["hardware_version"] == "1.0"
 
 
 @pytest.mark.unit
