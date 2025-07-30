@@ -672,24 +672,22 @@ class ArrisModemStatusClient:
             mode_str = "concurrent" if self.concurrent else "serial"
             logger.info(f"📊 Retrieving modem status with {mode_str} processing...")
 
-            # Define the requests
+            # Define the requests - Updated to use GetCustomerStatusSoftware
             request_definitions = [
                 (
-                    "startup_connection",
+                    "software_info",
                     {
                         "GetMultipleHNAPs": {
-                            "GetCustomerStatusStartupSequence": "",
-                            "GetCustomerStatusConnectionInfo": "",
+                            "GetCustomerStatusSoftware": "",
                         }
                     },
                 ),
                 (
-                    "internet_register",
+                    "connection_internet",
                     {
                         "GetMultipleHNAPs": {
+                            "GetCustomerStatusConnectionInfo": "",
                             "GetInternetConnectionStatus": "",
-                            "GetArrisRegisterInfo": "",
-                            "GetArrisRegisterStatus": "",
                         }
                     },
                 ),
@@ -1029,32 +1027,37 @@ class ArrisModemStatusClient:
                 data = json.loads(content)
                 hnaps_response = data.get("GetMultipleHNAPsResponse", {})
 
-                if response_type == "channel_info":
+                if response_type == "software_info":
+                    # Parse the GetCustomerStatusSoftware response
+                    software_info = hnaps_response.get("GetCustomerStatusSoftwareResponse", {})
+                    parsed_data.update(
+                        {
+                            "model_name": software_info.get("StatusSoftwareModelName", "Unknown"),
+                            "firmware_version": software_info.get("StatusSoftwareSfVer", "Unknown"),
+                            "mac_address": software_info.get("StatusSoftwareMac", "Unknown"),
+                            "serial_number": software_info.get("StatusSoftwareSerialNum", "Unknown"),
+                            "system_uptime": software_info.get("CustomerConnSystemUpTime", "Unknown"),
+                            # Additional fields from this response
+                            "docsis_version": software_info.get("StatusSoftwareCustomerVer", "Unknown"),
+                            "hardware_version": software_info.get("StatusSoftwareHdVer", "Unknown"),
+                        }
+                    )
+
+                elif response_type == "channel_info":
                     channels = self._parse_channels(hnaps_response)
                     parsed_data["downstream_channels"] = channels["downstream"]
                     parsed_data["upstream_channels"] = channels["upstream"]
 
-                elif response_type == "startup_connection":
+                elif response_type == "connection_internet":
+                    # Parse connection info (only for connection_status now)
                     conn_info = hnaps_response.get("GetCustomerStatusConnectionInfoResponse", {})
-                    parsed_data.update(
-                        {
-                            "system_uptime": conn_info.get("CustomerCurSystemTime", "Unknown"),
-                            "connection_status": conn_info.get("CustomerConnNetworkAccess", "Unknown"),
-                            "model_name": conn_info.get("StatusSoftwareModelName", "Unknown"),
-                        }
-                    )
+                    if conn_info:
+                        parsed_data["connection_status"] = conn_info.get("CustomerConnNetworkAccess", "Unknown")
 
-                elif response_type == "internet_register":
+                    # Parse internet status
                     internet_info = hnaps_response.get("GetInternetConnectionStatusResponse", {})
-                    register_info = hnaps_response.get("GetArrisRegisterInfoResponse", {})
-
-                    parsed_data.update(
-                        {
-                            "internet_status": internet_info.get("InternetConnection", "Unknown"),
-                            "mac_address": register_info.get("MacAddress", "Unknown"),
-                            "serial_number": register_info.get("SerialNumber", "Unknown"),
-                        }
-                    )
+                    if internet_info:
+                        parsed_data["internet_status"] = internet_info.get("InternetConnection", "Unknown")
 
             except json.JSONDecodeError as e:
                 logger.warning(f"Parse failed for {response_type}: {e}")

@@ -75,7 +75,6 @@ class TestCLIArgs:
                 "user",
                 "--debug",
                 "--quiet",
-                "--silent",
                 "--timeout",
                 "60",
                 "--workers",
@@ -286,7 +285,7 @@ class TestCLIFormatters:
         assert json_output["configuration"]["quick_check_performed"] is True
 
     def test_print_summary_to_stderr(self, capsys):
-        """Test summary output to stderr."""
+        """Test summary output to stderr with firmware version."""
         mock_channel = Mock()
         mock_channel.channel_id = "1"
         mock_channel.frequency = "549000000 Hz"
@@ -295,9 +294,11 @@ class TestCLIFormatters:
 
         status = {
             "model_name": "S34",
+            "firmware_version": "AT01.01.010.042324_S3.04.735",
             "internet_status": "Connected",
             "connection_status": "Allowed",
-            "mac_address": "AA:BB:CC:DD:EE:FF",
+            "mac_address": "F8:20:D2:1D:21:27",
+            "system_uptime": "26 day(s) 09h:30m:06s",
             "downstream_channels": [mock_channel],
             "upstream_channels": [],
             "channel_data_available": True,
@@ -309,7 +310,9 @@ class TestCLIFormatters:
         assert "ARRIS MODEM STATUS SUMMARY" in captured.err
         assert "Model: S34" in captured.err
         assert "Internet Status: Connected" in captured.err
-        assert "MAC Address: AA:BB:CC:DD:EE:FF" in captured.err
+        assert "MAC Address: F8:20:D2:1D:21:27" in captured.err
+        # Note: The current print_summary_to_stderr doesn't display firmware_version
+        # This is an opportunity for enhancement
 
     def test_print_json_output(self, capsys):
         """Test JSON output to stdout."""
@@ -378,8 +381,8 @@ class TestCLILogging:
 class TestCLIMainIntegration:
     """Test main orchestration module with the new testable structure."""
 
-    def test_main_success(self):
-        """Test successful main execution using the new testable structure."""
+    def test_main_success_with_firmware(self):
+        """Test successful main execution with firmware version from GetCustomerStatusSoftware."""
         # Create a proper mock channel object
         mock_channel = Mock()
         mock_channel.channel_id = "1"
@@ -392,10 +395,16 @@ class TestCLIMainIntegration:
         mock_channel.uncorrected_errors = "0"
         mock_channel.channel_type = "downstream"
 
-        # Create the return value for get_status
+        # Create the return value for get_status with firmware info
         mock_status = {
             "model_name": "S34",
+            "firmware_version": "AT01.01.010.042324_S3.04.735",
             "internet_status": "Connected",
+            "mac_address": "F8:20:D2:1D:21:27",
+            "serial_number": "4CD54D222102727",
+            "system_uptime": "26 day(s) 09h:30m:06s",
+            "docsis_version": "DOCSIS 3.1",
+            "hardware_version": "1.0",
             "downstream_channels": [mock_channel],
             "upstream_channels": [],
         }
@@ -422,12 +431,18 @@ class TestCLIMainIntegration:
                 # On success, main() returns None
                 assert result is None
 
-            # Check JSON output
+            # Check JSON output includes firmware version
             output = stdout_capture.getvalue()
             json_data = json.loads(output)
 
             assert json_data["model_name"] == "S34"
+            assert json_data["firmware_version"] == "AT01.01.010.042324_S3.04.735"
             assert json_data["internet_status"] == "Connected"
+            assert json_data["mac_address"] == "F8:20:D2:1D:21:27"
+            assert json_data["serial_number"] == "4CD54D222102727"
+            assert json_data["system_uptime"] == "26 day(s) 09h:30m:06s"
+            assert json_data["docsis_version"] == "DOCSIS 3.1"
+            assert json_data["hardware_version"] == "1.0"
             assert json_data["query_host"] == "192.168.100.1"
 
     def test_main_connectivity_check_failed(self):
@@ -469,6 +484,7 @@ class TestCLIMainIntegration:
         """Test main execution in quiet mode."""
         mock_status = {
             "model_name": "S34",
+            "firmware_version": "AT01.01.010.042324_S3.04.735",
             "internet_status": "Connected",
             "downstream_channels": [],
             "upstream_channels": [],
@@ -496,10 +512,11 @@ class TestCLIMainIntegration:
             stderr_output = stderr_capture.getvalue()
             assert "ARRIS MODEM STATUS SUMMARY" not in stderr_output
 
-            # But JSON should still be on stdout
+            # But JSON should still be on stdout with firmware
             stdout_output = stdout_capture.getvalue()
             json_data = json.loads(stdout_output)
             assert json_data["model_name"] == "S34"
+            assert json_data["firmware_version"] == "AT01.01.010.042324_S3.04.735"
 
     def test_main_keyboard_interrupt(self):
         """Test handling of keyboard interrupt."""
@@ -521,6 +538,7 @@ class TestCLIMainIntegration:
         """Test main execution in serial mode."""
         mock_status = {
             "model_name": "S34",
+            "firmware_version": "Unknown",  # Legacy response without firmware
             "internet_status": "Connected",
             "downstream_channels": [],
             "upstream_channels": [],
@@ -772,11 +790,12 @@ class TestCLIHelperFunctions:
                 assert result is False
 
     def test_process_modem_status(self):
-        """Test process_modem_status function."""
+        """Test process_modem_status function with firmware info."""
         # Create mock client
         mock_client = MagicMock()
         mock_status = {
             "model_name": "S34",
+            "firmware_version": "AT01.01.010.042324_S3.04.735",
             "internet_status": "Connected",
             "downstream_channels": [],
             "upstream_channels": [],
@@ -790,7 +809,6 @@ class TestCLIHelperFunctions:
             host="192.168.100.1",
             port=443,
             quiet=False,
-            silent=False,
             workers=2,
             retries=3,
             timeout=30,
@@ -808,10 +826,11 @@ class TestCLIHelperFunctions:
         stderr_output = stderr_capture.getvalue()
         assert "ARRIS MODEM STATUS SUMMARY" in stderr_output
 
-        # Check that JSON was printed to stdout
+        # Check that JSON was printed to stdout with firmware
         stdout_output = stdout_capture.getvalue()
         json_data = json.loads(stdout_output)
         assert json_data["model_name"] == "S34"
+        assert json_data["firmware_version"] == "AT01.01.010.042324_S3.04.735"
 
     def test_create_client_default_class(self):
         """Test create_client with default client class."""
@@ -840,6 +859,7 @@ class TestCLIHelperFunctions:
         """Test main with combination of options."""
         mock_status = {
             "model_name": "S34",
+            "firmware_version": "AT01.01.010.042324_S3.04.735",
             "internet_status": "Connected",
             "downstream_channels": [],
             "upstream_channels": [],

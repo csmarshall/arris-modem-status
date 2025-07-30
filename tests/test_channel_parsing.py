@@ -244,19 +244,19 @@ class TestResponseParsing:
         client = ArrisModemStatusClient(password="test")
 
         responses = {
-            "startup_connection": mock_modem_responses["complete_status"],
-            "internet_register": mock_modem_responses["complete_status"],
+            "software_info": mock_modem_responses["complete_status"],
+            "connection_internet": mock_modem_responses["complete_status"],
             "channel_info": mock_modem_responses["complete_status"],
         }
 
         parsed_data = client._parse_responses(responses)
 
         assert parsed_data["model_name"] == "S34"
-        assert parsed_data["system_uptime"] == "7 days 14:23:56"
+        assert parsed_data["system_uptime"] == "26 day(s) 09h:30m:06s"
         assert parsed_data["connection_status"] == "Allowed"
         assert parsed_data["internet_status"] == "Connected"
-        assert parsed_data["mac_address"] == "AA:BB:CC:DD:EE:FF"
-        assert parsed_data["serial_number"] == "ABCD12345678"
+        assert parsed_data["mac_address"] == "F8:20:D2:1D:21:27"
+        assert parsed_data["serial_number"] == "4CD54D222102727"
         assert len(parsed_data["downstream_channels"]) == 3
         assert len(parsed_data["upstream_channels"]) == 3
         assert parsed_data["channel_data_available"] is True
@@ -266,7 +266,7 @@ class TestResponseParsing:
         client = ArrisModemStatusClient(password="test")
 
         responses = {
-            "startup_connection": '{"GetMultipleHNAPsResponse": {"GetCustomerStatusConnectionInfoResponse": {"StatusSoftwareModelName": "S34"}}}'
+            "software_info": '{"GetMultipleHNAPsResponse": {"GetCustomerStatusSoftwareResponse": {"StatusSoftwareModelName": "S34"}}}'
         }
 
         parsed_data = client._parse_responses(responses)
