@@ -5,6 +5,8 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    reviewers:
+      - "csmarshall"
     # Ensure setuptools stays above the vulnerable version
     ignore:
       - dependency-name: "setuptools"
@@ -14,3 +16,5 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    reviewers:
+      - "csmarshall"
