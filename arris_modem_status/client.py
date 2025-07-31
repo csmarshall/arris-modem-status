@@ -140,7 +140,7 @@ class ArrisModemStatusClient:
         self.session = self._create_session()
 
         mode_str = "concurrent" if concurrent else "serial"
-        logger.info(f"🛡️ ArrisModemStatusClient v1.4 initialized for {host}:{port}")
+        logger.info(f"🛡️ ArrisModemStatusClient v1.0.0 initialized for {host}:{port}")
         logger.info(f"🔧 Mode: {mode_str}, Workers: {self.max_workers}, Retries: {max_retries}")
         logger.info("🔧 Using relaxed HTTP parsing for HNAP endpoints")
         if not concurrent:

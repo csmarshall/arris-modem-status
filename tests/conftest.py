@@ -21,6 +21,20 @@ def mock_modem_responses():
         ),
         "login_success": json.dumps({"LoginResponse": {"LoginResult": "SUCCESS"}}),
         "login_failure": json.dumps({"LoginResponse": {"LoginResult": "FAILED"}}),
+        "software_info": json.dumps(
+            {
+                "GetMultipleHNAPsResponse": {
+                    "GetCustomerStatusSoftwareResponse": {
+                        "StatusSoftwareModelName": "S34",
+                        "StatusSoftwareSfVer": "AT01.01.010.042324_S3.04.735",
+                        "StatusSoftwareHdVer": "1.0",
+                        "CustomerConnSystemUpTime": "7 days 14:23:56",
+                        "StatusSoftwareMac": "AA:BB:CC:DD:EE:FF",
+                        "StatusSoftwareSerialNumber": "ABCD12345678",
+                    }
+                }
+            }
+        ),
         "complete_status": json.dumps(
             {
                 "GetMultipleHNAPsResponse": {
@@ -40,7 +54,7 @@ def mock_modem_responses():
                     },
                     "GetCustomerStatusConnectionInfoResponse": {
                         "StatusSoftwareModelName": "S34",
-                        "CustomerCurSystemTime": "7 days 14:23:56",
+                        "CustomerCurSystemTime": "07/31/2025 14:23:56",
                         "CustomerConnNetworkAccess": "Allowed",
                     },
                     "GetInternetConnectionStatusResponse": {"InternetConnection": "Connected"},
@@ -91,16 +105,17 @@ def mock_successful_auth_flow(mock_modem_responses):
 def mock_successful_status_flow(mock_modem_responses):
     """Mock successful complete status flow."""
     with patch("requests.Session.post") as mock_post:
-        # Auth flow + 3 status requests
+        # Auth flow + 4 status requests (now includes software_info)
         mock_post.side_effect = [
             Mock(
                 status_code=200,
                 text=mock_modem_responses["challenge_response"],
             ),
             Mock(status_code=200, text=mock_modem_responses["login_success"]),
-            Mock(status_code=200, text=mock_modem_responses["complete_status"]),
-            Mock(status_code=200, text=mock_modem_responses["complete_status"]),
-            Mock(status_code=200, text=mock_modem_responses["complete_status"]),
+            Mock(status_code=200, text=mock_modem_responses["software_info"]),  # software_info
+            Mock(status_code=200, text=mock_modem_responses["complete_status"]),  # startup_connection
+            Mock(status_code=200, text=mock_modem_responses["complete_status"]),  # internet_register
+            Mock(status_code=200, text=mock_modem_responses["complete_status"]),  # channel_info
         ]
         yield mock_post
 
@@ -124,7 +139,7 @@ def client_kwargs():
         "host": "192.168.100.1",
         "port": 443,
         "username": "admin",
-        "concurrent": True,
+        "concurrent": False,  # Changed to False as new default
         "max_workers": 2,
         "max_retries": 2,
         "base_backoff": 0.1,

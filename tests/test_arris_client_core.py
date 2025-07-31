@@ -31,8 +31,8 @@ class TestArrisModemStatusClientInitialization:
         assert client.username == "admin"
         assert client.host == "192.168.100.1"
         assert client.port == 443
-        assert client.concurrent is True
-        assert client.max_workers == 2
+        assert client.concurrent is False  # Changed from True to False
+        assert client.max_workers == 1  # Changed from 2 to 1 (since concurrent=False)
         assert client.max_retries == 3
         assert client.authenticated is False
         assert client.private_key is None
@@ -45,10 +45,10 @@ class TestArrisModemStatusClientInitialization:
         assert client.password == "test_password"
         assert client.host == "192.168.100.1"
         assert client.port == 443
-        assert client.max_workers == 2
+        assert client.max_workers == 1  # Changed to 1 since concurrent=False
         assert client.max_retries == 2
         assert client.base_backoff == 0.1
-        assert client.concurrent is True
+        assert client.concurrent is False  # Changed from True to False
         assert client.capture_errors is True
 
     def test_serial_mode_initialization(self):
@@ -57,6 +57,13 @@ class TestArrisModemStatusClientInitialization:
 
         assert client.concurrent is False
         assert client.max_workers == 1
+
+    def test_concurrent_mode_initialization(self):
+        """Test client in concurrent mode."""
+        client = ArrisModemStatusClient(password="test", concurrent=True)
+
+        assert client.concurrent is True
+        assert client.max_workers == 2  # Default when concurrent=True
 
     def test_context_manager_protocol(self):
         """Test client as context manager."""
@@ -243,6 +250,7 @@ class TestArrisModemStatusClientDataRetrieval:
                 Mock(status_code=200, text='{"GetMultipleHNAPsResponse": {}}'),
                 Mock(status_code=200, text='{"GetMultipleHNAPsResponse": {}}'),
                 Mock(status_code=200, text='{"GetMultipleHNAPsResponse": {}}'),
+                Mock(status_code=200, text='{"GetMultipleHNAPsResponse": {}}'),  # Added 4th request
             ]
 
             client = ArrisModemStatusClient(password="test")
@@ -252,7 +260,7 @@ class TestArrisModemStatusClientDataRetrieval:
             client.get_status()
 
             assert client.authenticated is True
-            assert mock_post.call_count >= 3  # At least auth + status requests
+            assert mock_post.call_count >= 4  # Changed from 3 to 4 (auth + 4 status requests)
 
     def test_get_status_authentication_failure(self):
         """Test status retrieval when authentication fails."""
@@ -296,6 +304,10 @@ class TestArrisModemStatusClientDataRetrieval:
                 ConnectionError("Network error"),  # This will trigger retry
                 Mock(
                     status_code=200,
+                    text=mock_modem_responses["software_info"],  # Added software_info
+                ),
+                Mock(
+                    status_code=200,
                     text=mock_modem_responses["complete_status"],
                 ),
                 Mock(
@@ -332,6 +344,7 @@ class TestArrisModemStatusClientDataRetrieval:
                 Mock(status_code=500, text="Server error"),
                 Mock(status_code=500, text="Server error"),
                 Mock(status_code=500, text="Server error"),
+                Mock(status_code=500, text="Server error"),  # Added 4th failed request
             ]
 
             client = ArrisModemStatusClient(password="test")

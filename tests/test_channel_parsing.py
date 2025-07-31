@@ -244,6 +244,7 @@ class TestResponseParsing:
         client = ArrisModemStatusClient(password="test")
 
         responses = {
+            "software_info": mock_modem_responses["software_info"],  # Added software_info
             "startup_connection": mock_modem_responses["complete_status"],
             "internet_register": mock_modem_responses["complete_status"],
             "channel_info": mock_modem_responses["complete_status"],
@@ -252,7 +253,9 @@ class TestResponseParsing:
         parsed_data = client._parse_responses(responses)
 
         assert parsed_data["model_name"] == "S34"
-        assert parsed_data["system_uptime"] == "7 days 14:23:56"
+        assert parsed_data["firmware_version"] == "AT01.01.010.042324_S3.04.735"  # From software_info
+        assert parsed_data["hardware_version"] == "1.0"  # From software_info
+        assert parsed_data["system_uptime"] == "7 days 14:23:56"  # From software_info
         assert parsed_data["connection_status"] == "Allowed"
         assert parsed_data["internet_status"] == "Connected"
         assert parsed_data["mac_address"] == "AA:BB:CC:DD:EE:FF"
@@ -273,6 +276,8 @@ class TestResponseParsing:
 
         assert parsed_data["model_name"] == "S34"
         assert parsed_data["internet_status"] == "Unknown"  # Default value
+        assert parsed_data["firmware_version"] == "Unknown"  # Default value
+        assert parsed_data["system_uptime"] == "Unknown"  # Default value
         assert parsed_data["downstream_channels"] == []
         assert parsed_data["channel_data_available"] is False
 
@@ -287,6 +292,8 @@ class TestResponseParsing:
         # Should return defaults
         assert parsed_data["model_name"] == "Unknown"
         assert parsed_data["internet_status"] == "Unknown"
+        assert parsed_data["firmware_version"] == "Unknown"
+        assert parsed_data["system_uptime"] == "Unknown"
         assert parsed_data["downstream_channels"] == []
 
     def test_parse_responses_no_channels(self, mock_modem_responses):
@@ -300,3 +307,22 @@ class TestResponseParsing:
         assert parsed_data["downstream_channels"] == []
         assert parsed_data["upstream_channels"] == []
         assert parsed_data["channel_data_available"] is False
+
+    def test_parse_responses_software_info_only(self, mock_modem_responses):
+        """Test parsing with only software info response."""
+        client = ArrisModemStatusClient(password="test")
+
+        responses = {"software_info": mock_modem_responses["software_info"]}
+
+        parsed_data = client._parse_responses(responses)
+
+        # Should have parsed software info correctly
+        assert parsed_data["model_name"] == "S34"
+        assert parsed_data["firmware_version"] == "AT01.01.010.042324_S3.04.735"
+        assert parsed_data["hardware_version"] == "1.0"
+        assert parsed_data["system_uptime"] == "7 days 14:23:56"
+
+        # Other fields should be default
+        assert parsed_data["internet_status"] == "Unknown"
+        assert parsed_data["downstream_channels"] == []
+        assert parsed_data["upstream_channels"] == []

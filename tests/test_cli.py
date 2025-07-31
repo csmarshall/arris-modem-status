@@ -59,6 +59,7 @@ class TestCLIArgs:
         assert args.host == "192.168.100.1"  # default
         assert args.port == 443  # default
         assert args.username == "admin"  # default
+        assert args.parallel is False  # default
 
     def test_parse_all_args(self):
         """Test parsing with all arguments."""
@@ -81,7 +82,8 @@ class TestCLIArgs:
                 "4",
                 "--retries",
                 "5",
-                "--serial",
+                "--serial",  # deprecated but still parsed
+                "--parallel",  # new flag
                 "--quick-check",
             ]
         )
@@ -95,19 +97,20 @@ class TestCLIArgs:
         assert args.timeout == 60
         assert args.workers == 4
         assert args.retries == 5
-        assert args.serial is True
+        assert args.serial is True  # deprecated
+        assert args.parallel is True  # new flag
         assert args.quick_check is True
 
     def test_validate_args_valid(self):
         """Test argument validation with valid args."""
-        args = argparse.Namespace(timeout=30, workers=2, retries=3, port=443)
+        args = argparse.Namespace(timeout=30, workers=2, retries=3, port=443, parallel=False)
 
         # Should not raise
         validate_args(args)
 
     def test_validate_args_invalid_timeout(self):
         """Test argument validation with invalid timeout."""
-        args = argparse.Namespace(timeout=0, workers=2, retries=3, port=443)
+        args = argparse.Namespace(timeout=0, workers=2, retries=3, port=443, parallel=False)
 
         with pytest.raises(ArrisConfigurationError) as exc_info:
             validate_args(args)
@@ -117,7 +120,7 @@ class TestCLIArgs:
 
     def test_validate_args_invalid_workers(self):
         """Test argument validation with invalid workers."""
-        args = argparse.Namespace(timeout=30, workers=0, retries=3, port=443)
+        args = argparse.Namespace(timeout=30, workers=0, retries=3, port=443, parallel=False)
 
         with pytest.raises(ArrisConfigurationError) as exc_info:
             validate_args(args)
@@ -127,7 +130,7 @@ class TestCLIArgs:
 
     def test_validate_args_invalid_port(self):
         """Test argument validation with invalid port."""
-        args = argparse.Namespace(timeout=30, workers=2, retries=3, port=70000)
+        args = argparse.Namespace(timeout=30, workers=2, retries=3, port=70000, parallel=False)
 
         with pytest.raises(ArrisConfigurationError) as exc_info:
             validate_args(args)
@@ -142,6 +145,7 @@ class TestCLIArgs:
         args = parse_args()
         assert args.password == "test123"
         assert args.host == "192.168.100.1"
+        assert args.parallel is False  # default
 
 
 @pytest.mark.unit
@@ -271,7 +275,7 @@ class TestCLIFormatters:
             workers=2,
             retries=3,
             timeout=30,
-            serial=False,
+            parallel=False,  # Changed from serial to parallel
         )
 
         json_output = format_json_output(status, args, 1.5, True)
@@ -281,7 +285,7 @@ class TestCLIFormatters:
         assert json_output["query_host"] == "192.168.100.1"
         assert json_output["elapsed_time"] == 1.5
         assert json_output["configuration"]["max_workers"] == 2
-        assert json_output["configuration"]["concurrent_mode"] is True
+        assert json_output["configuration"]["concurrent_mode"] is False  # Based on parallel=False
         assert json_output["configuration"]["quick_check_performed"] is True
 
     def test_print_summary_to_stderr(self, capsys):
@@ -291,9 +295,14 @@ class TestCLIFormatters:
         mock_channel.frequency = "549000000 Hz"
         mock_channel.power = "0.6 dBmV"
         mock_channel.snr = "39.0 dB"
+        mock_channel.corrected_errors = "15"
+        mock_channel.uncorrected_errors = "0"
 
         status = {
             "model_name": "S34",
+            "firmware_version": "AT01.01.010.042324_S3.04.735",
+            "hardware_version": "1.0",
+            "system_uptime": "7 days 14:23:56",
             "internet_status": "Connected",
             "connection_status": "Allowed",
             "mac_address": "AA:BB:CC:DD:EE:FF",
@@ -307,7 +316,9 @@ class TestCLIFormatters:
         captured = capsys.readouterr()
         assert "ARRIS MODEM STATUS SUMMARY" in captured.err
         assert "Model: S34" in captured.err
-        assert "Internet Status: Connected" in captured.err
+        assert "Firmware: AT01.01.010.042324_S3.04.735" in captured.err
+        assert "Uptime: 7 days 14:23:56" in captured.err
+        assert "Internet: Connected" in captured.err
         assert "MAC Address: AA:BB:CC:DD:EE:FF" in captured.err
 
     def test_print_json_output(self, capsys):
@@ -517,7 +528,7 @@ class TestCLIMainIntegration:
             assert "Operation cancelled by user" in stderr_output
 
     def test_main_serial_mode(self):
-        """Test main execution in serial mode."""
+        """Test main execution in serial mode (deprecated flag)."""
         mock_status = {
             "model_name": "S34",
             "internet_status": "Connected",
@@ -540,10 +551,39 @@ class TestCLIMainIntegration:
                 result = main(client_class=MockClientClass)
                 assert result is None
 
-            # Verify client was created with concurrent=False
+            # Verify client was created with concurrent=False (serial is ignored)
             MockClientClass.assert_called_once()
             call_kwargs = MockClientClass.call_args[1]
-            assert call_kwargs["concurrent"] is False
+            assert call_kwargs["concurrent"] is False  # Still False because --parallel not used
+
+    def test_main_parallel_mode(self):
+        """Test main execution in parallel mode."""
+        mock_status = {
+            "model_name": "S34",
+            "internet_status": "Connected",
+            "downstream_channels": [],
+            "upstream_channels": [],
+        }
+
+        # Create a mock client class
+        MockClientClass = Mock()
+        mock_client_instance = MagicMock()
+        MockClientClass.return_value = mock_client_instance
+        mock_client_instance.get_status.return_value = mock_status
+
+        # Setup context manager
+        mock_client_instance.__enter__.return_value = mock_client_instance
+        mock_client_instance.__exit__.return_value = None
+
+        with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--parallel"]):
+            with patch("sys.stdout", StringIO()):
+                result = main(client_class=MockClientClass)
+                assert result is None
+
+            # Verify client was created with concurrent=True
+            MockClientClass.assert_called_once()
+            call_kwargs = MockClientClass.call_args[1]
+            assert call_kwargs["concurrent"] is True  # True because --parallel used
 
     def test_main_configuration_error(self):
         """Test main execution with configuration error."""
@@ -646,7 +686,7 @@ class TestCLIMainIntegration:
         mock_client_instance.__enter__.return_value = mock_client_instance
         mock_client_instance.__exit__.return_value = None
 
-        with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
+        with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--parallel"]):
             stderr_capture = StringIO()
 
             with patch("sys.stderr", stderr_capture):
@@ -655,7 +695,7 @@ class TestCLIMainIntegration:
             assert result == 1
             stderr_output = stderr_capture.getvalue()
             assert "Operation error" in stderr_output
-            assert "--serial" in stderr_output
+            assert "removing --parallel flag" in stderr_output
 
     def test_main_operation_error_serial(self):
         """Test main execution with operation error in serial mode."""
@@ -670,7 +710,7 @@ class TestCLIMainIntegration:
         mock_client_instance.__enter__.return_value = mock_client_instance
         mock_client_instance.__exit__.return_value = None
 
-        with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--serial"]):
+        with patch("sys.argv", ["arris-modem-status", "--password", "test123"]):
             stderr_capture = StringIO()
 
             with patch("sys.stderr", stderr_capture):
@@ -679,7 +719,7 @@ class TestCLIMainIntegration:
             assert result == 1
             stderr_output = stderr_capture.getvalue()
             assert "Operation error" in stderr_output
-            assert "Already using serial mode" in stderr_output
+            assert "--retries" in stderr_output  # Different message for serial mode
 
     def test_main_generic_modem_error(self):
         """Test main execution with generic ArrisModemError."""
@@ -718,7 +758,7 @@ class TestCLIHelperFunctions:
             port=443,
             username="admin",
             password="test123",
-            serial=False,
+            parallel=False,  # Changed from serial to parallel
             workers=2,
             retries=3,
             timeout=30,
@@ -736,7 +776,7 @@ class TestCLIHelperFunctions:
             port=443,
             username="admin",
             password="test123",
-            concurrent=True,
+            concurrent=False,  # Based on parallel=False
             max_workers=2,
             max_retries=3,
             timeout=(2, 8),  # Based on local IP
@@ -792,7 +832,7 @@ class TestCLIHelperFunctions:
             workers=2,
             retries=3,
             timeout=30,
-            serial=False,
+            parallel=False,  # Changed from serial to parallel
         )
 
         # Capture output
@@ -818,7 +858,7 @@ class TestCLIHelperFunctions:
             port=443,
             username="admin",
             password="test123",
-            serial=False,
+            parallel=False,  # Changed from serial to parallel
             workers=2,
             retries=3,
             timeout=30,
@@ -834,7 +874,7 @@ class TestCLIHelperFunctions:
             assert client == mock_instance
             mock_client_class.assert_called_once()
 
-    def test_main_with_serial_debug_quiet_options(self):
+    def test_main_with_parallel_debug_quiet_options(self):
         """Test main with combination of options."""
         mock_status = {
             "model_name": "S34",
@@ -850,7 +890,7 @@ class TestCLIHelperFunctions:
         mock_client_instance.__enter__.return_value = mock_client_instance
         mock_client_instance.__exit__.return_value = None
 
-        with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--serial", "--debug", "--quiet"]):
+        with patch("sys.argv", ["arris-modem-status", "--password", "test123", "--parallel", "--debug", "--quiet"]):
             stdout_capture = StringIO()
             stderr_capture = StringIO()
 
@@ -862,6 +902,6 @@ class TestCLIHelperFunctions:
             stderr_output = stderr_capture.getvalue()
             assert "ARRIS MODEM STATUS SUMMARY" not in stderr_output
 
-            # Verify serial mode was used
+            # Verify parallel mode was used
             call_kwargs = MockClientClass.call_args[1]
-            assert call_kwargs["concurrent"] is False
+            assert call_kwargs["concurrent"] is True  # True because --parallel flag
