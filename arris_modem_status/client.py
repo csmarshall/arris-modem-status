@@ -43,12 +43,40 @@ class ArrisModemStatusClient:
     non-standard but valid HTTP responses.
 
     Features:
-    - 84% performance improvement through concurrent request processing
+    - Serial mode by default for maximum compatibility (many modems have issues with concurrent requests)
+    - Optional concurrent mode for performance (use with caution - may cause HTTP 403 errors)
     - Browser-compatible HTTP parsing by default for HNAP endpoints
     - Smart retry logic for genuine network errors
     - Comprehensive error analysis and recovery
     - Detailed performance instrumentation and timing
     - Connection pooling optimization
+    - Complete HNAP request coverage including GetCustomerStatusSoftware
+
+
+    This is an unofficial library not affiliated with ARRIS® or CommScope.
+
+    Example Usage:
+        from arris_modem_status import ArrisModemStatusClient
+
+        client = ArrisModemStatusClient(password="your_password")
+        status = client.get_status()
+
+        print(f"Internet: {status['internet_status']}")
+        print(f"Channels: {len(status['downstream_channels'])} down, {len(status['upstream_channels'])} up")
+
+    Error Handling:
+        from arris_modem_status import ArrisModemStatusClient, ArrisAuthenticationError, ArrisConnectionError
+
+        try:
+            client = ArrisModemStatusClient(password="your_password")
+            status = client.get_status()
+        except ArrisAuthenticationError as e:
+            print(f"Authentication failed: {e}")
+        except ArrisConnectionError as e:
+            print(f"Connection failed: {e}")
+
+    Author: Charles Marshall
+    License: MIT
     """
 
     def __init__(
@@ -57,7 +85,7 @@ class ArrisModemStatusClient:
         username: str = "admin",
         host: str = "192.168.100.1",
         port: int = 443,
-        concurrent: bool = True,
+        concurrent: bool = False,  # Changed default to False for better compatibility
         max_workers: int = 2,
         max_retries: int = 3,
         base_backoff: float = 0.5,
@@ -73,8 +101,11 @@ class ArrisModemStatusClient:
             username: Login username (default: "admin")
             host: Modem IP address (default: "192.168.100.1")
             port: HTTPS port (default: 443)
-            concurrent: Enable concurrent requests (default: True)
-            max_workers: Concurrent request workers (default: 2)
+            concurrent: Enable concurrent requests (default: False)
+                WARNING: Many Arris modems have issues with concurrent HNAP requests,
+                causing HTTP 403 errors and inconsistent data. Use serial mode (False)
+                for maximum compatibility.
+            max_workers: Concurrent request workers when concurrent=True (default: 2)
             max_retries: Max retry attempts for failed requests (default: 3)
             base_backoff: Base backoff time in seconds (default: 0.5)
             capture_errors: Whether to capture error details for analysis (default: True)
@@ -109,9 +140,13 @@ class ArrisModemStatusClient:
         self.session = self._create_session()
 
         mode_str = "concurrent" if concurrent else "serial"
-        logger.info(f"🛡️ ArrisModemStatusClient v1.3 initialized for {host}:{port}")
+        logger.info(f"🛡️ ArrisModemStatusClient v1.4 initialized for {host}:{port}")
         logger.info(f"🔧 Mode: {mode_str}, Workers: {self.max_workers}, Retries: {max_retries}")
         logger.info("🔧 Using relaxed HTTP parsing for HNAP endpoints")
+        if not concurrent:
+            logger.info("📌 Using serial mode for maximum compatibility (recommended)")
+        else:
+            logger.warning("⚠️  Using concurrent mode - may cause HTTP 403 errors on some modems")
         if enable_instrumentation:
             logger.info("📊 Performance instrumentation enabled")
 
@@ -653,7 +688,15 @@ class ArrisModemStatusClient:
         relaxed HTTP parsing for compatibility with Arris modems.
 
         Returns:
-            Dictionary containing modem status information
+            Dictionary containing modem status information including:
+            - model_name: Modem model (e.g., "S34")
+            - firmware_version: Firmware version string
+            - system_uptime: Modem uptime (e.g., "27 day(s) 10h:12m:37s")
+            - internet_status: Internet connection status
+            - mac_address: Modem MAC address
+            - downstream_channels: List of downstream channel information
+            - upstream_channels: List of upstream channel information
+            - And more...
 
         Raises:
             ArrisAuthenticationError: When authentication is required but fails
@@ -672,8 +715,12 @@ class ArrisModemStatusClient:
             mode_str = "concurrent" if self.concurrent else "serial"
             logger.info(f"📊 Retrieving modem status with {mode_str} processing...")
 
-            # Define the requests
+            # Define the requests - Now includes GetCustomerStatusSoftware!
             request_definitions = [
+                (
+                    "software_info",
+                    {"GetMultipleHNAPs": {"GetCustomerStatusSoftware": ""}},
+                ),
                 (
                     "startup_connection",
                     {
@@ -710,6 +757,7 @@ class ArrisModemStatusClient:
             if self.concurrent:
                 # Concurrent mode: Use ThreadPoolExecutor
                 logger.debug("🚀 Using concurrent request processing with relaxed HTTP parsing")
+                logger.warning("⚠️  Concurrent mode may cause HTTP 403 errors on some modems")
                 concurrent_start = (
                     self.instrumentation.start_timer("concurrent_request_processing")
                     if self.instrumentation
@@ -748,7 +796,7 @@ class ArrisModemStatusClient:
 
             else:
                 # Serial mode: Process requests one by one
-                logger.debug("🔄 Using serial request processing with relaxed HTTP parsing")
+                logger.debug("🔄 Using serial request processing with relaxed HTTP parsing (recommended)")
                 serial_start = (
                     self.instrumentation.start_timer("serial_request_processing")
                     if self.instrumentation
@@ -922,6 +970,13 @@ class ArrisModemStatusClient:
         if other_errors > 0:
             analysis["patterns"].append(f"Other errors: {other_errors} (network/timeout issues)")
 
+        # Check for HTTP 403 errors (common in concurrent mode)
+        http_403_count = analysis["error_types"].get("http_403", 0)
+        if http_403_count > 0:
+            analysis["patterns"].append(
+                f"HTTP 403 errors: {http_403_count} (modem rejecting concurrent requests - use serial mode)"
+            )
+
         return analysis
 
     def validate_parsing(self) -> dict[str, Any]:
@@ -937,6 +992,8 @@ class ArrisModemStatusClient:
                 status.get("model_name", "Unknown") != "Unknown",
                 status.get("internet_status", "Unknown") != "Unknown",
                 status.get("mac_address", "Unknown") != "Unknown",
+                status.get("firmware_version", "Unknown") != "Unknown",  # Now included!
+                status.get("system_uptime", "Unknown") != "Unknown",  # Now included!
                 downstream_count > 0,
                 upstream_count > 0,
             ]
@@ -990,6 +1047,8 @@ class ArrisModemStatusClient:
                 "parsing_validation": {
                     "basic_info_parsed": status.get("model_name", "Unknown") != "Unknown",
                     "internet_status_parsed": status.get("internet_status", "Unknown") != "Unknown",
+                    "firmware_version_parsed": status.get("firmware_version", "Unknown") != "Unknown",
+                    "system_uptime_parsed": status.get("system_uptime", "Unknown") != "Unknown",
                     "downstream_channels_found": downstream_count,
                     "upstream_channels_found": upstream_count,
                     "mac_address_format": mac_valid,
@@ -1014,11 +1073,23 @@ class ArrisModemStatusClient:
         parsed_data = {
             "model_name": "Unknown",
             "firmware_version": "Unknown",
+            "hardware_version": "Unknown",
             "system_uptime": "Unknown",
             "internet_status": "Unknown",
             "connection_status": "Unknown",
+            "boot_status": "Unknown",
+            "boot_comment": "Unknown",
+            "connectivity_status": "Unknown",
+            "connectivity_comment": "Unknown",
+            "configuration_file_status": "Unknown",
+            "security_status": "Unknown",
+            "security_comment": "Unknown",
             "mac_address": "Unknown",
             "serial_number": "Unknown",
+            "current_system_time": "Unknown",
+            "network_access": "Unknown",
+            "downstream_frequency": "Unknown",
+            "downstream_comment": "Unknown",
             "downstream_channels": [],
             "upstream_channels": [],
             "channel_data_available": True,
@@ -1029,20 +1100,63 @@ class ArrisModemStatusClient:
                 data = json.loads(content)
                 hnaps_response = data.get("GetMultipleHNAPsResponse", {})
 
-                if response_type == "channel_info":
+                if response_type == "software_info":
+                    # Parse software/hardware info - THIS IS NEW!
+                    software_info = hnaps_response.get("GetCustomerStatusSoftwareResponse", {})
+                    if software_info:
+                        parsed_data.update(
+                            {
+                                "model_name": software_info.get("StatusSoftwareModelName", "Unknown"),
+                                "firmware_version": software_info.get("StatusSoftwareSfVer", "Unknown"),
+                                "system_uptime": software_info.get("CustomerConnSystemUpTime", "Unknown"),
+                                "hardware_version": software_info.get("StatusSoftwareHdVer", "Unknown"),
+                                # MAC and serial are also here but we prefer GetArrisRegisterInfo
+                            }
+                        )
+                        logger.debug(
+                            f"Parsed software info: Model={parsed_data['model_name']}, "
+                            f"Firmware={parsed_data['firmware_version']}, "
+                            f"Uptime={parsed_data['system_uptime']}"
+                        )
+
+                elif response_type == "channel_info":
                     channels = self._parse_channels(hnaps_response)
                     parsed_data["downstream_channels"] = channels["downstream"]
                     parsed_data["upstream_channels"] = channels["upstream"]
 
                 elif response_type == "startup_connection":
+                    # Parse startup sequence info
+                    startup_info = hnaps_response.get("GetCustomerStatusStartupSequenceResponse", {})
+                    if startup_info:
+                        parsed_data.update(
+                            {
+                                "downstream_frequency": startup_info.get("CustomerConnDSFreq", "Unknown"),
+                                "downstream_comment": startup_info.get("CustomerConnDSComment", "Unknown"),
+                                "connectivity_status": startup_info.get("CustomerConnConnectivityStatus", "Unknown"),
+                                "connectivity_comment": startup_info.get("CustomerConnConnectivityComment", "Unknown"),
+                                "boot_status": startup_info.get("CustomerConnBootStatus", "Unknown"),
+                                "boot_comment": startup_info.get("CustomerConnBootComment", "Unknown"),
+                                "configuration_file_status": startup_info.get(
+                                    "CustomerConnConfigurationFileStatus", "Unknown"
+                                ),
+                                "security_status": startup_info.get("CustomerConnSecurityStatus", "Unknown"),
+                                "security_comment": startup_info.get("CustomerConnSecurityComment", "Unknown"),
+                            }
+                        )
+
+                    # Parse connection info
                     conn_info = hnaps_response.get("GetCustomerStatusConnectionInfoResponse", {})
-                    parsed_data.update(
-                        {
-                            "system_uptime": conn_info.get("CustomerCurSystemTime", "Unknown"),
-                            "connection_status": conn_info.get("CustomerConnNetworkAccess", "Unknown"),
-                            "model_name": conn_info.get("StatusSoftwareModelName", "Unknown"),
-                        }
-                    )
+                    if conn_info:
+                        parsed_data.update(
+                            {
+                                "current_system_time": conn_info.get("CustomerCurSystemTime", "Unknown"),
+                                "connection_status": conn_info.get("CustomerConnNetworkAccess", "Unknown"),
+                                "network_access": conn_info.get("CustomerConnNetworkAccess", "Unknown"),
+                            }
+                        )
+                        # Only use model name from here if we didn't get it from software_info
+                        if parsed_data["model_name"] == "Unknown":
+                            parsed_data["model_name"] = conn_info.get("StatusSoftwareModelName", "Unknown")
 
                 elif response_type == "internet_register":
                     internet_info = hnaps_response.get("GetInternetConnectionStatusResponse", {})
@@ -1139,12 +1253,15 @@ class ArrisModemStatusClient:
             mode_str = "concurrent" if self.concurrent else "serial"
             compatibility_issues = len([e for e in self.error_captures if e.compatibility_issue])
             total_errors = len(self.error_captures)
+            http_403_errors = len([e for e in self.error_captures if e.error_type == "http_403"])
 
             logger.info(f"📊 Session captured {total_errors} errors for analysis ({mode_str} mode)")
             if compatibility_issues > 0:
                 logger.debug(
                     f"🔧 HTTP compatibility issues: {compatibility_issues} (should be rare with relaxed parsing)"
                 )
+            if http_403_errors > 0:
+                logger.warning(f"⚠️  HTTP 403 errors: {http_403_errors} (modem rejected requests - use serial mode)")
 
         if self.instrumentation:
             performance_summary = self.instrumentation.get_performance_summary()

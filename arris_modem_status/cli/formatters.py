@@ -86,34 +86,52 @@ def print_summary_to_stderr(status: dict) -> None:
     print("=" * 60, file=sys.stderr)
     print("ARRIS MODEM STATUS SUMMARY", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
+
+    # Basic Information
     print(f"Model: {status.get('model_name', 'Unknown')}", file=sys.stderr)
+    print(f"Hardware Version: {status.get('hardware_version', 'Unknown')}", file=sys.stderr)
+    print(f"Firmware: {status.get('firmware_version', 'Unknown')}", file=sys.stderr)
+    print(f"Uptime: {status.get('system_uptime', 'Unknown')}", file=sys.stderr)
+
+    # Connection Status
+    print("\nConnection Status:", file=sys.stderr)
+    print(f"  Internet: {status.get('internet_status', 'Unknown')}", file=sys.stderr)
+    print(f"  Network Access: {status.get('network_access', 'Unknown')}", file=sys.stderr)
+    print(f"  Boot Status: {status.get('boot_status', 'Unknown')}", file=sys.stderr)
     print(
-        f"Internet Status: {status.get('internet_status', 'Unknown')}",
-        file=sys.stderr,
-    )
-    print(
-        f"Connection Status: {status.get('connection_status', 'Unknown')}",
+        f"  Security: {status.get('security_status', 'Unknown')} ({status.get('security_comment', 'Unknown')})",
         file=sys.stderr,
     )
 
+    # Downstream Status
+    if status.get("downstream_frequency", "Unknown") != "Unknown":
+        print("\nDownstream Status:", file=sys.stderr)
+        print(f"  Frequency: {status.get('downstream_frequency', 'Unknown')}", file=sys.stderr)
+        print(f"  Comment: {status.get('downstream_comment', 'Unknown')}", file=sys.stderr)
+
+    # System Info
     if status.get("mac_address", "Unknown") != "Unknown":
-        print(f"MAC Address: {status.get('mac_address')}", file=sys.stderr)
+        print("\nSystem Information:", file=sys.stderr)
+        print(f"  MAC Address: {status.get('mac_address')}", file=sys.stderr)
+        print(f"  Serial Number: {status.get('serial_number')}", file=sys.stderr)
+        print(f"  Current Time: {status.get('current_system_time', 'Unknown')}", file=sys.stderr)
 
+    # Channel Summary
     downstream_count = len(status.get("downstream_channels", []))
     upstream_count = len(status.get("upstream_channels", []))
 
-    print(f"Downstream Channels: {downstream_count}", file=sys.stderr)
-    print(f"Upstream Channels: {upstream_count}", file=sys.stderr)
-    print(
-        f"Channel Data Available: {status.get('channel_data_available', False)}",
-        file=sys.stderr,
-    )
+    print("\nChannel Summary:", file=sys.stderr)
+    print(f"  Downstream Channels: {downstream_count}", file=sys.stderr)
+    print(f"  Upstream Channels: {upstream_count}", file=sys.stderr)
+    print(f"  Channel Data Available: {status.get('channel_data_available', False)}", file=sys.stderr)
 
     # Show sample channel if available
     if downstream_count > 0:
         sample = status["downstream_channels"][0]
         sample_info = f"ID {sample.channel_id}, {sample.frequency}, {sample.power}, SNR {sample.snr}"
-        print(f"Sample Channel: {sample_info}", file=sys.stderr)
+        if hasattr(sample, "corrected_errors") and sample.corrected_errors:
+            sample_info += f", Errors: {sample.corrected_errors}/{sample.uncorrected_errors}"
+        print(f"  Sample Channel: {sample_info}", file=sys.stderr)
 
     # Show error analysis if available
     error_analysis = status.get("_error_analysis")
@@ -121,16 +139,20 @@ def print_summary_to_stderr(status: dict) -> None:
         total_errors = error_analysis.get("total_errors", 0)
         recovery_rate = error_analysis.get("recovery_rate", 0) * 100
         compatibility_issues = error_analysis.get("http_compatibility_issues", 0)
+        http_403_errors = error_analysis.get("error_types", {}).get("http_403", 0)
 
-        print(
-            f"Error Analysis: {total_errors} errors, {recovery_rate:.1f}% recovery",
-            file=sys.stderr,
-        )
+        print("\nError Analysis:", file=sys.stderr)
+        print(f"  Total Errors: {total_errors}", file=sys.stderr)
+        print(f"  Recovery Rate: {recovery_rate:.1f}%", file=sys.stderr)
         if compatibility_issues > 0:
-            print(
-                f"HTTP Compatibility Issues Handled: {compatibility_issues}",
-                file=sys.stderr,
-            )
+            print(f"  HTTP Compatibility Issues: {compatibility_issues}", file=sys.stderr)
+        if http_403_errors > 0:
+            print(f"  ⚠️  HTTP 403 Errors: {http_403_errors} (modem rejected concurrent requests)", file=sys.stderr)
+
+    # Mode information
+    mode = status.get("_request_mode", "unknown")
+    if mode == "concurrent":
+        print("\n⚠️  Running in PARALLEL mode - may cause data inconsistency!", file=sys.stderr)
 
     print("=" * 60, file=sys.stderr)
 
@@ -170,7 +192,7 @@ def format_json_output(
         "max_workers": args.workers,
         "max_retries": args.retries,
         "timeout": final_timeout,
-        "concurrent_mode": not args.serial,
+        "concurrent_mode": args.parallel,  # Now based on --parallel flag
         "http_compatibility": True,
         "quick_check_performed": connectivity_checked,
     }
@@ -211,7 +233,7 @@ def print_error_suggestions(debug: bool = False) -> None:
             "4. Try with --debug for more detailed error information",
             file=sys.stderr,
         )
-        print("5. Try --serial mode for maximum compatibility", file=sys.stderr)
+        print("5. Try without --parallel flag (serial mode is more reliable)", file=sys.stderr)
         print("6. Try --quick-check to test connectivity first", file=sys.stderr)
         print(
             "7. HTTP compatibility issues are automatically handled",

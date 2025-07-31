@@ -56,12 +56,15 @@ def create_client(args: Any, client_class: Optional[type[ArrisModemStatusClient]
 
     logger.info(f"Initializing ArrisModemStatusClient for {args.host}:{args.port}")
 
+    # Handle the new default: serial mode unless --parallel is specified
+    concurrent_mode = args.parallel  # Only concurrent if --parallel flag is used
+
     return client_class(
         host=args.host,
         port=args.port,
         username=args.username,
         password=args.password,
-        concurrent=not args.serial,
+        concurrent=concurrent_mode,
         max_workers=args.workers,
         max_retries=args.retries,
         timeout=final_timeout,
@@ -143,7 +146,7 @@ def main(client_class: Optional[type[ArrisModemStatusClient]] = None) -> Optiona
         # Log startup information (to stderr)
         if not args.quiet:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            mode_str = "serial" if args.serial else "concurrent"
+            mode_str = "parallel" if args.parallel else "serial"
             print(
                 f"Arris Modem Status Client v{__version__} - {timestamp}",
                 file=sys.stderr,
@@ -152,6 +155,11 @@ def main(client_class: Optional[type[ArrisModemStatusClient]] = None) -> Optiona
                 f"Connecting to {args.host}:{args.port} as {args.username} ({mode_str} mode)",
                 file=sys.stderr,
             )
+            if args.parallel:
+                print(
+                    "⚠️  WARNING: Parallel mode may cause HTTP 403 errors and inconsistent data!",
+                    file=sys.stderr,
+                )
 
         # Perform connectivity check if requested
         connectivity_checked = args.quick_check
@@ -221,10 +229,10 @@ def main(client_class: Optional[type[ArrisModemStatusClient]] = None) -> Optiona
         logger.error(f"Operation failed after {elapsed:.2f}s: {e}")
         print(f"⚠️  Operation error: {e}", file=sys.stderr)
 
-        if args.serial:
-            print("Already using serial mode. The modem may be unresponsive.", file=sys.stderr)
+        if args.parallel:
+            print("Try removing --parallel flag for better compatibility", file=sys.stderr)
         else:
-            print("Try using --serial mode for better compatibility", file=sys.stderr)
+            print("The modem may be unresponsive. Try increasing --retries", file=sys.stderr)
 
         return 1
 

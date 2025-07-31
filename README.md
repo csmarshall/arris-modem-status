@@ -11,22 +11,27 @@ I got tired of logging into my Arris cable modem's clunky web interface just to 
 
 ## What's This Thing Do? 🤔
 
-It grabs ALL the juicy details from your Arris S33/S34/SB8200 cable modem:
-- 📊 Signal levels, SNR, and all that good stuff
+It grabs **ALL** the juicy details from your Arris S33/S34/SB8200 cable modem:
+- 📊 Signal levels, SNR, error counts
 - 🌊 Downstream/upstream channel info
-- 🔧 Modem uptime, firmware version, the works
-- ⚡ And it's FAST (< 1.5 seconds vs 7+ seconds scraping the web UI)
+- 🔧 Model name, firmware version, hardware version
+- ⏰ System uptime (e.g., "27 day(s) 10h:12m:37s")
+- 🔒 Boot status, security status, connectivity state
+- ⚡ And it's FAST (< 2 seconds in serial mode)
 
 ## Quick Start 🏃‍♂️
 
 ```bash
 pip install arris-modem-status
 
-# Check your modem
+# Check your modem (serial mode by default for reliability)
 arris-modem-status --password YOUR_PASSWORD
 
 # Get JSON for your monitoring setup
 arris-modem-status --password YOUR_PASSWORD --quiet | jq
+
+# Use parallel mode if your modem supports it (30% faster but may fail)
+arris-modem-status --password YOUR_PASSWORD --parallel
 ```
 
 ## Python Usage 🐍
@@ -34,24 +39,72 @@ arris-modem-status --password YOUR_PASSWORD --quiet | jq
 ```python
 from arris_modem_status import ArrisModemStatusClient
 
+# Serial mode by default (recommended)
 with ArrisModemStatusClient(password="YOUR_PASSWORD") as client:
     status = client.get_status()
 
     print(f"Modem: {status['model_name']}")
+    print(f"Firmware: {status['firmware_version']}")
     print(f"Uptime: {status['system_uptime']}")
 
     # Check signal levels
     for channel in status['downstream_channels']:
         print(f"Channel {channel.channel_id}: {channel.power} / SNR: {channel.snr}")
+
+# Use concurrent mode if your modem handles it well
+with ArrisModemStatusClient(password="YOUR_PASSWORD", concurrent=True) as client:
+    status = client.get_status()  # ~30% faster but may get HTTP 403 errors
+```
+
+## Serial vs Parallel Mode ⚠️
+
+**DEFAULT: Serial mode** - Requests are made one at a time. Slower but much more reliable.
+
+Many Arris modems have buggy HNAP implementations that return HTTP 403 errors when handling concurrent requests. This causes inconsistent data like:
+- Sometimes getting model name, sometimes not
+- Missing internet status randomly
+- Partial channel information
+
+If you want to try parallel mode for speed (at your own risk):
+```bash
+arris-modem-status --password YOUR_PASSWORD --parallel
+```
+
+## Complete Data Retrieved 📦
+
+The library now retrieves **ALL** available modem information:
+
+```json
+{
+  "model_name": "S34",
+  "hardware_version": "1.0",
+  "firmware_version": "AT01.01.010.042324_S3.04.735",
+  "system_uptime": "27 day(s) 10h:12m:37s",
+  "current_system_time": "07/30/2025 23:31:23",
+  "mac_address": "F8:20:D2:1D:21:27",
+  "serial_number": "4CD54D222102727",
+  "internet_status": "Connected",
+  "network_access": "Allowed",
+  "boot_status": "OK",
+  "boot_comment": "Operational",
+  "configuration_file_status": "OK",
+  "security_status": "Enabled",
+  "security_comment": "BPI+",
+  "downstream_frequency": "549000000 Hz",
+  "downstream_comment": "Locked",
+  "downstream_channels": [...],
+  "upstream_channels": [...]
+}
 ```
 
 ## The Cool Technical Bits 🤓
 
 I spent way too much time figuring out:
 - 🔐 The HNAP authentication (challenge-response with HMAC-SHA256)
-- 🏎️ Concurrent requests (3x faster than serial!)
+- 🏎️ Why concurrent requests fail (modem firmware bugs causing HTTP 403)
 - 🛡️ HTTP compatibility quirks (urllib3 is... picky)
-- 📦 How the modem encodes channel data (pipe-delimited chaos)
+- 📦 Complete HNAP request mapping (including the missing GetCustomerStatusSoftware!)
+- 🐛 Why data was inconsistent (partial request failures in concurrent mode)
 
 ## Monitoring Integration 📈
 
@@ -73,23 +126,26 @@ This is an unofficial library not affiliated with ARRIS® or CommScope, Inc. ARR
 
 This is a personal project provided as-is under the MIT license.
 
-
 ## Found a Bug? Want a Feature? 🐛
 
 Open an issue! PRs welcome! The codebase is pretty clean thanks to the AI helping me follow best practices.
 
 ## The Story 📖
 
-I started this because I'm obsessive about my internet connection quality (aren't we all?). After discovering the modem had an API, I went down a rabbit hole of reverse engineering with Claude as my copilot. Many debug sessions and HTTP captures later, here we are!
+I started this because I'm obsessive about my internet connection quality (aren't we all?). After discovering the modem had an API, I went down a rabbit hole of reverse engineering with Claude as my copilot.
 
-Fun fact: The trickiest part wasn't the authentication - it was figuring out why urllib3 kept choking on the modem's perfectly valid (but quirky) HTTP responses. Turns out, modems don't read RFC specs. 🤷‍♂️
+Fun discoveries:
+- The modem returns the same data in multiple HNAP responses (redundancy FTW)
+- Many modems can't handle concurrent requests (firmware bugs)
+- The missing firmware version was in GetCustomerStatusSoftware all along
+- Serial mode is more reliable than parallel for most modems
 
 ## Requirements 📋
 
 - Python 3.9+
 - An Arris S33/S34/SB8200 modem
 - The admin password (usually on the sticker)
-- A healthy curiosity about your internet connection
+- Patience if your modem hates concurrent requests
 
 ## License 📄
 

@@ -31,6 +31,7 @@ Examples:
   %(prog)s --password "your_password"
   %(prog)s --password "password" --host 192.168.1.1
   %(prog)s --password "password" --debug
+  %(prog)s --password "password" --parallel  # Use concurrent mode (may cause issues)
 
 Output:
   JSON object with modem status, channel information, and diagnostics.
@@ -45,14 +46,25 @@ HTTP Compatibility:
   some Arris modem responses by falling back to browser-compatible parsing.
   All compatibility issues are gracefully handled with smart retry logic.
 
-Serial Mode:
-  Use --serial to disable concurrent requests for maximum compatibility.
-  Serial mode is slower but provides the highest reliability for modems
-  that may have issues with concurrent request processing.
+Serial vs Parallel Mode:
+  DEFAULT: Serial mode (sequential requests) for maximum compatibility.
+  Many Arris modems have issues with concurrent HNAP requests, causing
+  HTTP 403 errors and inconsistent data. Serial mode is slower but more
+  reliable. Use --parallel at your own risk for ~30% speed improvement
+  if your modem supports it.
 
 Quick Check:
   Use --quick-check to perform a fast connectivity test before attempting
   the full connection. This helps identify unreachable devices quickly.
+
+Complete Data:
+  The library now retrieves ALL modem information including:
+  - Model name and hardware version
+  - Firmware version
+  - System uptime
+  - Boot status and security status
+  - Channel information with error counts
+  - Connection states and timing
         """,
     )
 
@@ -98,7 +110,7 @@ Quick Check:
         "--workers",
         type=int,
         default=2,
-        help="Number of concurrent workers (default: %(default)s)",
+        help="Number of concurrent workers when using --parallel (default: %(default)s)",
     )
     parser.add_argument(
         "--retries",
@@ -106,11 +118,19 @@ Quick Check:
         default=3,
         help="Maximum retry attempts (default: %(default)s)",
     )
+
+    # Changed: --serial is now deprecated, --parallel enables concurrent mode
     parser.add_argument(
         "--serial",
         action="store_true",
-        help="Use serial requests instead of concurrent (for maximum compatibility)",
+        help="DEPRECATED: Serial mode is now the default. This flag does nothing.",
     )
+    parser.add_argument(
+        "--parallel",
+        action="store_true",
+        help="Use parallel/concurrent requests (WARNING: May cause HTTP 403 errors and inconsistent data on many modems)",
+    )
+
     parser.add_argument(
         "--quick-check",
         action="store_true",
@@ -178,5 +198,9 @@ def validate_args(args: argparse.Namespace) -> None:
             "Port must be between 1 and 65535",
             details={"parameter": "port", "value": args.port, "valid_range": "1-65535"},
         )
+
+    # Warn about --parallel mode
+    if args.parallel:
+        logger.warning("⚠️  Using --parallel mode may cause HTTP 403 errors and inconsistent data on many modems!")
 
     logger.debug("Arguments validated successfully")
