@@ -135,6 +135,9 @@ def main(client_class: Optional[type[ArrisModemStatusClient]] = None) -> Optiona
     """
     # IMPORTANT: Define start_time at function scope to avoid variable scoping issues
     start_time = time.time()
+    
+    # Initialize args to None to handle error cases
+    args = None
 
     try:
         # Parse command line arguments
@@ -216,7 +219,8 @@ def main(client_class: Optional[type[ArrisModemStatusClient]] = None) -> Optiona
         print(f"🔌 Connection error: {e}", file=sys.stderr)
 
         # Show connectivity troubleshooting if not already done
-        if not connectivity_checked and hasattr(e, "details"):
+        # Only use args if it was successfully parsed
+        if args and not args.quick_check and hasattr(e, "details"):
             host = e.details.get("host", args.host)
             port = e.details.get("port", args.port)
             print_connectivity_troubleshooting(host, port, str(e))
@@ -229,7 +233,8 @@ def main(client_class: Optional[type[ArrisModemStatusClient]] = None) -> Optiona
         logger.error(f"Operation failed after {elapsed:.2f}s: {e}")
         print(f"⚠️  Operation error: {e}", file=sys.stderr)
 
-        if args.parallel:
+        # Only use args if it was successfully parsed
+        if args and args.parallel:
             print("Try removing --parallel flag for better compatibility", file=sys.stderr)
         else:
             print("The modem may be unresponsive. Try increasing --retries", file=sys.stderr)
@@ -241,7 +246,8 @@ def main(client_class: Optional[type[ArrisModemStatusClient]] = None) -> Optiona
         elapsed = time.time() - start_time
         logger.error(f"Modem error after {elapsed:.2f}s: {e}")
         print(f"Error: {e}", file=sys.stderr)
-        print_error_suggestions(debug=args.debug)
+        # Only use args.debug if args was successfully parsed
+        print_error_suggestions(debug=args.debug if args else False)
         return 1
 
     except KeyboardInterrupt:
@@ -274,10 +280,12 @@ def main(client_class: Optional[type[ArrisModemStatusClient]] = None) -> Optiona
             ]
         )
 
-        if is_connectivity_error and not connectivity_checked:
+        # Only use args if it was successfully parsed
+        if args and is_connectivity_error and not args.quick_check:
             print_connectivity_troubleshooting(args.host, args.port, str(e))
 
-        print_error_suggestions(debug=args.debug)
+        # Only use args.debug if args was successfully parsed
+        print_error_suggestions(debug=args.debug if args else False)
 
         return 1
 

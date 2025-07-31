@@ -162,7 +162,16 @@ class ArrisModemStatusClient:
     ) -> ErrorCapture:
         """Analyze errors for reporting and debugging."""
         try:
-            error_details = str(error)
+            # Try to convert error to string, but handle failures gracefully
+            try:
+                error_details = str(error)
+            except Exception:
+                # If str(error) fails, use a fallback representation
+                try:
+                    error_details = repr(error)
+                except Exception:
+                    # If even repr fails, use a generic message
+                    error_details = f"<{type(error).__name__} instance>"
 
             # Extract response details if available
             partial_content = ""
@@ -233,13 +242,20 @@ class ArrisModemStatusClient:
             return capture
 
         except Exception as e:
+            # Handle the case where error analysis itself fails
+            # Use a safe string representation
+            try:
+                safe_error_str = f"<{type(error).__name__}>"
+            except Exception:
+                safe_error_str = "<Unknown error>"
+
             logger.error(f"Failed to analyze error: {e}")
             return ErrorCapture(
                 timestamp=time.time(),
                 request_type=request_type,
                 http_status=0,
                 error_type="analysis_failed",
-                raw_error=str(error),
+                raw_error=safe_error_str,
                 response_headers={},
                 partial_content="",
                 recovery_successful=False,
