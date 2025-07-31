@@ -186,6 +186,29 @@ class TestArrisModemStatusClientAuthentication:
             assert mock_start.called
             assert mock_record.called
 
+    def test_make_hnap_request_is_challenge_request(self):
+        """Test that challenge requests don't include HNAP_AUTH header."""
+        client = ArrisModemStatusClient(password="test")
+
+        challenge_request_body = {
+            "Login": {
+                "Action": "request",
+                "Username": "admin",
+                "LoginPassword": "",
+                "Captcha": "",
+                "PrivateLogin": "LoginPassword"
+            }
+        }
+
+        with patch("requests.Session.post") as mock_post:
+            mock_post.return_value = Mock(status_code=200, text='{"LoginResponse": {}}')
+
+            client._make_hnap_request_raw("Login", challenge_request_body)
+
+            # Check that HNAP_AUTH header was not included
+            call_kwargs = mock_post.call_args[1]
+            assert "HNAP_AUTH" not in call_kwargs["headers"]
+
 
 @pytest.mark.unit
 class TestArrisModemStatusClientDataRetrieval:
@@ -354,6 +377,27 @@ class TestArrisModemStatusClientDataRetrieval:
 
             assert "Failed to retrieve any status data" in str(exc_info.value)
 
+    def test_get_status_partial_responses(self):
+        """Test get_status with only some requests succeeding."""
+        client = ArrisModemStatusClient(password="test")
+        client.authenticated = True
+
+        # Mock responses where only some succeed
+        with patch.object(client, "_make_hnap_request_with_retry") as mock_request:
+            # First request succeeds, others fail
+            mock_request.side_effect = [
+                '{"GetMultipleHNAPsResponse": {"GetCustomerStatusSoftwareResponse": {"StatusSoftwareModelName": "S34"}}}',
+                None,  # This one fails
+                None,  # This one fails
+                '{"GetMultipleHNAPsResponse": {"GetCustomerStatusDownstreamChannelInfoResponse": {"CustomerConnDownstreamChannel": ""}}}',
+            ]
+
+            # Should still return partial data
+            status = client.get_status()
+
+            assert status["model_name"] == "S34"
+            assert len(status["downstream_channels"]) == 0
+
 
 @pytest.mark.unit
 class TestArrisModemStatusClientErrorHandling:
@@ -455,6 +499,35 @@ class TestArrisModemStatusClientErrorHandling:
             assert mock_post.call_count == 1
             assert exc_info.value.status_code == 403
 
+    def test_make_hnap_request_raw_http_error_response_text(self):
+        """Test _make_hnap_request_raw handling response with text."""
+        client = ArrisModemStatusClient(password="test")
+        client.authenticated = True
+
+        # Mock response with status != 200
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_response.text = "Page not found"
+
+        with patch("requests.Session.post", return_value=mock_response):
+            with pytest.raises(ArrisHTTPError) as exc_info:
+                client._make_hnap_request_raw("Test", {})
+
+            assert exc_info.value.status_code == 404
+            assert "Page not found" in exc_info.value.details["response_text"]
+
+    def test_make_hnap_request_non_200_response(self):
+        """Test handling of non-200 responses."""
+        client = ArrisModemStatusClient(password="test")
+        client.authenticated = True
+
+        with patch.object(client, "_make_hnap_request_raw") as mock_raw:
+            # Return None to simulate empty response
+            mock_raw.return_value = None
+
+            result = client._make_hnap_request_with_retry("Test", {})
+            assert result is None
+
 
 @pytest.mark.unit
 class TestArrisModemStatusClientUtilities:
@@ -518,6 +591,26 @@ class TestArrisModemStatusClientUtilities:
         with patch("requests.Session.close") as mock_close:
             client = ArrisModemStatusClient(password="test", capture_errors=True)
             client.error_captures = [Mock()]  # Add some captures
+
+            client.close()
+
+            mock_close.assert_called_once()
+
+    def test_close_without_errors(self):
+        """Test close method when no errors were captured."""
+        with patch("requests.Session.close") as mock_close:
+            client = ArrisModemStatusClient(password="test", capture_errors=False)
+            client.close()
+
+            mock_close.assert_called_once()
+
+    def test_close_with_instrumentation(self):
+        """Test close method with instrumentation enabled."""
+        with patch("requests.Session.close") as mock_close:
+            client = ArrisModemStatusClient(password="test", enable_instrumentation=True)
+
+            # Add some metrics
+            client.instrumentation.record_timing("test_op", 0, success=True)
 
             client.close()
 

@@ -326,3 +326,18 @@ class TestResponseParsing:
         assert parsed_data["internet_status"] == "Unknown"
         assert parsed_data["downstream_channels"] == []
         assert parsed_data["upstream_channels"] == []
+
+    def test_parse_responses_missing_nested_keys(self):
+        """Test parsing responses with missing nested keys."""
+        client = ArrisModemStatusClient(password="test")
+
+        responses = {
+            "software_info": '{"GetMultipleHNAPsResponse": {}}',  # Missing inner response
+            "channel_info": '{"GetMultipleHNAPsResponse": {"GetCustomerStatusDownstreamChannelInfoResponse": {}}}',  # Missing channel data
+        }
+
+        parsed = client._parse_responses(responses)
+
+        # Should handle gracefully with defaults
+        assert parsed["model_name"] == "Unknown"
+        assert parsed["downstream_channels"] == []
