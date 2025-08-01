@@ -43,7 +43,7 @@ Author: Charles Marshall
 License: MIT
 """
 
-from .client import ArrisModemStatusClient
+from .client.main import ArrisModemStatusClient
 from .exceptions import (
     ArrisAuthenticationError,
     ArrisConfigurationError,
