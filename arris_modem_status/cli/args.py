@@ -24,14 +24,15 @@ def create_parser() -> argparse.ArgumentParser:
         Configured ArgumentParser instance
     """
     parser = argparse.ArgumentParser(
+        prog="arris-modem-status",  # Explicitly set prog to avoid issues
         description="Query Arris cable modem status and output JSON data",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s --password "your_password"
-  %(prog)s --password "password" --host 192.168.1.1
-  %(prog)s --password "password" --debug
-  %(prog)s --password "password" --parallel  # Use concurrent mode (may cause issues)
+  arris-modem-status --password "your_password"
+  arris-modem-status --password "password" --host 192.168.1.1
+  arris-modem-status --password "password" --debug
+  arris-modem-status --password "password" --parallel  # Use concurrent mode (may cause issues)
 
 Output:
   JSON object with modem status, channel information, and diagnostics.
@@ -50,7 +51,7 @@ Serial vs Parallel Mode:
   DEFAULT: Serial mode (sequential requests) for maximum compatibility.
   Many Arris modems have issues with concurrent HNAP requests, causing
   HTTP 403 errors and inconsistent data. Serial mode is slower but more
-  reliable. Use --parallel at your own risk for ~30% speed improvement
+  reliable. Use --parallel at your own risk for ~30%% speed improvement
   if your modem supports it.
 
 Quick Check:

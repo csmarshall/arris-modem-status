@@ -259,16 +259,24 @@ def main(client_class: Optional[type[ArrisModemStatusClient]] = None) -> Optiona
         )
         return 1
 
+    except SystemExit:
+        # This is expected when argparse handles --help or errors
+        # Just re-raise it without wrapping
+        raise
+
     except Exception as e:
         # Unexpected errors - show full details in debug mode
         elapsed = time.time() - start_time
         logger.error(f"Unexpected error after {elapsed:.2f}s: {e}")
 
+        # Use repr() to avoid string formatting issues
+        error_msg = repr(e) if hasattr(e, "__repr__") else str(type(e))
+
         # Print error to stderr with elapsed time
-        print(f"Unexpected error after {elapsed:.2f}s: {e}", file=sys.stderr)
+        print(f"Unexpected error after {elapsed:.2f}s: {error_msg}", file=sys.stderr)
 
         # Check if this looks like a connectivity issue and we haven't done a quick check
-        error_str = str(e).lower()
+        error_str = str(e).lower() if hasattr(e, "__str__") else ""
         is_connectivity_error = any(
             term in error_str
             for term in [
