@@ -107,7 +107,12 @@ class TestCLIMainModule:
         )
 
         # Help should work - check both stdout and stderr as argparse may use either
-        assert "Query Arris cable modem status" in result.stdout or "Query Arris cable modem status" in result.stderr or "usage:" in result.stdout or "usage:" in result.stderr
+        assert (
+            "Query Arris cable modem status" in result.stdout
+            or "Query Arris cable modem status" in result.stderr
+            or "usage:" in result.stdout
+            or "usage:" in result.stderr
+        )
 
     def test_cli_missing_password(self):
         """Test CLI with missing required password argument."""

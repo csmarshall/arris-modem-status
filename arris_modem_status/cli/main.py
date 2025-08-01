@@ -135,7 +135,7 @@ def main(client_class: Optional[type[ArrisModemStatusClient]] = None) -> Optiona
     """
     # IMPORTANT: Define start_time at function scope to avoid variable scoping issues
     start_time = time.time()
-    
+
     # Initialize args to None to handle error cases
     args = None
 

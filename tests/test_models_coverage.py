@@ -17,7 +17,7 @@ class TestModelsCoverage:
             power="0.6",
             snr="invalid_value",  # Not a number and not "N/A"
             modulation="256QAM",
-            lock_status="Locked"
+            lock_status="Locked",
         )
 
         # Should not format invalid SNR
@@ -32,7 +32,7 @@ class TestModelsCoverage:
             power="0.6",
             snr="",  # Empty string
             modulation="256QAM",
-            lock_status="Locked"
+            lock_status="Locked",
         )
 
         # Should not format empty SNR

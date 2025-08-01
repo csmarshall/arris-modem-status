@@ -51,7 +51,7 @@ class TestHTTPCompatibilityCoverage:
             b"Content-Length: \xff\xfe\r\n",  # Invalid UTF-8
             b"\r\n",
             b"body",
-            b""
+            b"",
         ]
 
         response_data = adapter._receive_response_tolerantly(mock_socket)
@@ -91,10 +91,7 @@ class TestHTTPCompatibilityCoverage:
 
         request = Mock()
         request.method = "POST"
-        request.headers = {
-            "Content-Type": "application/json",
-            "Content-Length": "999"  # Should be recalculated
-        }
+        request.headers = {"Content-Type": "application/json", "Content-Length": "999"}  # Should be recalculated
         request.body = '{"test": "data"}'
 
         http_request = adapter._build_raw_http_request(request, "test.com", "/api")

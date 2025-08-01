@@ -249,7 +249,13 @@ class ArrisModemStatusClient:
             except Exception:
                 safe_error_str = "<Unknown error>"
 
-            logger.error(f"Failed to analyze error: {e}")
+            # Use a safe representation of the analysis exception too
+            try:
+                analysis_error_str = str(e)
+            except Exception:
+                analysis_error_str = "Analysis error"
+
+            logger.error(f"Failed to analyze error: {analysis_error_str}")
             return ErrorCapture(
                 timestamp=time.time(),
                 request_type=request_type,
@@ -871,6 +877,14 @@ class ArrisModemStatusClient:
                 error_count = len(self.error_captures)
                 recovery_count = len([e for e in self.error_captures if e.recovery_successful])
                 compatibility_issues = len([e for e in self.error_captures if e.compatibility_issue])
+                http_403_errors = len([e for e in self.error_captures if e.error_type == "http_403"])
+
+                # Get error type breakdown
+                error_types = {}
+                for capture in self.error_captures:
+                    if capture.error_type not in error_types:
+                        error_types[capture.error_type] = 0
+                    error_types[capture.error_type] += 1
 
                 parsed_data["_error_analysis"] = {
                     "total_errors": error_count,
@@ -878,6 +892,7 @@ class ArrisModemStatusClient:
                     "other_errors": error_count - compatibility_issues,
                     "recovery_rate": (recovery_count / error_count if error_count > 0 else 0),
                     "current_mode": ("concurrent" if self.concurrent else "serial"),
+                    "error_types": error_types,
                 }
 
                 logger.info(f"🔍 Error analysis: {error_count} errors, {recovery_count} recovered")

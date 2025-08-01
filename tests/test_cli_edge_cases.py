@@ -20,16 +20,11 @@ class TestCLIEdgeCases:
 
     def test_validate_args_negative_retries(self):
         """Test validation with negative retries value."""
-        args = argparse.Namespace(
-            timeout=30,
-            workers=2,
-            retries=-1,
-            port=443,
-            parallel=False
-        )
+        args = argparse.Namespace(timeout=30, workers=2, retries=-1, port=443, parallel=False)
 
         # Should raise error for negative retries
         from arris_modem_status.exceptions import ArrisConfigurationError
+
         with pytest.raises(ArrisConfigurationError) as exc_info:
             validate_args(args)
 
@@ -39,9 +34,7 @@ class TestCLIEdgeCases:
         """Test troubleshooting output for DNS errors."""
         with patch("sys.stderr", StringIO()) as mock_stderr:
             print_connectivity_troubleshooting(
-                "invalid.hostname.local",
-                443,
-                "DNS resolution failed for invalid.hostname.local"
+                "invalid.hostname.local", 443, "DNS resolution failed for invalid.hostname.local"
             )
 
             output = mock_stderr.getvalue()
@@ -51,11 +44,7 @@ class TestCLIEdgeCases:
     def test_connectivity_troubleshooting_generic_error(self):
         """Test troubleshooting output for generic network errors."""
         with patch("sys.stderr", StringIO()) as mock_stderr:
-            print_connectivity_troubleshooting(
-                "192.168.100.1",
-                443,
-                "Some other network error"
-            )
+            print_connectivity_troubleshooting("192.168.100.1", 443, "Some other network error")
 
             output = mock_stderr.getvalue()
             assert "Network connectivity issue" in output
@@ -69,6 +58,7 @@ class TestCLIEdgeCases:
 
         # Log something
         import logging
+
         logger = logging.getLogger("test_logger")
         logger.info("Test message")
 
@@ -96,11 +86,8 @@ class TestCLIEdgeCases:
                 "total_errors": 5,
                 "recovery_rate": 0.6,
                 "http_compatibility_issues": 0,
-                "error_types": {
-                    "http_403": 3,
-                    "timeout": 2
-                }
-            }
+                "error_types": {"http_403": 3, "timeout": 2},
+            },
         }
 
         with patch("sys.stderr", StringIO()) as mock_stderr:
@@ -183,7 +170,6 @@ class TestCLIEdgeCases:
             assert "Troubleshooting suggestions:" in stderr_output
             assert "TROUBLESHOOTING" not in stderr_output  # Network-specific troubleshooting
 
-
     def test_connectivity_os_error(self):
         """Test connectivity check with OS error."""
         from arris_modem_status.cli.connectivity import quick_connectivity_check
@@ -247,11 +233,8 @@ class TestCLIEdgeCases:
                 "total_errors": 3,
                 "recovery_rate": 0.66,
                 "http_compatibility_issues": 1,
-                "error_types": {
-                    "timeout": 2,
-                    "http_compatibility": 1
-                }
-            }
+                "error_types": {"timeout": 2, "http_compatibility": 1},
+            },
         }
 
         with patch("sys.stderr", StringIO()) as mock_stderr:

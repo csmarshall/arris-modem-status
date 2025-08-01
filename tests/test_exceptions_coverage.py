@@ -16,10 +16,7 @@ class TestExceptionsCoverage:
 
     def test_arris_modem_error_str_with_details(self):
         """Test ArrisModemError string representation with details."""
-        error = ArrisModemError(
-            "Test error",
-            details={"key": "value", "number": 42}
-        )
+        error = ArrisModemError("Test error", details={"key": "value", "number": 42})
 
         error_str = str(error)
         assert "Test error" in error_str

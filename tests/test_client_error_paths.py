@@ -183,10 +183,7 @@ class TestClientErrorPaths:
         """Test response parsing with invalid JSON."""
         client = ArrisModemStatusClient(password="test")
 
-        responses = {
-            "software_info": "not valid json",
-            "channel_info": '{"incomplete": '  # Incomplete JSON
-        }
+        responses = {"software_info": "not valid json", "channel_info": '{"incomplete": '}  # Incomplete JSON
 
         parsed = client._parse_responses(responses)
 
@@ -200,6 +197,7 @@ class TestClientErrorPaths:
 
         # Add some 403 error captures
         from arris_modem_status.models import ErrorCapture
+
         client.error_captures = [
             ErrorCapture(
                 timestamp=0,
@@ -210,7 +208,7 @@ class TestClientErrorPaths:
                 response_headers={},
                 partial_content="",
                 recovery_successful=False,
-                compatibility_issue=False
+                compatibility_issue=False,
             )
         ]
 

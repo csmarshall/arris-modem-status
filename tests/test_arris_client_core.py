@@ -196,7 +196,7 @@ class TestArrisModemStatusClientAuthentication:
                 "Username": "admin",
                 "LoginPassword": "",
                 "Captcha": "",
-                "PrivateLogin": "LoginPassword"
+                "PrivateLogin": "LoginPassword",
             }
         }
 
