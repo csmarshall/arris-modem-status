@@ -77,7 +77,7 @@ class HNAPRequestHandler:
         Returns:
             Response text or None if failed
         """
-        exhausted = False
+        last_exception = None
         result = None
 
         for attempt in range(self.max_retries + 1):
@@ -102,6 +102,7 @@ class HNAPRequestHandler:
                     break
 
             except requests.exceptions.RequestException as e:
+                last_exception = e
                 response_obj = getattr(e, "response", None)
 
                 # Check if this is a retryable error
@@ -127,10 +128,16 @@ class HNAPRequestHandler:
                     port = int(self.base_url.split(":")[-1].split("/")[0])
                     raise wrap_connection_error(e, host, port) from e
 
-                # HTTP errors should not be retried
+                # HTTP errors should not be retried - but for certain operations, return None instead of raising
                 if response_obj is not None:
                     status_code = getattr(response_obj, "status_code", None)
                     if status_code:
+                        # For non-critical operations (like status requests), return None instead of raising
+                        # This allows partial data retrieval to continue
+                        if soap_action in ["GetMultipleHNAPs", "GetCustomerStatusSoftware"] and status_code in [403, 404, 500]:
+                            logger.warning(f"HTTP {status_code} for {soap_action}, returning None to allow partial data retrieval")
+                            return None
+
                         response_text = ""
                         if hasattr(response_obj, "text") and isinstance(getattr(response_obj, "text", ""), str):
                             response_text = response_obj.text[:500]
@@ -157,6 +164,11 @@ class HNAPRequestHandler:
                             status_code = int(match.group(1))
 
                     if status_code:
+                        # For non-critical operations, return None to allow partial data retrieval
+                        if soap_action in ["GetMultipleHNAPs", "GetCustomerStatusSoftware"] and status_code in [403, 404, 500]:
+                            logger.warning(f"HTTP {status_code} for {soap_action}, returning None to allow partial data retrieval")
+                            return None
+
                         response_text = ""
                         if hasattr(response_obj, "text") and isinstance(getattr(response_obj, "text", ""), str):
                             response_text = response_obj.text[:500]
@@ -173,7 +185,6 @@ class HNAPRequestHandler:
 
                     if attempt < self.max_retries:
                         continue
-                    exhausted = True
                     # For connection errors at the end, raise ArrisConnectionError
                     if isinstance(e, requests.exceptions.ConnectionError) and not is_timeout:
                         host = self.base_url.split("://")[1].split(":")[0]
@@ -183,11 +194,14 @@ class HNAPRequestHandler:
                     # Re-raise non-retryable errors
                     raise
 
-            except Exception:
-                # Re-raise unexpected errors to preserve the exception type
+            except Exception as e:
+                # For unexpected errors during status requests, return None to allow partial data
+                if soap_action in ["GetMultipleHNAPs", "GetCustomerStatusSoftware"]:
+                    logger.warning(f"Unexpected error for {soap_action}: {e}, returning None to allow partial data retrieval")
+                    return None
                 raise
 
-        if exhausted and result is None:
+        if result is None:
             logger.error(f"💥 All retry attempts exhausted for {soap_action}")
 
         return result
@@ -252,7 +266,8 @@ class HNAPRequestHandler:
             )
 
             if response.status_code == 200:
-                logger.debug(f"📥 Response: {len(response.text)} chars")
+                response_text = str(response.text)
+                logger.debug(f"📥 Response: {len(response_text)} chars")
 
                 # Record successful timing
                 if self.instrumentation:
@@ -261,10 +276,11 @@ class HNAPRequestHandler:
                         start_time,
                         success=True,
                         http_status=response.status_code,
-                        response_size=len(response.text),
+                        response_size=len(response_text),
                     )
 
-                return str(response.text)
+                # Return None if response is empty, otherwise return the text
+                return response_text if response_text.strip() else None
 
             # Record failed timing
             if self.instrumentation:
