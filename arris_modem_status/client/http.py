@@ -77,7 +77,6 @@ class HNAPRequestHandler:
         Returns:
             Response text or None if failed
         """
-        last_exception = None
         result = None
 
         for attempt in range(self.max_retries + 1):
@@ -102,8 +101,15 @@ class HNAPRequestHandler:
                     break
 
             except requests.exceptions.RequestException as e:
-                last_exception = e
                 response_obj = getattr(e, "response", None)
+
+                # IMPORTANT: Capture the error for analysis regardless of whether we retry
+                if hasattr(self, "error_analyzer") and self.error_analyzer:
+                    try:
+                        capture = self.error_analyzer.analyze_error(e, soap_action, response_obj)
+                        logger.debug(f"Captured error for analysis: {capture.error_type}")
+                    except Exception as capture_error:
+                        logger.warning(f"Failed to capture error for analysis: {capture_error}")
 
                 # Check if this is a retryable error
                 error_str = str(e).lower()
@@ -134,13 +140,19 @@ class HNAPRequestHandler:
                     if status_code:
                         # For non-critical operations (like status requests), return None instead of raising
                         # This allows partial data retrieval to continue
-                        if soap_action in ["GetMultipleHNAPs", "GetCustomerStatusSoftware"] and status_code in [403, 404, 500]:
-                            logger.warning(f"HTTP {status_code} for {soap_action}, returning None to allow partial data retrieval")
+                        if soap_action in ["GetMultipleHNAPs", "GetCustomerStatusSoftware"] and status_code in [
+                            403,
+                            404,
+                            500,
+                        ]:
+                            logger.warning(
+                                f"HTTP {status_code} for {soap_action}, returning None to allow partial data retrieval"
+                            )
                             return None
 
                         response_text = ""
-                        if hasattr(response_obj, "text") and isinstance(getattr(response_obj, "text", ""), str):
-                            response_text = response_obj.text[:500]
+                        if hasattr(response_obj, "text") and response_obj.text is not None:
+                            response_text = str(response_obj.text)[:500]
 
                         raise ArrisHTTPError(
                             f"HTTP {status_code} error for {soap_action}",
@@ -165,13 +177,19 @@ class HNAPRequestHandler:
 
                     if status_code:
                         # For non-critical operations, return None to allow partial data retrieval
-                        if soap_action in ["GetMultipleHNAPs", "GetCustomerStatusSoftware"] and status_code in [403, 404, 500]:
-                            logger.warning(f"HTTP {status_code} for {soap_action}, returning None to allow partial data retrieval")
+                        if soap_action in ["GetMultipleHNAPs", "GetCustomerStatusSoftware"] and status_code in [
+                            403,
+                            404,
+                            500,
+                        ]:
+                            logger.warning(
+                                f"HTTP {status_code} for {soap_action}, returning None to allow partial data retrieval"
+                            )
                             return None
 
                         response_text = ""
-                        if hasattr(response_obj, "text") and isinstance(getattr(response_obj, "text", ""), str):
-                            response_text = response_obj.text[:500]
+                        if hasattr(response_obj, "text") and response_obj.text is not None:
+                            response_text = str(response_obj.text)[:500]
 
                         raise ArrisHTTPError(
                             f"HTTP {status_code} error for {soap_action}",
@@ -195,9 +213,19 @@ class HNAPRequestHandler:
                     raise
 
             except Exception as e:
+                # IMPORTANT: Also capture unexpected errors
+                if hasattr(self, "error_analyzer") and self.error_analyzer:
+                    try:
+                        capture = self.error_analyzer.analyze_error(e, soap_action)
+                        logger.debug(f"Captured unexpected error for analysis: {capture.error_type}")
+                    except Exception as capture_error:
+                        logger.warning(f"Failed to capture unexpected error for analysis: {capture_error}")
+
                 # For unexpected errors during status requests, return None to allow partial data
                 if soap_action in ["GetMultipleHNAPs", "GetCustomerStatusSoftware"]:
-                    logger.warning(f"Unexpected error for {soap_action}: {e}, returning None to allow partial data retrieval")
+                    logger.warning(
+                        f"Unexpected error for {soap_action}: {e}, returning None to allow partial data retrieval"
+                    )
                     return None
                 raise
 

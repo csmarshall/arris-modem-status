@@ -104,7 +104,7 @@ class TestClientErrorPaths:
         # The method should catch the exception and return a fallback ErrorCapture
         # But it will fail because str(error) is called in the except handler too
         # So we need to patch the logger.error to prevent the second str() call
-        with patch("arris_modem_status.client.logger.error"):
+        with patch("arris_modem_status.client.error_handler.logger.error"):
             capture = client._analyze_error(error, "test_request")
 
             assert capture.error_type == "analysis_failed"

@@ -694,11 +694,11 @@ class TestHttpCompatibilityIntegration:
         """Test that relaxed parsing improves performance (no retries needed)."""
         client = ArrisModemStatusClient(password="test", capture_errors=True, max_retries=3)
 
-        # Mock a successful request
-        with patch.object(client, "_make_hnap_request_raw") as mock_request:
+        # Mock a successful request at the request handler level
+        with patch.object(client.request_handler, "make_request_with_retry") as mock_request:
             mock_request.return_value = '{"success": true}'
 
-            result = client._make_hnap_request_with_retry("Test", {})
+            result = client.request_handler.make_request_with_retry("Test", {})
 
             # Should succeed on first attempt (no retries)
             assert mock_request.call_count == 1
@@ -708,40 +708,37 @@ class TestHttpCompatibilityIntegration:
         """Test that genuine network errors still trigger retries."""
         client = ArrisModemStatusClient(password="test", capture_errors=True, max_retries=2)
 
-        # Mock network errors followed by success
-        with patch.object(client, "_make_hnap_request_raw") as mock_request:
+        # Mock network errors followed by success at the session level
+        with patch.object(client.session, "post") as mock_post:
             from requests.exceptions import ConnectionError
 
-            mock_request.side_effect = [
+            mock_post.side_effect = [
                 ConnectionError("Network error"),
                 ConnectionError("Network error"),
-                '{"success": true}',
+                Mock(status_code=200, text='{"success": true}'),
             ]
 
-            result = client._make_hnap_request_with_retry("Test", {})
+            result = client.request_handler.make_request_with_retry("Test", {})
 
             # Should retry and eventually succeed
-            assert mock_request.call_count == 3
+            assert mock_post.call_count == 3
             assert result == '{"success": true}'
 
     def test_http_errors_no_retry(self):
         """Test that HTTP errors (403, 500) don't trigger retries."""
         client = ArrisModemStatusClient(password="test", capture_errors=True, max_retries=3)
 
-        # Mock HTTP error
-        with patch.object(client, "_make_hnap_request_raw") as mock_request:
-            from requests.exceptions import HTTPError
-
-            error = HTTPError("403 Forbidden")
-            error.response = Mock(status_code=403)
-            mock_request.side_effect = error
+        # Mock HTTP error at the session level
+        with patch.object(client.session, "post") as mock_post:
+            mock_response = Mock(status_code=403, text="Forbidden")
+            mock_post.return_value = mock_response
 
             # Should raise ArrisHTTPError without retrying
             with pytest.raises(ArrisHTTPError) as exc_info:
-                client._make_hnap_request_with_retry("Test", {})
+                client.request_handler.make_request_with_retry("Test", {})
 
-            # Should not retry for HTTP errors
-            assert mock_request.call_count == 1
+            # Should only call once (no retries for HTTP errors)
+            assert mock_post.call_count == 1
             assert exc_info.value.status_code == 403
 
 

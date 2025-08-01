@@ -435,7 +435,7 @@ class ArrisModemStatusClient:
             self.instrumentation.start_timer("concurrent_request_processing") if self.instrumentation else time.time()
         )
 
-        responses = {}
+        responses: dict[str, str] = {}
         successful_requests = 0
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
@@ -480,7 +480,7 @@ class ArrisModemStatusClient:
             self.instrumentation.start_timer("serial_request_processing") if self.instrumentation else time.time()
         )
 
-        responses = {}
+        responses: dict[str, str] = {}
         successful_requests = 0
 
         for req_name, req_body in request_definitions:

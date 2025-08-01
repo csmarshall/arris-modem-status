@@ -4,6 +4,7 @@ import time
 from unittest.mock import Mock, patch
 
 import pytest
+import requests
 from requests.exceptions import ConnectionError
 from urllib3.exceptions import HeaderParsingError
 
@@ -314,8 +315,8 @@ class TestArrisModemStatusClientDataRetrieval:
 
     def test_get_status_with_error_capture(self, mock_modem_responses):
         """Test status retrieval with error capture enabled."""
-        with patch("requests.Session.post") as mock_post:
-            # Use a network error that will trigger retries
+        with patch.object(requests.Session, "post") as mock_post:
+            # Use a network error that will trigger retries and be captured
             from requests.exceptions import ConnectionError
 
             mock_post.side_effect = [
@@ -324,10 +325,11 @@ class TestArrisModemStatusClientDataRetrieval:
                     text=mock_modem_responses["challenge_response"],
                 ),
                 Mock(status_code=200, text=mock_modem_responses["login_success"]),
-                ConnectionError("Network error"),  # This will trigger retry
+                # First status request fails with network error, then succeeds
+                ConnectionError("Network error"),
                 Mock(
                     status_code=200,
-                    text=mock_modem_responses["software_info"],  # Added software_info
+                    text=mock_modem_responses["software_info"],  # software_info
                 ),
                 Mock(
                     status_code=200,
@@ -344,10 +346,15 @@ class TestArrisModemStatusClientDataRetrieval:
             ]
 
             client = ArrisModemStatusClient(password="test", capture_errors=True)
+
+            # Ensure error analyzer is passed to request handler
+            client.request_handler.error_analyzer = client.error_analyzer
+
             status = client.get_status()
 
             assert "_error_analysis" in status
             error_analysis = status["_error_analysis"]
+            # Should have captured the ConnectionError
             assert error_analysis["total_errors"] > 0
 
     def test_get_status_no_responses(self):
@@ -383,10 +390,10 @@ class TestArrisModemStatusClientDataRetrieval:
         client.authenticated = True
 
         # Mock responses where only some succeed
-        with patch.object(client, "_make_hnap_request_with_retry") as mock_request:
+        with patch.object(client.request_handler, "make_request_with_retry") as mock_request:
             # First request succeeds, others fail
             mock_request.side_effect = [
-                '{"GetMultipleHNAPsResponse": {"GetCustomerStatusSoftwareResponse": {"StatusSoftwareModelName": "S34"}}}',
+                '{"GetCustomerStatusSoftwareResponse": {"StatusSoftwareModelName": "S34"}}',
                 None,  # This one fails
                 None,  # This one fails
                 '{"GetMultipleHNAPsResponse": {"GetCustomerStatusDownstreamChannelInfoResponse": {"CustomerConnDownstreamChannel": ""}}}',
@@ -444,7 +451,7 @@ class TestArrisModemStatusClientErrorHandling:
 
     def test_make_hnap_request_with_retry_network_error(self):
         """Test HNAP request retry with network errors."""
-        with patch("requests.Session.post") as mock_post:
+        with patch.object(requests.Session, "post") as mock_post:
             from requests.exceptions import ConnectionError
 
             mock_post.side_effect = [
@@ -455,10 +462,14 @@ class TestArrisModemStatusClientErrorHandling:
             client = ArrisModemStatusClient(password="test", max_retries=2, capture_errors=True)
             client.authenticated = True
 
-            result = client._make_hnap_request_with_retry("Test", {"Test": {}})
+            # Ensure error analyzer is connected
+            client.request_handler.error_analyzer = client.error_analyzer
+
+            result = client.request_handler.make_request_with_retry("Test", {"Test": {}})
 
             assert result is not None
             assert mock_post.call_count == 2
+            # Error should have been captured
             assert len(client.error_captures) > 0
 
     def test_make_hnap_request_exhausted_retries(self):
@@ -521,11 +532,11 @@ class TestArrisModemStatusClientErrorHandling:
         client = ArrisModemStatusClient(password="test")
         client.authenticated = True
 
-        with patch.object(client, "_make_hnap_request_raw") as mock_raw:
-            # Return None to simulate empty response
+        with patch.object(client.request_handler, "_make_raw_request") as mock_raw:
+            # Return None to simulate empty response from raw request
             mock_raw.return_value = None
 
-            result = client._make_hnap_request_with_retry("Test", {})
+            result = client.request_handler.make_request_with_retry("Test", {})
             assert result is None
 
 

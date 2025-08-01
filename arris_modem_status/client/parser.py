@@ -49,10 +49,18 @@ class HNAPResponseParser:
             try:
                 data = json.loads(content)
 
-                # Special handling for software_info which doesn't have GetMultipleHNAPsResponse wrapper
-                if response_type == "software_info" and "GetCustomerStatusSoftwareResponse" in data:
-                    # Direct access without wrapper
-                    software_info = data.get("GetCustomerStatusSoftwareResponse", {})
+                # Handle software_info response - check both with and without wrapper
+                if response_type == "software_info":
+                    software_info = None
+
+                    # First try direct access (without wrapper)
+                    if "GetCustomerStatusSoftwareResponse" in data:
+                        software_info = data.get("GetCustomerStatusSoftwareResponse", {})
+                    # Then try with wrapper
+                    elif "GetMultipleHNAPsResponse" in data:
+                        hnaps_response = data.get("GetMultipleHNAPsResponse", {})
+                        software_info = hnaps_response.get("GetCustomerStatusSoftwareResponse", {})
+
                     if software_info:
                         parsed_data.update(
                             {
