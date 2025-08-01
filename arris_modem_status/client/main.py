@@ -139,20 +139,40 @@ class ArrisModemStatusClient:
         """Check if client is authenticated."""
         return self.authenticator.authenticated
 
+    @authenticated.setter
+    def authenticated(self, value: bool) -> None:
+        """Set authentication status."""
+        self.authenticator.authenticated = value
+
     @property
     def private_key(self) -> Optional[str]:
         """Get private key from authenticator."""
         return self.authenticator.private_key
+
+    @private_key.setter
+    def private_key(self, value: Optional[str]) -> None:
+        """Set private key."""
+        self.authenticator.private_key = value
 
     @property
     def uid_cookie(self) -> Optional[str]:
         """Get UID cookie from authenticator."""
         return self.authenticator.uid_cookie
 
+    @uid_cookie.setter
+    def uid_cookie(self, value: Optional[str]) -> None:
+        """Set UID cookie."""
+        self.authenticator.uid_cookie = value
+
     @property
     def error_captures(self) -> list:
         """Get error captures from analyzer."""
         return self.error_analyzer.error_captures
+
+    @error_captures.setter
+    def error_captures(self, value: list) -> list:
+        """Get error captures from analyzer."""
+        self.error_analyzer.error_captures = value
 
     def authenticate(self) -> bool:
         """
@@ -504,24 +524,35 @@ class ArrisModemStatusClient:
         self, parsed_data: dict, successful_requests: int, total_requests: int, start_time: float
     ) -> dict:
         """Add metadata to parsed data."""
-        # Enhanced error analysis
-        if self.capture_errors and self.error_captures:
-            error_analysis = self.error_analyzer.get_error_analysis()
+        # Enhanced error analysis - always add when capture_errors is enabled
+        if self.capture_errors:
+            if self.error_captures:
+                error_analysis = self.error_analyzer.get_error_analysis()
 
-            # Simplify for main status output
-            parsed_data["_error_analysis"] = {
-                "total_errors": error_analysis["total_errors"],
-                "http_compatibility_issues": error_analysis["http_compatibility_issues"],
-                "other_errors": error_analysis["total_errors"] - error_analysis["http_compatibility_issues"],
-                "recovery_rate": error_analysis["recovery_stats"]["recovery_rate"],
-                "current_mode": ("concurrent" if self.concurrent else "serial"),
-                "error_types": error_analysis["error_types"],
-            }
+                # Simplify for main status output
+                parsed_data["_error_analysis"] = {
+                    "total_errors": error_analysis["total_errors"],
+                    "http_compatibility_issues": error_analysis["http_compatibility_issues"],
+                    "other_errors": error_analysis["total_errors"] - error_analysis["http_compatibility_issues"],
+                    "recovery_rate": error_analysis["recovery_stats"]["recovery_rate"],
+                    "current_mode": ("concurrent" if self.concurrent else "serial"),
+                    "error_types": error_analysis["error_types"],
+                }
 
-            logger.info(
-                f"🔍 Error analysis: {error_analysis['total_errors']} errors, "
-                f"{error_analysis['recovery_stats']['total_recoveries']} recovered"
-            )
+                logger.info(
+                    f"🔍 Error analysis: {error_analysis['total_errors']} errors, "
+                    f"{error_analysis['recovery_stats']['total_recoveries']} recovered"
+                )
+            else:
+                # Add empty error analysis when no errors captured
+                parsed_data["_error_analysis"] = {
+                    "total_errors": 0,
+                    "http_compatibility_issues": 0,
+                    "other_errors": 0,
+                    "recovery_rate": 0.0,
+                    "current_mode": ("concurrent" if self.concurrent else "serial"),
+                    "error_types": {},
+                }
 
         # Add mode and performance information
         parsed_data["_request_mode"] = "concurrent" if self.concurrent else "serial"
