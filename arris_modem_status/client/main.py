@@ -170,7 +170,7 @@ class ArrisModemStatusClient:
         return self.error_analyzer.error_captures
 
     @error_captures.setter
-    def error_captures(self, value: list) -> list:
+    def error_captures(self, value: list) -> None:
         """Get error captures from analyzer."""
         self.error_analyzer.error_captures = value
 
@@ -284,9 +284,15 @@ class ArrisModemStatusClient:
                 },
             )
 
-        except (ArrisAuthenticationError, ArrisConnectionError, ArrisTimeoutError, ArrisHTTPError, ArrisParsingError):
+        except (
+            ArrisAuthenticationError,
+            ArrisConnectionError,
+            ArrisTimeoutError,
+            ArrisHTTPError,
+            ArrisParsingError,
+        ) as e:
             # Re-raise our custom exceptions
-            raise
+            raise e
         except Exception as e:
             logger.error(f"Authentication error: {e}")
 
@@ -363,7 +369,7 @@ class ArrisModemStatusClient:
                 ),
             ]
 
-            responses = {}
+            responses: dict[str, str] = {}
             successful_requests = 0
 
             if self.concurrent:
@@ -406,9 +412,15 @@ class ArrisModemStatusClient:
 
             return parsed_data
 
-        except (ArrisAuthenticationError, ArrisConnectionError, ArrisTimeoutError, ArrisHTTPError, ArrisParsingError):
+        except (
+            ArrisAuthenticationError,
+            ArrisConnectionError,
+            ArrisTimeoutError,
+            ArrisHTTPError,
+            ArrisParsingError,
+        ) as e:
             # Re-raise our custom exceptions
-            raise
+            raise e
         except Exception as e:
             logger.error(f"Status retrieval failed: {e}")
 

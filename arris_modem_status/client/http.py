@@ -151,7 +151,7 @@ class HNAPRequestHandler:
                             return None
 
                         response_text = ""
-                        if hasattr(response_obj, "text") and response_obj.text is not None:
+                        if response_obj is not None and hasattr(response_obj, "text") and response_obj.text is not None:
                             response_text = str(response_obj.text)[:500]
 
                         raise ArrisHTTPError(
@@ -188,7 +188,7 @@ class HNAPRequestHandler:
                             return None
 
                         response_text = ""
-                        if hasattr(response_obj, "text") and response_obj.text is not None:
+                        if response_obj is not None and hasattr(response_obj, "text") and response_obj.text is not None:
                             response_text = str(response_obj.text)[:500]
 
                         raise ArrisHTTPError(
