@@ -1131,11 +1131,11 @@ class ArrisModemStatusClient:
         for response_type, content in responses.items():
             try:
                 data = json.loads(content)
-                hnaps_response = data.get("GetMultipleHNAPsResponse", {})
 
-                if response_type == "software_info":
-                    # Parse software/hardware info - THIS IS NEW!
-                    software_info = hnaps_response.get("GetCustomerStatusSoftwareResponse", {})
+                # Special handling for software_info which doesn't have GetMultipleHNAPsResponse wrapper
+                if response_type == "software_info" and "GetCustomerStatusSoftwareResponse" in data:
+                    # Direct access without wrapper
+                    software_info = data.get("GetCustomerStatusSoftwareResponse", {})
                     if software_info:
                         parsed_data.update(
                             {
@@ -1143,7 +1143,6 @@ class ArrisModemStatusClient:
                                 "firmware_version": software_info.get("StatusSoftwareSfVer", "Unknown"),
                                 "system_uptime": software_info.get("CustomerConnSystemUpTime", "Unknown"),
                                 "hardware_version": software_info.get("StatusSoftwareHdVer", "Unknown"),
-                                # MAC and serial are also here but we prefer GetArrisRegisterInfo
                             }
                         )
                         logger.debug(
@@ -1151,8 +1150,12 @@ class ArrisModemStatusClient:
                             f"Firmware={parsed_data['firmware_version']}, "
                             f"Uptime={parsed_data['system_uptime']}"
                         )
+                    continue
 
-                elif response_type == "channel_info":
+                # Normal handling for other responses with wrapper
+                hnaps_response = data.get("GetMultipleHNAPsResponse", {})
+
+                if response_type == "channel_info":
                     channels = self._parse_channels(hnaps_response)
                     parsed_data["downstream_channels"] = channels["downstream"]
                     parsed_data["upstream_channels"] = channels["upstream"]
