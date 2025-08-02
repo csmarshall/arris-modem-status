@@ -25,6 +25,9 @@ def format_channel_data_for_display(status: dict) -> dict:
     """
     Convert ChannelInfo objects to dictionaries for JSON serialization.
 
+    Also filters out Python objects like datetime/timedelta that aren't JSON serializable
+    and would be redundant in CLI output.
+
     The ArrisModemStatusClient returns ChannelInfo dataclass objects which need
     to be converted to dictionaries for JSON output.
 
@@ -33,9 +36,16 @@ def format_channel_data_for_display(status: dict) -> dict:
 
     Returns:
         Status dictionary with channels converted to JSON-serializable format
+        and Python objects filtered out for CLI display
     """
     logger.debug("Converting channel data for JSON serialization")
     output = status.copy()
+
+    # Filter out Python datetime/timedelta objects (not JSON serializable and redundant in CLI)
+    for key in list(output.keys()):
+        if key.endswith("-datetime"):
+            del output[key]
+            logger.debug(f"Filtered out {key} for CLI display")
 
     # Convert downstream channels
     if "downstream_channels" in output:
@@ -93,8 +103,13 @@ def print_summary_to_stderr(status: dict) -> None:
     print(f"Firmware: {status.get('firmware_version', 'Unknown')}", file=sys.stderr)
     print(f"Uptime: {status.get('system_uptime', 'Unknown')}", file=sys.stderr)
 
+    # Show enhanced time information if available
+    if status.get("system_uptime-seconds"):
+        uptime_days = status["system_uptime-seconds"] / 86400  # seconds to days
+        print(f"Uptime (days): {uptime_days:.1f}", file=sys.stderr)
+
     # Connection Status
-    print("\nConnection Status:", file=sys.stderr)
+    print("Connection Status:", file=sys.stderr)
     print(f"  Internet: {status.get('internet_status', 'Unknown')}", file=sys.stderr)
     print(f"  Network Access: {status.get('network_access', 'Unknown')}", file=sys.stderr)
     print(f"  Boot Status: {status.get('boot_status', 'Unknown')}", file=sys.stderr)
@@ -105,22 +120,26 @@ def print_summary_to_stderr(status: dict) -> None:
 
     # Downstream Status
     if status.get("downstream_frequency", "Unknown") != "Unknown":
-        print("\nDownstream Status:", file=sys.stderr)
+        print("Downstream Status:", file=sys.stderr)
         print(f"  Frequency: {status.get('downstream_frequency', 'Unknown')}", file=sys.stderr)
         print(f"  Comment: {status.get('downstream_comment', 'Unknown')}", file=sys.stderr)
 
     # System Info
     if status.get("mac_address", "Unknown") != "Unknown":
-        print("\nSystem Information:", file=sys.stderr)
+        print("System Information:", file=sys.stderr)
         print(f"  MAC Address: {status.get('mac_address')}", file=sys.stderr)
         print(f"  Serial Number: {status.get('serial_number')}", file=sys.stderr)
         print(f"  Current Time: {status.get('current_system_time', 'Unknown')}", file=sys.stderr)
+
+        # Show ISO8601 format if available
+        if status.get("current_system_time-ISO8601"):
+            print(f"  Current Time (ISO): {status.get('current_system_time-ISO8601')}", file=sys.stderr)
 
     # Channel Summary
     downstream_count = len(status.get("downstream_channels", []))
     upstream_count = len(status.get("upstream_channels", []))
 
-    print("\nChannel Summary:", file=sys.stderr)
+    print("Channel Summary:", file=sys.stderr)
     print(f"  Downstream Channels: {downstream_count}", file=sys.stderr)
     print(f"  Upstream Channels: {upstream_count}", file=sys.stderr)
     print(f"  Channel Data Available: {status.get('channel_data_available', False)}", file=sys.stderr)
@@ -141,7 +160,7 @@ def print_summary_to_stderr(status: dict) -> None:
         compatibility_issues = error_analysis.get("http_compatibility_issues", 0)
         http_403_errors = error_analysis.get("error_types", {}).get("http_403", 0)
 
-        print("\nError Analysis:", file=sys.stderr)
+        print("Error Analysis:", file=sys.stderr)
         print(f"  Total Errors: {total_errors}", file=sys.stderr)
         print(f"  Recovery Rate: {recovery_rate:.1f}%", file=sys.stderr)
         if compatibility_issues > 0:
@@ -152,7 +171,7 @@ def print_summary_to_stderr(status: dict) -> None:
     # Mode information
     mode = status.get("_request_mode", "unknown")
     if mode == "concurrent":
-        print("\n⚠️  Running in PARALLEL mode - may cause data inconsistency!", file=sys.stderr)
+        print("Running in PARALLEL mode - may cause data inconsistency!", file=sys.stderr)
 
     print("=" * 60, file=sys.stderr)
 
@@ -174,7 +193,7 @@ def format_json_output(
     """
     logger.debug("Formatting complete JSON output")
 
-    # Convert channel objects to JSON-serializable format
+    # Convert channel objects to JSON-serializable format and filter out Python objects
     json_output = format_channel_data_for_display(status)
 
     # Get optimal timeouts for metadata
@@ -225,7 +244,7 @@ def print_error_suggestions(debug: bool = False) -> None:
         traceback.print_exc(file=sys.stderr)
     else:
         # Provide helpful suggestions for common issues
-        print("\nTroubleshooting suggestions:", file=sys.stderr)
+        print("Troubleshooting suggestions:", file=sys.stderr)
         print("1. Verify the modem password is correct", file=sys.stderr)
         print("2. Check that the modem IP address is reachable", file=sys.stderr)
         print("3. Ensure the modem web interface is enabled", file=sys.stderr)

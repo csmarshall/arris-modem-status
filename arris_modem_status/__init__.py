@@ -55,6 +55,7 @@ from .exceptions import (
     ArrisTimeoutError,
 )
 from .models import ChannelInfo
+from .time_utils import enhance_status_with_time_fields
 
 # Version information
 __version__ = "1.0.0"

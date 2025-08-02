@@ -11,6 +11,7 @@ import logging
 from typing import Any
 
 from arris_modem_status.models import ChannelInfo
+from arris_modem_status.time_utils import enhance_status_with_time_fields
 
 logger = logging.getLogger("arris-modem-status")
 
@@ -138,7 +139,9 @@ class HNAPResponseParser:
         if not parsed_data["downstream_channels"] and not parsed_data["upstream_channels"]:
             parsed_data["channel_data_available"] = False
 
-        return parsed_data
+        # Enhance with parsed time fields
+
+        return enhance_status_with_time_fields(parsed_data)
 
     def _parse_channels(self, hnaps_response: dict[str, Any]) -> dict[str, list[ChannelInfo]]:
         """Parse channel information from HNAP response."""
