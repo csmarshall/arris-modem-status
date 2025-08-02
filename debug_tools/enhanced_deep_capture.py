@@ -47,7 +47,7 @@ class EnhancedDeepCapture:
         self.timing_data = []
         self.last_request_time = None
 
-        logger.info(f"🚀 Starting {__file__} v4.0 - Enhanced Deep Capture")
+        logger.info(f"🚀 Starting {__file__} Enhanced Deep Capture")
         logger.info(f"📅 Session: {datetime.now().isoformat()}")
         logger.info(f"📁 HAR output: {os.path.abspath(self.har_file)}")
         logger.info(f"📁 JSON output: {os.path.abspath(self.json_file)}")

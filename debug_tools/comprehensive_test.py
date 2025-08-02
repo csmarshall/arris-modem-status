@@ -31,6 +31,13 @@ from typing import Any, Dict
 try:
     from arris_modem_status import ArrisModemStatusClient as OptimizedClient
 
+except Exception as e:
+    print(f"Error: {e}")
+try:
+    from arris_modem_status import __version__ as CLIENT_VERSION
+except ImportError:
+    CLIENT_VERSION = "1.0.0"
+
     OPTIMIZED_CLIENT_AVAILABLE = True
 except ImportError:
     OPTIMIZED_CLIENT_AVAILABLE = False
@@ -70,7 +77,7 @@ class ComprehensiveTestSuite:
         self.host = host
         self.test_results = {
             "timestamp": datetime.now().isoformat(),
-            "test_configuration": {"host": host, "password_length": len(password), "test_version": "1.3.0"},
+            "test_configuration": {"host": host, "password_length": len(password), "test_version": CLIENT_VERSION},
             "performance_tests": {},
             "validation_tests": {},
             "comparison_tests": {},
@@ -81,7 +88,7 @@ class ComprehensiveTestSuite:
         if not OPTIMIZED_CLIENT_AVAILABLE:
             raise ImportError("Optimized Arris client not available")
 
-        logger.info("🚀 Comprehensive Test Suite v1.3.0")
+        logger.info(f"🚀 Comprehensive Test Suite v{CLIENT_VERSION}")
         logger.info(f"📋 Target: {host}")
         logger.info(f"🔧 Password length: {len(password)} chars")
         logger.info("=" * 70)

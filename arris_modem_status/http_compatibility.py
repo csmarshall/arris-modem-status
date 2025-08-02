@@ -23,6 +23,11 @@ from requests.models import Response
 from urllib3.exceptions import InsecureRequestWarning
 from urllib3.util.retry import Retry
 
+try:
+    from arris_modem_status import __version__
+except ImportError:
+    __version__ = "1.0.0"  # Fallback version
+
 from arris_modem_status.exceptions import ArrisConnectionError, ArrisTimeoutError
 
 # Configure HTTP compatibility warnings suppression
@@ -447,7 +452,7 @@ def create_arris_compatible_session(instrumentation: Optional[Any] = None) -> re
     session.verify = False
     session.headers.update(
         {
-            "User-Agent": "ArrisModemStatusClient/1.3.0-Compatible",
+            "User-Agent": "ArrisModemStatusClient/{__version__}-Compatible",
             "Accept": "application/json",
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
