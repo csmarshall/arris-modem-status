@@ -72,17 +72,55 @@ arris-modem-status --password YOUR_PASSWORD --parallel
 
 ## Complete Data Retrieved 📦
 
-The library now retrieves **ALL** available modem information:
+The library retrieves **ALL** available modem information, but the output format differs depending on how you use it:
 
+### Command Line Interface Output
+
+When using the CLI, you get both human-readable summaries (to stderr) and structured JSON (to stdout):
+
+**Human-readable summary (stderr):**
+```
+============================================================
+ARRIS MODEM STATUS SUMMARY
+============================================================
+Model: S34
+Hardware Version: 1.0
+Firmware: AT01.01.010.042324_S3.04.735
+Uptime: 27 day(s) 10h:12m:37s
+Uptime (days): 27.4
+Connection Status:
+  Internet: Connected
+  Network Access: Allowed
+  Boot Status: OK
+  Security: Enabled (BPI+)
+Downstream Status:
+  Frequency: 549000000 Hz
+  Comment: Locked
+System Information:
+  MAC Address: 01:23:45:67:89:AB
+  Serial Number: 000000000000000
+  Current Time: 07/30/2025 23:31:23
+  Current Time (ISO): 2025-07-30T23:31:23
+Channel Summary:
+  Downstream Channels: 32
+  Upstream Channels: 8
+  Channel Data Available: true
+  Sample Channel: ID 1, 549000000 Hz, 0.6 dBmV, SNR 39.0 dB, Errors: 15/0
+============================================================
+```
+
+**JSON output (stdout) with CLI metadata:**
 ```json
 {
   "model_name": "S34",
   "hardware_version": "1.0",
   "firmware_version": "AT01.01.010.042324_S3.04.735",
-  "system_uptime": "27 day(s) 10h:12m:37s",
-  "current_system_time": "07/30/2025 23:31:23",
-  "mac_address": "F8:20:D2:1D:21:27",
-  "serial_number": "4CD54D222102727",
+  "system_uptime": "31 day(s) 03h:42m:48s",
+  "system_uptime-seconds": 2691768.0,
+  "current_system_time": "08/03/2025 17:02:43",
+  "current_system_time-ISO8601": "2025-08-03T17:02:43",
+  "mac_address": "01:23:45:67:89:AB",
+  "serial_number": "000000000000000",
   "internet_status": "Connected",
   "network_access": "Allowed",
   "boot_status": "OK",
@@ -92,10 +130,129 @@ The library now retrieves **ALL** available modem information:
   "security_comment": "BPI+",
   "downstream_frequency": "549000000 Hz",
   "downstream_comment": "Locked",
-  "downstream_channels": [...],
-  "upstream_channels": [...]
+  "downstream_channels": [
+    {
+      "channel_id": "1",
+      "frequency": "549000000 Hz",
+      "power": "0.6 dBmV",
+      "snr": "39.0 dB",
+      "modulation": "256QAM",
+      "lock_status": "Locked",
+      "corrected_errors": "15",
+      "uncorrected_errors": "0",
+      "channel_type": "downstream"
+    }
+  ],
+  "upstream_channels": [
+    {
+      "channel_id": "1",
+      "frequency": "30600000 Hz",
+      "power": "46.5 dBmV",
+      "snr": "N/A",
+      "modulation": "SC-QAM",
+      "lock_status": "Locked",
+      "channel_type": "upstream"
+    }
+  ],
+  "query_timestamp": "2025-08-03T15:30:45",
+  "query_host": "192.168.100.1",
+  "client_version": "1.0.0",
+  "elapsed_time": 1.85,
+  "configuration": {
+    "max_workers": 2,
+    "max_retries": 3,
+    "timeout": [5, 15],
+    "concurrent_mode": false,
+    "http_compatibility": true,
+    "quick_check_performed": false
+  }
 }
 ```
+
+### Python Library Output
+
+When using the Python library directly, you get a cleaner dictionary focused on modem data:
+
+```python
+from arris_modem_status import ArrisModemStatusClient
+
+with ArrisModemStatusClient(password="your_password") as client:
+    status = client.get_status()
+    print(status)
+```
+
+**Returns:**
+```python
+{
+  'model_name': 'S34',
+  'hardware_version': '1.0',
+  'firmware_version': 'AT01.01.010.042324_S3.04.735',
+  'system_uptime': '31 day(s) 03h:42m:48s',
+  'system_uptime-datetime': datetime.timedelta(days=31, seconds=13368), # Python datetime.timedelta object
+  'system_uptime-seconds': 2691768.0,  # Automatically parsed
+  'current_system_time': '08/03/2025 17:02:43',
+  'current_system_time-ISO8601': '2025-08-03T17:02:43',  # Auto-formatted
+  'current_system_time-datetime': datetime.datetime(2025, 8, 3, 17, 2, 43),  # Python datetime.datetime object
+  'mac_address': '01:23:45:67:89:AB',
+  'serial_number': '000000000000000',
+  'internet_status': 'Connected',
+  'network_access': 'Allowed',
+  'boot_status': 'OK',
+  'boot_comment': 'Operational',
+  'connectivity_status': 'OK',
+  'connectivity_comment': 'Operational',
+  'configuration_file_status': 'OK',
+  'security_status': 'Enabled',
+  'security_comment': 'BPI+',
+  'downstream_frequency': '549000000 Hz',
+  'downstream_comment': 'Locked',
+  'downstream_channels': [
+    ChannelInfo(
+      channel_id='1',
+      frequency='549000000 Hz',
+      power='0.6 dBmV',
+      snr='39.0 dB',
+      modulation='256QAM',
+      lock_status='Locked',
+      corrected_errors='15',
+      uncorrected_errors='0',
+      channel_type='downstream'
+    )  # ... more channels
+  ],
+  'upstream_channels': [
+    ChannelInfo(
+      channel_id='1',
+      frequency='30600000 Hz',
+      power='46.5 dBmV',
+      snr='N/A',
+      modulation='SC-QAM',
+      lock_status='Locked',
+      channel_type='upstream'
+    )  # ... more channels
+  ],
+  'channel_data_available': True,
+  '_request_mode': 'serial',  # Internal metadata
+  '_performance': {
+    'total_time': 1.85,
+    'requests_successful': 4,
+    'requests_total': 4,
+    'mode': 'serial'
+  }
+}
+```
+
+### Key Differences
+
+| Feature | CLI Output | Python Library |
+|---------|------------|----------------|
+| **Human Summary** | ✅ Printed to stderr | ❌ Not included |
+| **CLI Metadata** | ✅ Query info, host, version | ❌ Not included |
+| **Channel Objects** | ❌ Serialized to dicts | ✅ Rich ChannelInfo objects |
+| **Time Parsing** | ✅ Enhanced fields | ✅ Enhanced fields |
+| **Performance Data** | ✅ Configuration details | ✅ Basic timing info |
+| **Monitoring Ready** | ✅ JSON with metadata | ✅ Python objects |
+
+Both formats include automatically parsed time fields (like `system_uptime-seconds`) and enhanced data, but the CLI adds operational metadata while the Python library provides rich objects for programmatic use.
 
 ## The Cool Technical Bits 🤓
 
@@ -144,7 +301,7 @@ Fun discoveries:
 
 - Python 3.9+
 - An Arris S33/S34/SB8200 modem
-- The admin password (usually on the sticker)
+- The admin password [by default the last 8 digits of your modem's serial number](https://arris.my.salesforce-sites.com/consumers/articles/Knowledge/S33-Web-Manager-Access/?l=en_US&fs=RelatedArticle)
 - Patience if your modem hates concurrent requests
 
 ## License 📄
