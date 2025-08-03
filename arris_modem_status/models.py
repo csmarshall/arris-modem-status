@@ -48,7 +48,55 @@ class ErrorCapture:
 
 @dataclass
 class ChannelInfo:
-    """Represents a single modem channel with optimized field access."""
+    """
+    Represents a single modem channel with optimized field access.
+
+    This dataclass contains all the diagnostic information for a single
+    downstream or upstream channel, with automatic formatting applied
+    to common fields for consistent display.
+
+    Attributes:
+        channel_id: Channel identifier (e.g., "1", "2")
+        frequency: Channel frequency, auto-formatted with "Hz" suffix
+        power: Signal power level, auto-formatted with "dBmV" suffix
+        snr: Signal-to-noise ratio, auto-formatted with "dB" suffix (downstream only)
+        modulation: Modulation type (e.g., "256QAM", "SC-QAM", "OFDMA")
+        lock_status: Channel lock status ("Locked", "Unlocked", etc.)
+        corrected_errors: Number of corrected errors (downstream only, optional)
+        uncorrected_errors: Number of uncorrected errors (downstream only, optional)
+        channel_type: Channel type ("downstream", "upstream", "unknown")
+
+    Examples:
+        Downstream channel with full diagnostics:
+
+        >>> channel = ChannelInfo(
+        ...     channel_id="1",
+        ...     frequency="549000000",  # Auto-formatted to "549000000 Hz"
+        ...     power="0.6",           # Auto-formatted to "0.6 dBmV"
+        ...     snr="39.0",            # Auto-formatted to "39.0 dB"
+        ...     modulation="256QAM",
+        ...     lock_status="Locked",
+        ...     corrected_errors="15",
+        ...     uncorrected_errors="0",
+        ...     channel_type="downstream"
+        ... )
+
+        Upstream channel (no SNR or error counts):
+
+        >>> channel = ChannelInfo(
+        ...     channel_id="1",
+        ...     frequency="30600000",
+        ...     power="46.5",
+        ...     snr="N/A",
+        ...     modulation="SC-QAM",
+        ...     lock_status="Locked",
+        ...     channel_type="upstream"
+        ... )
+
+    Note:
+        Frequency, power, and SNR values are automatically formatted with
+        appropriate units if they are numeric strings without units.
+    """
 
     channel_id: str
     frequency: str

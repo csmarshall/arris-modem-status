@@ -38,26 +38,70 @@ class ArrisModemStatusClient:
     with built-in relaxed HTTP parsing for compatibility with Arris modems'
     non-standard but valid HTTP responses.
 
+    The client operates in two modes:
+
+    * **Serial Mode (default)**: Requests are made sequentially for maximum reliability.
+      Slower (~2s) but handles modems with buggy concurrent request handling.
+
+    * **Concurrent Mode**: Multiple requests in parallel for speed (~1.2s) but may
+      fail with HTTP 403 errors on modems with firmware issues.
+
     Features:
-    - Serial mode by default for maximum compatibility
-    - Optional concurrent mode for performance
-    - Browser-compatible HTTP parsing by default for HNAP endpoints
-    - Smart retry logic for genuine network errors
-    - Comprehensive error analysis and recovery
-    - Detailed performance instrumentation and timing
-    - Connection pooling optimization
-    - Complete HNAP request coverage including GetCustomerStatusSoftware
+        * Browser-compatible HTTP parsing by default for HNAP endpoints
+        * Smart retry logic for genuine network errors
+        * Comprehensive error analysis and recovery
+        * Detailed performance instrumentation and timing
+        * Connection pooling optimization
+        * Complete HNAP request coverage including GetCustomerStatusSoftware
 
-    This is an unofficial library not affiliated with ARRIS® or CommScope.
+    Args:
+        password: Modem admin password (required)
+        username: Login username (default: "admin")
+        host: Modem IP address (default: "192.168.100.1")
+        port: HTTPS port (default: 443)
+        concurrent: Enable concurrent requests (default: False)
+            WARNING: Many Arris modems have issues with concurrent HNAP requests
+        max_workers: Concurrent request workers when concurrent=True (default: 2)
+        max_retries: Max retry attempts for failed requests (default: 3)
+        base_backoff: Base backoff time in seconds (default: 0.5)
+        capture_errors: Whether to capture error details for analysis (default: True)
+        timeout: (connect_timeout, read_timeout) in seconds (default: (3, 12))
+        enable_instrumentation: Enable detailed performance instrumentation (default: True)
 
-    Example Usage:
-        from arris_modem_status import ArrisModemStatusClient
+    Examples:
+        Basic usage with context manager (recommended):
 
-        client = ArrisModemStatusClient(password="your_password")
-        status = client.get_status()
+        >>> with ArrisModemStatusClient(password="your_password") as client:
+        ...     status = client.get_status()
+        ...     print(f"Internet: {status['internet_status']}")
 
-        print(f"Internet: {status['internet_status']}")
-        print(f"Channels: {len(status['downstream_channels'])} down, {len(status['upstream_channels'])} up")
+        Performance monitoring:
+
+        >>> client = ArrisModemStatusClient(
+        ...     password="your_password",
+        ...     enable_instrumentation=True
+        ... )
+        >>> with client:
+        ...     status = client.get_status()
+        ...     metrics = client.get_performance_metrics()
+        ...     print(f"Total time: {metrics['session_metrics']['total_session_time']:.2f}s")
+
+        Custom configuration:
+
+        >>> client = ArrisModemStatusClient(
+        ...     password="your_password",
+        ...     host="192.168.1.1",
+        ...     concurrent=True,
+        ...     max_workers=3,
+        ...     timeout=(5, 15)
+        ... )
+
+    Note:
+        This is an unofficial library not affiliated with ARRIS® or CommScope.
+
+    Warning:
+        Concurrent mode may cause HTTP 403 errors and inconsistent data on many
+        Arris modems due to firmware limitations. Use serial mode for reliability.
     """
 
     def __init__(

@@ -28,9 +28,34 @@ class ArrisModemError(Exception):
     This is the base class for all exceptions raised by the arris-modem-status
     library. Catching this exception will catch all library-specific errors.
 
+    All exceptions include contextual details to help with debugging and
+    monitoring integration.
+
     Attributes:
         message: Human-readable error message
         details: Optional dictionary with additional error context
+
+    Examples:
+        Catching all library errors:
+
+        >>> try:
+        ...     client = ArrisModemStatusClient(password="wrong")
+        ...     client.authenticate()
+        ... except ArrisModemError as e:
+        ...     print(f"Arris error: {e}")
+        ...     if e.details:
+        ...         print(f"Details: {e.details}")
+
+        Specific error handling:
+
+        >>> try:
+        ...     status = client.get_status()
+        ... except ArrisAuthenticationError:
+        ...     print("Check your password")
+        ... except ArrisConnectionError:
+        ...     print("Check network connectivity")
+        ... except ArrisModemError as e:
+        ...     print(f"Other modem error: {e}")
     """
 
     def __init__(self, message: str, details: Optional[dict[str, Any]] = None) -> None:

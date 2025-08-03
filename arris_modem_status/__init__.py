@@ -10,34 +10,36 @@ with automatic handling of urllib3's strict HTTP parsing that can cause issues
 with some Arris modem responses.
 
 Features:
-- 84% performance improvement through concurrent request optimization
-- Browser-compatible HTTP parsing for maximum reliability
-- Smart retry logic for HTTP compatibility issues
-- Comprehensive error analysis and monitoring integration
-- Production-ready with extensive testing and validation
+    * 84% performance improvement through concurrent request optimization
+    * Browser-compatible HTTP parsing for maximum reliability
+    * Smart retry logic for HTTP compatibility issues
+    * Comprehensive error analysis and monitoring integration
+    * Production-ready with extensive testing and validation
 
+Quick Start:
+    Basic usage with automatic resource management:
 
-This is an unofficial library not affiliated with ARRIS® or CommScope.
+    >>> from arris_modem_status import ArrisModemStatusClient
+    >>> with ArrisModemStatusClient(password="your_password") as client:
+    ...     status = client.get_status()
+    ...     print(f"Internet: {status['internet_status']}")
+    ...     print(f"Model: {status['model_name']}")
 
-Example Usage:
-    from arris_modem_status import ArrisModemStatusClient
-
-    client = ArrisModemStatusClient(password="your_password")
-    status = client.get_status()
-
-    print(f"Internet: {status['internet_status']}")
-    print(f"Channels: {len(status['downstream_channels'])} down, {len(status['upstream_channels'])} up")
+Performance Modes:
+    * **Serial Mode (default)**: Sequential requests, maximum reliability
+    * **Concurrent Mode**: Parallel requests, ~30% faster but may fail on some modems
 
 Error Handling:
-    from arris_modem_status import ArrisModemStatusClient, ArrisAuthenticationError, ArrisConnectionError
+    All operations raise specific exceptions for different failure modes:
 
-    try:
-        client = ArrisModemStatusClient(password="your_password")
-        status = client.get_status()
-    except ArrisAuthenticationError as e:
-        print(f"Authentication failed: {e}")
-    except ArrisConnectionError as e:
-        print(f"Connection failed: {e}")
+    >>> from arris_modem_status import ArrisAuthenticationError
+    >>> try:
+    ...     client = ArrisModemStatusClient(password="wrong_password")
+    ...     status = client.get_status()
+    ... except ArrisAuthenticationError as e:
+    ...     print(f"Authentication failed: {e}")
+
+This is an unofficial library not affiliated with ARRIS® or CommScope.
 
 Author: Charles Marshall
 License: MIT

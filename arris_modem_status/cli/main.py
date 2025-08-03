@@ -127,11 +127,48 @@ def main(client_class: Optional[type[ArrisModemStatusClient]] = None) -> Optiona
     """
     Main entry point for the CLI application.
 
+    Orchestrates argument parsing, client creation, status retrieval, and output
+    formatting. Designed for robust error handling and clean JSON output suitable
+    for monitoring systems.
+
     Args:
-        client_class: Optional client class to use (for testing)
+        client_class: Optional client class to use (primarily for testing)
 
     Returns:
         Exit code (0 for success, 1 for error), or None for successful completion
+
+    Output:
+        The CLI outputs JSON to stdout and human-readable summaries to stderr.
+        This design allows for easy integration with monitoring tools:
+
+        * stdout: Clean JSON data for programmatic use
+        * stderr: Human-readable status summaries and error messages
+
+    Examples:
+        Basic usage:
+
+        >>> main()  # Uses sys.argv for arguments
+
+        Testing with mock client:
+
+        >>> mock_client = Mock()
+        >>> exit_code = main(client_class=mock_client)
+
+    Exit Codes:
+        * 0 or None: Success
+        * 1: Any error (authentication, connection, operation, etc.)
+
+    Error Handling:
+        The function provides specific error messages for different failure modes:
+
+        * ArrisAuthenticationError: Password verification suggestions
+        * ArrisConnectionError: Network troubleshooting information
+        * ArrisTimeoutError: Timeout adjustment recommendations
+        * ArrisOperationError: Mode-specific suggestions (serial vs concurrent)
+
+    Note:
+        Uses start_time at function scope to avoid variable scoping issues
+        in error handling paths.
     """
     # IMPORTANT: Define start_time at function scope to avoid variable scoping issues
     start_time = time.time()
