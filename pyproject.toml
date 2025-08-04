@@ -1,0 +1,448 @@
+[build-system]
+requires = [
+    "setuptools>=78.1.1",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arris-modem-status"
+dynamic = [
+    "version",
+]
+description = "Unofficial Python client for Arris cable modem status via HNAP"
+authors = [
+    { name = "Charles Marshall" },
+]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "requests>=2.25.1",
+    "urllib3>=1.26.0",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Telecommunications Industry",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Internet",
+    "Topic :: System :: Hardware",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Networking :: Monitoring",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+keywords = [
+    "arris",
+    "modem",
+    "cable",
+    "router",
+    "DOCSIS",
+    "networking",
+    "monitoring",
+    "HNAP",
+    "status",
+    "diagnostics",
+    "internet",
+]
+
+[project.license]
+text = "MIT"
+
+[project.urls]
+Homepage = "https://github.com/csmarshall/arris-modem-status"
+Repository = "https://github.com/csmarshall/arris-modem-status"
+Documentation = "https://github.com/csmarshall/arris-modem-status#readme"
+"Bug Tracker" = "https://github.com/csmarshall/arris-modem-status/issues"
+Changelog = "https://github.com/csmarshall/arris-modem-status/blob/main/CHANGELOG.md"
+"Source Code" = "https://github.com/csmarshall/arris-modem-status"
+
+[project.scripts]
+arris-modem-status = "arris_modem_status.cli.main:main"
+
+[project.optional-dependencies]
+dev = [
+    "setuptools>=78.1.1",  # Security fix for PYSEC-2025-49
+    "ruff==0.12.7",
+    "black==25.1.0",
+    "mypy==1.17.1",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.0.0",
+    "coverage[toml]>=7.6.10",
+    "bandit[toml]>=1.8.0",
+    "pip-audit>=2.8.0",
+    "interrogate>=1.7.0",
+    "vulture>=2.14",
+    "pre-commit>=4.0.2",
+    "pytest-mock>=3.10.0",
+    "bump-my-version>=0.17.0",
+]
+debug = [
+    "playwright>=1.40.0",
+    "selenium>=4.0.0",
+    "beautifulsoup4>=4.9.0",
+    "aiohttp>=3.8.0",
+]
+all = [
+    "arris-modem-status[dev,debug]",
+]
+test = [
+    "pytest>=8.3.5",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "pytest-timeout>=2.1.0",
+    "pytest-asyncio>=0.21.0,<1.2.0",
+    "coverage[toml]>=6.0.0",
+]
+build = [
+    "build>=0.10.0",
+    "twine>=4.0.0",
+    "wheel>=0.40.0",
+]
+
+[tool.setuptools]
+zip-safe = false
+
+[tool.setuptools.dynamic.version]
+attr = "arris_modem_status.__version__"
+
+[tool.setuptools.packages.find]
+where = [
+    ".",
+]
+include = [
+    "arris_modem_status*",
+]
+exclude = [
+    "debug_tools*",
+    "scripts*",
+    "tests*",
+    "concurrent_vs_serial_test*",
+    "error_analysis_test*",
+    "production_test*",
+]
+
+[tool.setuptools.package-data]
+arris_modem_status = [
+    "py.typed",
+]
+
+[tool.setuptools.exclude-package-data]
+"*" = [
+    "debug_tools/*",
+    "*.sh",
+    "*_test.py",
+    "test_*",
+]
+
+[tool.black]
+line-length = 120
+target-version = [
+    "py39",
+    "py310",
+    "py311",
+    "py312",
+    "py313",
+]
+include = "\\.pyi?$"
+exclude = "(\n    \\.git\n    | __pycache__\n    | \\.pyc\n    | \\.pyo\n    | build\n    | dist\n    | \\.egg-info\n    | \\.tox\n    | \\.venv\n    | venv\n    | \\.mypy_cache\n    | \\.pytest_cache\n    | htmlcov\n    | \\.coverage\n    | \\.orig\n    | \\.ruff_cache\n    | \\.DS_Store\n    | debug_tools\n    | scripts\n)"
+
+[tool.isort]
+profile = "black"
+line_length = 120
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+src_paths = [
+    "arris_modem_status",
+    "tests",
+]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+enable_error_code = [
+    "ignore-without-code",
+    "redundant-expr",
+    "truthy-bool",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "urllib3.*",
+    "requests.*",
+    "playwright.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = [
+    "-ra",
+    "-q",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=arris_modem_status",
+    "--cov-branch",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-report=html",
+    "--cov-fail-under=80",
+]
+testpaths = [
+    "tests",
+]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "http_compatibility: marks tests for HTTP compatibility",
+    "connection: marks tests for connection handling",
+    "performance: marks tests for performance validation",
+    "auth: marks tests for authentication functionality",
+    "parsing: marks tests for data parsing",
+    "cli: marks tests for CLI functionality",
+]
+timeout = 30
+filterwarnings = [
+    "ignore::urllib3.exceptions.InsecureRequestWarning",
+    "ignore::DeprecationWarning:urllib3.*",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = [
+    "arris_modem_status",
+]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "setup.py",
+    "arris_modem_status/__main__.py",
+]
+branch = true
+parallel = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*Protocol.*:",
+    "@(abc\\.)?abstractmethod",
+]
+show_missing = true
+precision = 2
+skip_covered = false
+skip_empty = true
+
+[tool.coverage.html]
+directory = "htmlcov"
+title = "arris-modem-status coverage report"
+
+[tool.bandit]
+exclude_dirs = [
+    "tests",
+    "build",
+    "dist",
+]
+tests = [
+    "B201",
+    "B301",
+]
+skips = [
+    "B101",
+    "B601",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+include = [
+    "*.py",
+    "*.pyi",
+    "**/pyproject.toml",
+]
+exclude = [
+    ".git",
+    "__pycache__",
+    "*.pyc",
+    "*.pyo",
+    "build",
+    "dist",
+    "*.egg-info",
+    ".tox",
+    ".venv",
+    "venv",
+    "arris_modem_venv",
+    ".mypy_cache",
+    ".pytest_cache",
+    "htmlcov",
+    ".coverage",
+    "*.orig",
+    ".ruff_cache",
+    ".DS_Store",
+    "debug_tools",
+    "scripts",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "N",
+    "UP",
+    "B",
+    "A",
+    "C4",
+    "DTZ",
+    "T10",
+    "EXE",
+    "ISC",
+    "PIE",
+    "PT",
+    "Q",
+    "RET",
+    "SIM",
+    "TID",
+    "ARG",
+    "PGH",
+    "PL",
+    "RUF",
+]
+ignore = [
+    "DTZ005",
+    "E203",
+    "E501",
+    "ISC001",
+    "PLR0912",
+    "PLR0913",
+    "PLR0915",
+    "PLR2004",
+    "SIM102",
+    "SIM108",
+    "UP006",
+    "UP035",
+    "PLC0415",
+]
+fixable = [
+    "ALL",
+]
+unfixable = []
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = [
+    "F401",
+]
+"tests/*" = [
+    "PLR2004",
+    "ARG001",
+    "ARG002",
+    "B017",
+    "PT011",
+    "N806",
+    "A004",
+]
+
+[tool.ruff.lint.pylint]
+max-args = 7
+max-branches = 15
+max-statements = 60
+
+[tool.ruff.lint.mccabe]
+# Maximum complexity for functions (for C901 rule)
+max-complexity = 10  # Set to 5 for strict mode
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.interrogate]
+ignore-init-method = true
+ignore-init-module = false
+ignore-magic = false
+ignore-semiprivate = false
+ignore-private = true
+ignore-property-decorators = false
+ignore-module = false
+ignore-nested-functions = false
+ignore-nested-classes = true
+ignore-setters = false
+fail-under = 80
+exclude = [
+    "setup.py",
+    "docs",
+    "build",
+    "tests",
+    ".venv",
+    "venv",
+    "arris_modem_venv",
+]
+ignore-regex = [
+    "^get$",
+    "^post$",
+    "^put$",
+    "^delete$",
+    "^head$",
+]
+verbose = 0
+quiet = false
+whitelist-regex = []
+color = true
+generate-badge = "."
+badge-format = "svg"
+
+[tool.vulture]
+exclude = [
+    "tests/",
+    "debug_tools/",
+    ".venv/",
+    "venv/",
+    "arris_modem_venv/",
+]
+ignore_decorators = [
+    "@pytest.fixture",
+    "@pytest.mark.*",
+]
+ignore_names = [
+    "test_*",
+    "_*",
+]
+min_confidence = 80
+paths = [
+    "arris_modem_status/",
+]

@@ -1,0 +1,114 @@
+name: Quality Check
+'on':
+  push:
+    branches:
+    - main
+    - develop
+  pull_request:
+    branches:
+    - main
+  workflow_dispatch: null
+permissions:
+  contents: read
+  security-events: write
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+        - '3.9'
+        - '3.10'
+        - '3.11'
+        - '3.12'
+        - '3.13'
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+        restore-keys: ${{ runner.os }}-pip-
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        # Upgrade setuptools to fix security vulnerabilities
+        python -m pip install --upgrade "setuptools>=78.1.1"
+        pip install -e .[dev,test]
+    - name: Run Ruff linting
+      run: |
+        ruff --version
+        ruff check arris_modem_status tests --output-format=github
+    - name: Run Black formatting check
+      run: |
+        black --version
+        black --check arris_modem_status tests --line-length 120
+    - name: Run mypy type checking
+      run: |
+        mypy --version
+        mypy arris_modem_status --ignore-missing-imports
+    - name: Run Bandit security check
+      run: |
+        bandit --version
+        bandit -r arris_modem_status -ll -f json -o bandit-report.json
+        bandit -r arris_modem_status -ll
+    - name: Check docstring coverage
+      run: |
+        interrogate --version
+        interrogate -v arris_modem_status/ --fail-under 80
+    - name: Find dead code
+      run: |
+        vulture --version
+        vulture arris_modem_status/ --min-confidence 80 || true
+    - name: Run pytest with coverage
+      run: |
+        pytest --version
+        pytest tests/ -v --cov=arris_modem_status --cov-report=xml --cov-report=term-missing
+    - name: Upload coverage to Codecov
+      if: matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v5
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        # Upgrade setuptools to fix security vulnerabilities
+        python -m pip install --upgrade "setuptools>=78.1.1"
+        pip install -e .[dev]
+        pip install pip-audit
+    - name: Run pip-audit
+      run: pip-audit --desc --skip-editable --ignore-vuln PYSEC-2022-42969
+    - name: Run Trivy security scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: fs
+        scan-ref: .
+        format: sarif
+        output: trivy-results.sarif
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      # Only upload if the scan was successful and the file exists
+      if: success() && hashFiles('trivy-results.sarif') != ''
+      with:
+        sarif_file: trivy-results.sarif
