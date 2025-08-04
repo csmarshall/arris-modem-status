@@ -75,3 +75,4 @@ build/
 # Requirements files (keep CI requirements)
 requirements.txt
 requirements-dev.txt
+interrogate_badge.svg
