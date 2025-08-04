@@ -300,7 +300,7 @@ python hnap_raw_debugger.py --password "$MODEM_PASSWORD" --save-files --output-d
 
 - **Credential Security**: Never commit passwords or captured authentication data
 - **Browser Automation**: Enhanced capture requires Chromium via Playwright
-- **Protocol Compatibility**: Tools designed for Arris SB8200/similar DOCSIS 3.1 modems
+- **Protocol Compatibility**: Tools designed for Arris S34 (and likely S33/SB8200) DOCSIS 3.1 modems
 - **Data Retention**: Captured files may contain sensitive modem configuration data
 
 These tools represent the culmination of extensive protocol analysis and provide a robust foundation for maintaining long-term compatibility with Arris modem firmware evolution. They enable proactive detection of protocol changes and comprehensive debugging of client-modem communication patterns.

@@ -11,7 +11,7 @@ I got tired of logging into my Arris cable modem's clunky web interface just to 
 
 ## What's This Thing Do? 🤔
 
-It grabs **ALL** the juicy details from your Arris S33/S34/SB8200 cable modem:
+It grabs **ALL** the juicy details from your Arris S34 (and likely S33/SB8200) cable modem:
 - 📊 Signal levels, SNR, error counts
 - 🌊 Downstream/upstream channel info
 - 🔧 Model name, firmware version, hardware version
@@ -283,6 +283,11 @@ This is an unofficial library not affiliated with ARRIS® or CommScope, Inc. ARR
 
 This is a personal project provided as-is under the MIT license.
 
+## Is my modem supported? ☎️
+
+I tested this on an Arris S34 (running the "AT01.01.010.042324_S3.04.735" firmware on Comcast in the USA), so chances are good that it will work on its older sibbling the S33.  I hope to validate the SB8200 in the near future, but otherwise if it's an Arris modem it may work, or not 🤷🏻.  I'm open to helping to triage files, but the procedure will be a little loosey goosey until I do one or two.
+
+
 ## Found a Bug? Want a Feature? 🐛
 
 Open an issue! PRs welcome! The codebase is pretty clean thanks to the AI helping me follow best practices.
@@ -300,7 +305,7 @@ Fun discoveries:
 ## Requirements 📋
 
 - Python 3.9+
-- An Arris S33/S34/SB8200 modem
+- An Arris S34 (and likely S33/SB8200) cable modem
 - The admin password [by default the last 8 digits of your modem's serial number](https://arris.my.salesforce-sites.com/consumers/articles/Knowledge/S33-Web-Manager-Access/?l=en_US&fs=RelatedArticle)
 - Patience if your modem hates concurrent requests
 
