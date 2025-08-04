@@ -22,7 +22,7 @@ It grabs **ALL** the juicy details from your Arris S34 (and likely S33/SB8200) c
 ## Quick Start 🏃‍♂️
 
 ```bash
-# Install the latest version (v1.0.1)
+# Install the latest version (v1.0.2)
 pip install arris-modem-status
 
 # Check your modem (serial mode by default for reliability)
