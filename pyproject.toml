@@ -76,7 +76,7 @@ arris-modem-status = "arris_modem_status.cli.main:main"
 dev = [
     "setuptools>=78.1.1",  # Security fix for PYSEC-2025-49
     "ruff==0.12.9",
-    "black==25.1.0",
+    "black==25.9.0",
     "mypy==1.18.2",
     "pytest>=8.3.5",
     "pytest-cov>=6.0.0",
