@@ -520,7 +520,7 @@ from .models import ChannelInfo
 from .time_utils import enhance_status_with_time_fields
 
 # Version information
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 __author__ = "Charles Marshall"
 __license__ = "MIT"
 

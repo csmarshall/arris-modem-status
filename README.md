@@ -22,7 +22,7 @@ It grabs **ALL** the juicy details from your Arris S34 (and likely S33/SB8200) c
 ## Quick Start 🏃‍♂️
 
 ```bash
-# Install the latest version (v1.0.2)
+# Install the latest version (v1.0.3)
 pip install arris-modem-status
 
 # Check your modem (serial mode by default for reliability)
@@ -286,8 +286,75 @@ This is a personal project provided as-is under the MIT license.
 
 ## Is my modem supported? ☎️
 
-I tested this on an Arris S34 (running the "AT01.01.010.042324_S3.04.735" firmware on Comcast in the USA), so chances are good that it will work on its older sibbling the S33.  I hope to validate the SB8200 in the near future, but otherwise if it's an Arris modem it may work, or not 🤷🏻.  I'm open to helping to triage files, but the procedure will be a little loosey goosey until I do one or two.
+**Tested Models & Firmware:**
 
+<!-- IMPORTANT: Update firmware versions here and in FIRMWARE_COMPATIBILITY.md when compatibility changes -->
+- ✅ **Arris S34** - Firmware `AT01.01.010.042324_S3.04.735` (tested 2025-10-17)
+- ⚠️ **Arris S33** - Likely compatible (not yet tested)
+- ⚠️ **Arris SB8200** - Likely compatible (not yet tested)
+
+See [FIRMWARE_COMPATIBILITY.md](FIRMWARE_COMPATIBILITY.md) for detailed firmware version tracking and known protocol changes.
+
+**Note**: Firmware updates can change authentication behavior or protocol requirements. If you encounter issues after a firmware update, please:
+1. Check [FIRMWARE_COMPATIBILITY.md](FIRMWARE_COMPATIBILITY.md) for your firmware version
+2. Open an issue with your firmware version and error details
+3. Optionally provide a HAR capture (see debugging section above)
+
+I'm open to helping to triage issues with different firmware versions or models!
+
+
+## Debugging Protocol Issues 🔍
+
+If you encounter authentication errors like `"LoginResult": "RELOAD"`, here's how we debug them using browser comparison:
+
+### The RELOAD Bug Fix (October 2025)
+
+**Problem**: Python client was getting `"LoginResult": "RELOAD"` instead of authentication challenge on first connection.
+
+**Debugging Process**:
+
+1. **Capture browser behavior** using Firefox Developer Tools:
+   - Network tab → HAR export during successful login
+   - Captured both regular and private browsing sessions
+
+2. **Use enhanced_deep_capture.py** (in `debug_tools/`) for detailed analysis:
+   ```bash
+   python debug_tools/enhanced_deep_capture.py --password YOUR_PASSWORD
+   ```
+   This creates:
+   - `deep_capture.har` - Complete network capture
+   - `deep_capture.json` - Structured data with cookie timeline
+
+3. **Compare browser vs Python client**:
+   - Browser sent `HNAP_AUTH` header on challenge request ✅
+   - Python client did NOT send `HNAP_AUTH` on challenge request ❌
+
+4. **Analyzed JavaScript source** from captured HAR files:
+   ```javascript
+   var PrivateKey=$.cookie('PrivateKey');
+   if(PrivateKey == null) PrivateKey = "withoutloginkey"; // Fallback!
+   var auth = hex_hmac_sha256(PrivateKey, current_time.toString()+URI);
+   ajaxObj.setHeader("HNAP_AUTH", auth + " " + current_time);
+   ```
+
+5. **Root cause**: Modem requires `HNAP_AUTH` header on ALL requests, even initial challenge. Browser uses `"withoutloginkey"` as fallback when no PrivateKey exists.
+
+6. **The fix**:
+   - Generate `HNAP_AUTH` token before challenge request (using "withoutloginkey")
+   - Send token with challenge request to match browser behavior
+   - Modified `arris_modem_status/client/main.py` and `arris_modem_status/client/http.py`
+
+### General Debugging Tips
+
+For similar protocol issues:
+
+1. **Browser HAR Export**: Capture working browser session (Firefox DevTools → Network → Save as HAR)
+2. **Compare Headers**: Look at request headers, especially `HNAP_AUTH`, `SOAPAction`, cookies
+3. **Check JavaScript**: Extract and read modem's JavaScript files from HAR to understand client-side logic
+4. **Use deep_capture.py**: Automated browser capture with cookie/storage timeline
+5. **Test Incrementally**: Make one change at a time and verify with `--debug` flag
+
+The key is comparing what the browser does vs what the Python client does, header by header.
 
 ## Found a Bug? Want a Feature? 🐛
 

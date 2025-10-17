@@ -1420,15 +1420,8 @@ class HNAPRequestHandler:
         # Build headers
         headers = {"Content-Type": "application/json"}
 
-        # Check if this is the initial challenge request
-        is_challenge_request = (
-            soap_action == "Login"
-            and request_body.get("Login", {}).get("Action") == "request"
-            and request_body.get("Login", {}).get("LoginPassword", "") == ""
-        )
-
-        # Only include HNAP_AUTH for non-challenge requests
-        if not is_challenge_request and auth_token:
+        # Include HNAP_AUTH token when provided (including challenge requests)
+        if auth_token:
             headers["HNAP_AUTH"] = auth_token
 
         # Add SOAP action header

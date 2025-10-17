@@ -242,7 +242,11 @@ class ArrisModemStatusClient:
             )
 
             challenge_request = self.authenticator.build_challenge_request()
-            challenge_response = self.request_handler.make_request_with_retry("Login", challenge_request)
+            # Generate HNAP_AUTH token for challenge request (uses "withoutloginkey")
+            challenge_auth_token = self.authenticator.generate_auth_token("Login")
+            challenge_response = self.request_handler.make_request_with_retry(
+                "Login", challenge_request, auth_token=challenge_auth_token
+            )
 
             if not challenge_response:
                 logger.error("Failed to get authentication challenge after retries")
