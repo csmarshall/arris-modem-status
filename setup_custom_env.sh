@@ -90,8 +90,8 @@ print_status "Upgrading pip..."
 "$PIP_PATH" install --upgrade pip setuptools wheel
 
 # Install the project in development mode with all dependencies
-print_status "Installing arris-modem-status with development dependencies..."
-"$PIP_PATH" install -e .[dev]
+print_status "Installing arris-modem-status with full development environment (dev+test+debug)..."
+"$PIP_PATH" install -e .[dev,test,debug]
 
 # Step 6: Install Playwright browsers
 print_status "Installing Playwright browsers..."
