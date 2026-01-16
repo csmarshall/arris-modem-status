@@ -290,7 +290,7 @@ This is a personal project provided as-is under the MIT license.
 
 <!-- IMPORTANT: Update firmware versions here and in FIRMWARE_COMPATIBILITY.md when compatibility changes -->
 - ✅ **Arris S34** - Firmware `AT01.01.010.042324_S3.04.735` (tested 2025-10-17)
-- ⚠️ **Arris S33** - Likely compatible (not yet tested)
+- ⚠️ **Arris S33** - Firmware `AT01.01.018.042324_S3.03.735` (tested 2026-01-16)
 - ⚠️ **Arris SB8200** - Likely compatible (not yet tested)
 
 See [FIRMWARE_COMPATIBILITY.md](FIRMWARE_COMPATIBILITY.md) for detailed firmware version tracking and known protocol changes.
