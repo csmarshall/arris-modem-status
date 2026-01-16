@@ -524,6 +524,14 @@ class ChannelInfo:
                     include "Locked", "Unlocked", "Partial". Only locked channels
                     carry data traffic reliably.
 
+        width: Channel width for upstream channels with automatic Hz unit formatting (optional).
+                  Raw numeric values are automatically formatted during initialization (e.g.,
+                  "6400000" becomes "6400000 Hz"). Indicates channel width for upstream
+                  channels which is useful for determining maximum effective upstream bandwidth.
+
+        channel_num: Channel number indicated by CMTS (optional). Fixed numbers per deployment to allow for
+                data to remain consistent across restarts in case channels sync in different order.
+
         corrected_errors: Number of corrected errors for downstream channels (optional).
                          Indicates minor signal issues that were successfully recovered.
                          High values may indicate signal quality degradation.
@@ -632,6 +640,8 @@ class ChannelInfo:
     snr: str
     modulation: str
     lock_status: str
+    width: Optional[str] = None
+    channel_num: Optional[str] = None
     corrected_errors: Optional[str] = None
     uncorrected_errors: Optional[str] = None
     channel_type: str = "unknown"
@@ -869,5 +879,156 @@ class ChannelInfo:
         return False
 
 
+@dataclass
+class LogEntry:
+    """
+    Comprehensive log entry information from Arris modem system logs.
+
+    This dataclass represents a single log entry from the modem's system log with
+    complete diagnostic information including timestamp, severity level, and message
+    content. It provides structured access to modem event history for troubleshooting,
+    monitoring, and compliance purposes.
+
+    The class implements intelligent data processing including automatic timestamp
+    conversion to Unix format for easy sorting and analysis, while preserving the
+    original timestamp string for display purposes.
+
+    Attributes:
+        timestamp: Unix timestamp (seconds since epoch) indicating when the log event
+                  occurred. Enables chronological sorting, time-based analysis, and
+                  correlation with external events.
+
+        severity: Log severity level (e.g., "Critical", "Error", "Warning", "Notice",
+                 "Info", "Debug"). Indicates the importance and urgency of the log
+                 entry for filtering and alerting.
+
+        message: Human-readable log message describing the event. Contains detailed
+                information about system state changes, errors, or operational events.
+
+        timestamp_str: Optional original timestamp string as provided by the modem
+                      (e.g., "13/01/2026 14:23:45"). Preserved for display and
+                      debugging purposes.
+
+    Examples:
+        Basic log entry creation and analysis:
+
+        >>> import time
+        >>> log = LogEntry(
+        ...     timestamp=int(time.time()),
+        ...     severity="Warning",
+        ...     message="T3 timeout",
+        ...     timestamp_str="13/01/2026 14:23:45"
+        ... )
+        >>>
+        >>> # Check severity for filtering
+        >>> if log.is_critical():
+        ...     print(f"Critical event: {log.message}")
+        >>>
+        >>> # Format for display
+        >>> print(log.format_for_display())
+
+        Bulk log analysis for monitoring:
+
+        >>> def analyze_logs(logs: list[LogEntry]) -> dict:
+        ...     analysis = {
+        ...         'total_entries': len(logs),
+        ...         'by_severity': {},
+        ...         'critical_events': [],
+        ...         'timespan_seconds': 0
+        ...     }
+        ...
+        ...     for log in logs:
+        ...         # Count by severity
+        ...         sev = log.severity
+        ...         analysis['by_severity'][sev] = analysis['by_severity'].get(sev, 0) + 1
+        ...
+        ...         # Collect critical events
+        ...         if log.is_critical():
+        ...             analysis['critical_events'].append({
+        ...                 'timestamp': log.timestamp,
+        ...                 'message': log.message
+        ...             })
+        ...
+        ...     # Calculate timespan
+        ...     if logs:
+        ...         timestamps = [log.timestamp for log in logs]
+        ...         analysis['timespan_seconds'] = max(timestamps) - min(timestamps)
+        ...
+        ...     return analysis
+
+        Filter and sort logs:
+
+        >>> # Get only critical/error logs from last 24 hours
+        >>> import time
+        >>> one_day_ago = time.time() - 86400
+        >>> critical_logs = [
+        ...     log for log in logs
+        ...     if log.timestamp > one_day_ago
+        ...     and log.severity in ["Critical", "Error"]
+        ... ]
+        >>> # Sort by timestamp (newest first)
+        >>> critical_logs.sort(key=lambda x: x.timestamp, reverse=True)
+
+    Thread Safety:
+        LogEntry objects are immutable after creation and safe for concurrent
+        access in multi-threaded environments.
+
+    This log entry system provides structured access to modem event history,
+    enabling effective troubleshooting, monitoring, and analysis of modem behavior.
+    """
+
+    timestamp: int
+    severity: str
+    message: str
+    timestamp_str: Optional[str] = None
+
+    def is_critical(self) -> bool:
+        """
+        Check if log entry represents a critical event.
+
+        Returns:
+            True if severity indicates critical or error level event
+        """
+        return self.severity.lower() in ["critical", "error"]
+
+    def is_warning_or_higher(self) -> bool:
+        """
+        Check if log entry is warning level or higher severity.
+
+        Returns:
+            True if severity is warning, error, or critical
+        """
+        return self.severity.lower() in ["critical", "error", "warning"]
+
+    def format_for_display(self) -> str:
+        """
+        Format log entry as human-readable string.
+
+        Returns:
+            Formatted string with timestamp, severity, and message
+        """
+        from datetime import datetime, timezone
+
+        # Use original timestamp string if available, otherwise format Unix timestamp
+        if self.timestamp_str:
+            time_str = self.timestamp_str
+        else:
+            dt = datetime.fromtimestamp(self.timestamp, tz=timezone.utc)
+            time_str = dt.strftime("%d/%m/%Y %H:%M:%S")
+
+        return f"[{time_str}] {self.severity}: {self.message}"
+
+    def get_age_seconds(self) -> float:
+        """
+        Get age of log entry in seconds from current time.
+
+        Returns:
+            Age in seconds (positive value indicates past event)
+        """
+        import time
+
+        return time.time() - self.timestamp
+
+
 # Export all models
-__all__ = ["ChannelInfo", "ErrorCapture", "TimingMetrics"]
+__all__ = ["ChannelInfo", "ErrorCapture", "LogEntry", "TimingMetrics"]
