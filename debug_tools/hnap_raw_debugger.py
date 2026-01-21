@@ -107,6 +107,14 @@ class HNAPRawDebugger:
                     }
                 },
             },
+            "system_log": {
+                "description": "System log entries",
+                "request": {
+                    "GetMultipleHNAPs": {
+                        "GetCustomerStatusLog": ""
+                    }
+                },
+            }
         }
 
         self.logger = logging.getLogger(__name__)
