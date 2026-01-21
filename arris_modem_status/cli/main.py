@@ -10,9 +10,11 @@ License: MIT
 """
 
 import logging
+import os
 import sys
 import time
 from datetime import datetime
+from getpass import getpass
 from typing import Any, Optional
 
 from arris_modem_status import ArrisModemStatusClient, __version__
@@ -59,11 +61,21 @@ def create_client(args: Any, client_class: Optional[type[ArrisModemStatusClient]
     # Handle the new default: serial mode unless --parallel is specified
     concurrent_mode = args.parallel  # Only concurrent if --parallel flag is used
 
+    # Find the password
+    password = os.environ.get("ARRIS_PW", None)
+    if args.password_file is not None:
+        with open(args.password_file) as handle:
+            password = handle.readline().strip()
+    elif args.password is not None:
+        password = args.password
+    elif password is None:
+        password = getpass(prompt=f"{args.username} password:")
+
     return client_class(
         host=args.host,
         port=args.port,
         username=args.username,
-        password=args.password,
+        password=password,
         concurrent=concurrent_mode,
         max_workers=args.workers,
         max_retries=args.retries,
