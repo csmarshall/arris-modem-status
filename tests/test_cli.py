@@ -758,6 +758,7 @@ class TestCLIHelperFunctions:
             port=443,
             username="admin",
             password="test123",
+            password_file=None,
             parallel=False,  # Changed from serial to parallel
             workers=2,
             retries=3,
@@ -858,6 +859,7 @@ class TestCLIHelperFunctions:
             port=443,
             username="admin",
             password="test123",
+            password_file=None,
             parallel=False,  # Changed from serial to parallel
             workers=2,
             retries=3,

@@ -10,6 +10,7 @@ License: MIT
 
 import argparse
 import logging
+from pathlib import Path
 
 from arris_modem_status.exceptions import ArrisConfigurationError
 
@@ -29,6 +30,9 @@ def create_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  arris-modem-status # prompts for password
+  ARRIS_PW="your_password" arris-modem-status
+  arris-modem-status --password-file /run/secrets/arris_admin
   arris-modem-status --password "your_password"
   arris-modem-status --password "password" --host 192.168.1.1
   arris-modem-status --password "password" --debug
@@ -86,7 +90,11 @@ Complete Data:
         default="admin",
         help="Modem login username (default: %(default)s)",
     )
-    parser.add_argument("--password", required=True, help="Modem login password (required)")
+
+    # Password options
+    password_group = parser.add_mutually_exclusive_group()
+    password_group.add_argument("--password", default=None, type=str, help="Modem login password (env: ARRIS_PW)")
+    password_group.add_argument("--password-file", default=None, type=Path, help="Read password from file")
 
     # Output options
     parser.add_argument(
