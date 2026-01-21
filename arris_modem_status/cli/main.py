@@ -66,10 +66,14 @@ def create_client(args: Any, client_class: Optional[type[ArrisModemStatusClient]
     if args.password_file is not None:
         with open(args.password_file) as handle:
             password = handle.readline().strip()
-    elif args.password is not None:
+    if args.password is not None:
         password = args.password
-    elif password is None:
-        password = getpass(prompt=f"{args.username} password:")
+    if password is None and os.isatty(sys.stdout.fileno()):
+        password = getpass(prompt=f"{args.username} password: ")
+
+    if password is None:
+        print("❌ Missing password", file=sys.stderr)
+        sys.exit(1)
 
     return client_class(
         host=args.host,

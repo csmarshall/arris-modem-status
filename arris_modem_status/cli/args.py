@@ -93,8 +93,8 @@ Complete Data:
 
     # Password options
     password_group = parser.add_mutually_exclusive_group()
-    password_group.add_argument("--password", type=str, help="Modem login password (env: ARRIS_PW)")
-    password_group.add_argument("--password-file", type=Path, help="Read password from file")
+    password_group.add_argument("--password", default=None, type=str, help="Modem login password (env: ARRIS_PW)")
+    password_group.add_argument("--password-file", default=None, type=Path, help="Read password from file")
 
     # Output options
     parser.add_argument(
