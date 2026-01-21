@@ -35,7 +35,7 @@ Firmware updates can change HNAP protocol behavior, authentication requirements,
 
 | Firmware Version | Test Date | Status | Protocol Changes | Notes |
 |------------------|-----------|--------|------------------|-------|
-| *Not yet tested* | - | ⚠️ Untested | - | Likely compatible based on S34 testing |
+| `AT01.01.018.042324_S3.03.735` | 2026-01-16 | ✅ Working | None |
 
 ### Arris SB8200
 

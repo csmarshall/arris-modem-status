@@ -189,10 +189,10 @@ class TestChannelDataParsing:
 
         hnap_response = {
             "GetCustomerStatusDownstreamChannelInfoResponse": {
-                "CustomerConnDownstreamChannel": "1^Locked^256QAM^^549000000^0.6^39.0^15^0"
+                "CustomerConnDownstreamChannel": "1^Locked^256QAM^6^549000000^0.6^39.0^15^0"
             },
             "GetCustomerStatusUpstreamChannelInfoResponse": {
-                "CustomerConnUpstreamChannel": "1^Locked^SC-QAM^^^30600000^46.5"
+                "CustomerConnUpstreamChannel": "1^Locked^SC-QAM^2^6400000^30600000^46.5"
             },
         }
 

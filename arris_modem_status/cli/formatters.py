@@ -81,6 +81,19 @@ def format_channel_data_for_display(status: dict) -> dict:
         ]
         logger.debug(f"Converted {len(output['upstream_channels'])} upstream channels")
 
+    # Convert log entries
+    if output.get("log_entries"):
+        output["log_entries"] = [
+            {
+                "timestamp": log.timestamp,
+                "severity": log.severity,
+                "message": log.message,
+                "timestamp_str": log.timestamp_str,
+            }
+            for log in output["log_entries"]
+        ]
+        logger.debug(f"Converted {len(output['log_entries'])} log entries")
+
     return output
 
 

@@ -40,16 +40,16 @@ def mock_modem_responses():
                 "GetMultipleHNAPsResponse": {
                     "GetCustomerStatusDownstreamChannelInfoResponse": {
                         "CustomerConnDownstreamChannel": (
-                            "1^Locked^256QAM^^549000000^0.6^39.0^15^0|+|"
-                            "2^Locked^256QAM^^555000000^1.2^38.5^20^1|+|"
+                            "1^Locked^256QAM^6^549000000^0.6^39.0^15^0|+|"
+                            "2^Locked^256QAM^7^555000000^1.2^38.5^20^1|+|"
                             "3^Locked^256QAM^^561000000^-0.2^37.8^25^2"
                         )
                     },
                     "GetCustomerStatusUpstreamChannelInfoResponse": {
                         "CustomerConnUpstreamChannel": (
-                            "1^Locked^SC-QAM^^^30600000^46.5|+|"
-                            "2^Locked^SC-QAM^^^23700000^45.2|+|"
-                            "3^Locked^OFDMA^^^25000000^44.8"
+                            "1^Locked^SC-QAM^3^6400000^30600000^46.5|+|"
+                            "2^Locked^SC-QAM^1^6400000^23700000^45.2|+|"
+                            "3^Locked^OFDMA^6^44000000^25000000^44.8"
                         )
                     },
                     "GetCustomerStatusConnectionInfoResponse": {

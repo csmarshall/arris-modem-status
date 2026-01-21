@@ -415,6 +415,10 @@ class ArrisModemStatusClient:
                         }
                     },
                 ),
+                (
+                    "system_log",
+                    {"GetMultipleHNAPs": {"GetCustomerStatusLog": ""}},
+                ),
             ]
 
             responses: dict[str, str] = {}
@@ -483,6 +487,155 @@ class ArrisModemStatusClient:
             # Wrap unexpected errors
             raise ArrisOperationError(
                 f"Unexpected error during status retrieval: {e!s}",
+                details={"error_type": type(e).__name__, "error": str(e)},
+            ) from e
+
+    def get_logs(self) -> list:
+        """
+        Retrieve and parse system logs from the Arris modem.
+
+        This method fetches the modem's system log entries which contain diagnostic
+        information about events, errors, and operational state changes. Logs are
+        returned as a list of LogEntry objects sorted chronologically.
+
+        The method handles authentication automatically and uses the same retry logic
+        and error handling as get_status() for reliability.
+
+        Returns:
+            List of LogEntry objects sorted by timestamp (oldest to newest).
+            Returns empty list if authentication fails or no logs available.
+
+        Raises:
+            ArrisAuthenticationError: When authentication fails
+            ArrisConnectionError: When connection to modem fails
+            ArrisTimeoutError: When timeout occurs during request
+            ArrisHTTPError: When HTTP request fails
+            ArrisOperationError: When log retrieval fails for other reasons
+
+        Examples:
+            Basic usage with context manager:
+
+            >>> with ArrisModemStatusClient(password="your_password") as client:
+            ...     logs = client.get_logs()
+            ...     print(f"Found {len(logs)} log entries")
+            ...     for log in logs:
+            ...         if log.is_critical():
+            ...             print(log.format_for_display())
+
+            Filter and analyze logs:
+
+            >>> client = ArrisModemStatusClient(password="your_password")
+            >>> with client:
+            ...     logs = client.get_logs()
+            ...
+            ...     # Get critical events from last 24 hours
+            ...     import time
+            ...     one_day_ago = time.time() - 86400
+            ...     recent_critical = [
+            ...         log for log in logs
+            ...         if log.timestamp > one_day_ago and log.is_critical()
+            ...     ]
+            ...
+            ...     # Count by severity
+            ...     from collections import Counter
+            ...     severity_counts = Counter(log.severity for log in logs)
+            ...     print(f"Severity distribution: {severity_counts}")
+
+            Performance monitoring:
+
+            >>> with ArrisModemStatusClient(
+            ...     password="your_password",
+            ...     enable_instrumentation=True
+            ... ) as client:
+            ...     logs = client.get_logs()
+            ...     metrics = client.get_performance_metrics()
+            ...     print(f"Log retrieval time: {metrics['operation_metrics']['get_logs']:.2f}s")
+
+        Note:
+            - This method requires successful authentication before use
+            - Logs are automatically parsed from the modem's response format
+            - Log entries include Unix timestamps for easy sorting and filtering
+            - The modem typically retains 100-200 log entries in its buffer
+        """
+        start_time = time.time()
+
+        try:
+            # Authenticate if not already authenticated
+            if not self.authenticated:
+                logger.info("Authenticating before retrieving logs...")
+                self.authenticate()
+
+            if self.instrumentation:
+                self.instrumentation.start_timer("get_logs_complete")
+
+            logger.info("📋 Retrieving system logs from modem...")
+
+            # Build request for system log
+            request_body = {"GetMultipleHNAPs": {"GetCustomerStatusLog": ""}}
+
+            # Make authenticated request
+            log_start = self.instrumentation.start_timer("log_request") if self.instrumentation else time.time()
+            response = self._make_authenticated_request("GetMultipleHNAPs", request_body)
+
+            if self.instrumentation:
+                self.instrumentation.record_timing("log_request", log_start, success=bool(response))
+
+            if not response:
+                raise ArrisOperationError(
+                    "Failed to retrieve system logs from modem",
+                    details={"request_type": "system_log"},
+                )
+
+            # Parse the response
+            parsing_start = self.instrumentation.start_timer("log_parsing") if self.instrumentation else time.time()
+
+            # Parse JSON and extract logs
+            import json
+
+            data = json.loads(response)
+
+            # Handle response structure - could be wrapped or not
+            if "GetMultipleHNAPsResponse" in data:
+                hnaps_response = data["GetMultipleHNAPsResponse"]
+            else:
+                # Response is directly the log response
+                hnaps_response = data
+
+            log_entries = self.parser._parse_logs(hnaps_response)
+
+            if self.instrumentation:
+                self.instrumentation.record_timing("log_parsing", parsing_start, success=True)
+
+            total_time = time.time() - start_time
+            logger.info(f"✅ Retrieved {len(log_entries)} log entries in {total_time:.2f}s")
+
+            if self.instrumentation:
+                self.instrumentation.record_timing("get_logs_complete", start_time, success=True)
+
+            return log_entries
+
+        except (
+            ArrisAuthenticationError,
+            ArrisConnectionError,
+            ArrisTimeoutError,
+            ArrisHTTPError,
+        ) as e:
+            # Re-raise our custom exceptions
+            raise e
+        except Exception as e:
+            logger.error(f"Log retrieval failed: {e}")
+
+            if self.instrumentation:
+                self.instrumentation.record_timing(
+                    "get_logs_complete",
+                    start_time,
+                    success=False,
+                    error_type=str(type(e).__name__),
+                )
+
+            # Wrap unexpected errors
+            raise ArrisOperationError(
+                f"Unexpected error during log retrieval: {e!s}",
                 details={"error_type": type(e).__name__, "error": str(e)},
             ) from e
 
